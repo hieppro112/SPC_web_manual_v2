@@ -1,0 +1,7 @@
+/*
+  Dòng này nạp toàn bộ Tailwind. Từ đây, trong JSX bạn viết
+  className="p-4 text-blue-600" là có style, không cần viết CSS riêng.
+  🔸 Flutter: giống việc truyền thẳng padding/color vào widget thay vì
+     tạo một class style riêng.
+*/
+@import 'tailwindcss';

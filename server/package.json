@@ -1,0 +1,20 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Backend Doc App v2: Express + MongoDB, viết bằng TypeScript",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch --env-file=.env src/index.ts",
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "mongoose": "^9.11.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.19.1",
+    "typescript": "~6.0.2"
+  }
+}

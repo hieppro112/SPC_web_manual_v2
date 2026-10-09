@@ -1,0 +1,22 @@
+// tsconfig.json — luật chơi của TypeScript cho phía server.
+//
+// Ở server ta KHÔNG build ra file .js. Node 24 tự chạy được file .ts
+// bằng cách "xóa" phần khai báo kiểu rồi chạy phần JS còn lại
+// (type stripping). Vì vậy tsc ở đây chỉ làm một việc: KIỂM TRA kiểu
+// (`npm run typecheck`), không sinh file.
+// 🔸 Flutter: giống `dart analyze` — báo lỗi kiểu, không tạo ra app.
+{
+  "compilerOptions": {
+    "target": "es2023",
+    "module": "nodenext", // hiểu cách Node tìm module (import/export)
+    "strict": true, // bật toàn bộ kiểm tra nghiêm ngặt, như null safety của Dart
+    "noEmit": true, // chỉ kiểm tra, không sinh file .js
+    "skipLibCheck": true, // không kiểm tra code trong node_modules cho nhanh
+
+    // 3 option dưới là ĐIỀU KIỆN để Node chạy thẳng được file .ts:
+    "allowImportingTsExtensions": true, // cho viết `import './db.ts'` (có đuôi .ts)
+    "verbatimModuleSyntax": true, // import chỉ-kiểu phải viết `import type`
+    "erasableSyntaxOnly": true // cấm cú pháp TS không "xóa" được, ví dụ `enum`
+  },
+  "include": ["src"]
+}
