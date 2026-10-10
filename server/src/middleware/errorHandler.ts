@@ -15,6 +15,8 @@
 
 import type { ErrorRequestHandler } from 'express';
 import mongoose from 'mongoose';
+import multer from 'multer';
+import { z } from 'zod';
 
 // Lỗi "có chủ đích" kèm mã HTTP. Route dùng: throw new HttpError(404, '...')
 export class HttpError extends Error {
@@ -48,13 +50,41 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     return;
   }
 
-  // 4. Trùng giá trị `unique` (vd tên thể loại đã có) -> 409 Conflict
+  // 4. Body sai khuôn zod (vd mật khẩu quá ngắn) -> 400
+  if (err instanceof z.ZodError) {
+    const issue = err.issues[0];
+    const field = issue?.path.join('.');
+    res.status(400).json({ message: field ? `${field}: ${issue?.message}` : (issue?.message ?? 'Dữ liệu không hợp lệ') });
+    return;
+  }
+
+  // 5. Lỗi upload: file quá lớn -> 413, lỗi khác của multer -> 400
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      res.status(413).json({ message: 'File quá lớn' });
+      return;
+    }
+    res.status(400).json({ message: `Lỗi upload: ${err.message}` });
+    return;
+  }
+
+  // 6. Body JSON hỏng hoặc quá lớn (lỗi từ express.json())
+  if (err?.type === 'entity.parse.failed') {
+    res.status(400).json({ message: 'Body JSON không hợp lệ' });
+    return;
+  }
+  if (err?.type === 'entity.too.large') {
+    res.status(413).json({ message: 'Dữ liệu gửi lên quá lớn' });
+    return;
+  }
+
+  // 7. Trùng giá trị `unique` (vd tên thể loại đã có) -> 409 Conflict
   if (err?.code === 11000) {
     res.status(409).json({ message: 'Dữ liệu này đã tồn tại' });
     return;
   }
 
-  // 5. Còn lại là lỗi không lường trước: ghi log đầy đủ cho dev,
+  // 8. Còn lại là lỗi không lường trước: ghi log đầy đủ cho dev,
   //    nhưng KHÔNG gửi chi tiết cho client (có thể lộ cấu trúc hệ thống).
   console.error('❌ Lỗi không xử lý:', err);
   res.status(500).json({ message: 'Lỗi máy chủ' });

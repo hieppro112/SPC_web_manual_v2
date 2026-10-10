@@ -2,3 +2,5 @@ node_modules
 dist
 .env
 *.log
+# File người dùng upload — dữ liệu thật, không phải mã nguồn
+server/uploads

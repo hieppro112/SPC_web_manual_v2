@@ -13,6 +13,29 @@
 GET {{api}}/health
 
 ### ------------------------------------------------------------
+### ĐĂNG NHẬP — các request ghi dữ liệu bên dưới cần đăng nhập trước.
+### REST Client tự giữ cookie `token` cho các request sau.
+### ------------------------------------------------------------
+
+### DB còn trống? -> needsSetup: true thì chạy request "setup" bên dưới
+GET {{api}}/auth/setup-status
+
+### Tạo admin đầu tiên (chỉ chạy được khi chưa có tài khoản nào)
+POST {{api}}/auth/setup
+Content-Type: application/json
+
+{ "username": "admin", "displayName": "Quản trị", "password": "<mật khẩu tối thiểu 8 ký tự>" }
+
+###
+POST {{api}}/auth/login
+Content-Type: application/json
+
+{ "username": "admin", "password": "<mật khẩu của bạn>" }
+
+###
+GET {{api}}/auth/me
+
+### ------------------------------------------------------------
 ### THỂ LOẠI
 ### ------------------------------------------------------------
 

@@ -1,45 +1,27 @@
 // ============================================================
 // Document.ts — Model tài liệu
 // ============================================================
-// Sửa 3 lỗi thiết kế của bản cũ:
-//   1. `category` lưu ObjectId tham chiếu, KHÔNG lưu tên
-//      -> đổi tên thể loại thì mọi tài liệu tự thấy tên mới.
-//   2. `desc` tính ở MỘT chỗ duy nhất (hook pre-save bên dưới)
-//      -> bản cũ tính 2 kiểu khác nhau ở POST và PUT.
-//   3. Có kiểu TypeScript suy ra từ schema.
-//
-// Thêm ở bước 1 (sau khi chốt yêu cầu sản phẩm):
-//   4. Khối lưu `props` (object) thay cho `content` (chuỗi)
-//      -> mỗi loại khối tự có dữ liệu riêng: ảnh có caption, bảng có rows...
-//   5. `slug` — đoạn URL đẹp để chia sẻ link
-//   6. `status` — nháp / đã xuất bản, khách chỉ thấy bài đã xuất bản
+//   - `category` lưu ObjectId tham chiếu (đổi tên thể loại không làm
+//     tài liệu mồ côi)
+//   - Khối = { id, type, props }; luật của từng loại khối nằm ở
+//     blocks/schemas.ts (zod), DB chỉ lưu props dạng Mixed
+//   - `slug` sinh một lần từ tiêu đề, dùng cho link chia sẻ
+//   - `status` nháp / đã xuất bản — khách chỉ thấy bài đã xuất bản
+//   - `version` tăng mỗi lần lưu; bản chụp nằm ở DocumentVersion
+//   - `desc`, `searchText` do hook tự tính, client không gửi được
 
 import { randomBytes } from 'node:crypto';
 import { Schema, model, type HydratedDocument, type InferSchemaType } from 'mongoose';
+import { BLOCK_TYPES } from '../blocks/schemas.ts';
 import { toJSON } from './toJSON.ts';
-import { slugify } from '../utils/slugify.ts';
-
-// Mọi loại khối app hỗ trợ. Thêm loại mới thì thêm vào đây (server) và
-// thêm một thư mục trong registry ở client (bước 5).
-// `as const` khiến TS hiểu đây là đúng các chuỗi này, không phải string[].
-export const BLOCK_TYPES = [
-  'heading', // { text, level: 2 | 3 }
-  'paragraph', // { text }                 — Markdown nhẹ
-  'image', // { src, alt, caption }
-  'video', // { src, caption }
-  'file', // { src, name, size }
-  'table', // { header: boolean, rows: string[][] }
-  'callout', // { variant: 'info' | 'success' | 'warning' | 'danger', text }
-  'code', // { language, code }
-  'checklist', // { items: { id, text }[] }
-  'divider', // {}
-  'step', // { title, text, image }      — "Bước 1, 2, 3..." tự đánh số
-] as const;
+import { removeDiacritics, slugify } from '../utils/slugify.ts';
 
 export const DOC_STATUSES = ['draft', 'published'] as const;
+export type DocStatus = (typeof DOC_STATUSES)[number];
 
 // Schema con: nhúng bên trong tài liệu, không phải collection riêng.
-const blockSchema = new Schema(
+// export để DocumentVersion dùng lại đúng khuôn này.
+export const blockSchema = new Schema(
   {
     id: { type: String, required: true }, // id do client tự sinh, để React làm `key`
     type: {
@@ -49,8 +31,7 @@ const blockSchema = new Schema(
       required: true,
     },
     // Mixed = "object hình dạng gì cũng được". Mỗi loại khối có props
-    // khác nhau nên tầng DB không ép khuôn; kiểm tra chi tiết từng loại
-    // sẽ làm bằng zod ở bước 5, cùng lúc với registry.
+    // khác nhau; kiểm tra chi tiết do zod (blocks/schemas.ts) đảm nhận.
     // 🔸 Flutter: giống field `Map<String, dynamic> props` trong model.
     props: { type: Schema.Types.Mixed, default: {} },
   },
@@ -66,18 +47,12 @@ const blockSchema = new Schema(
 
 const documentSchema = new Schema(
   {
-    title: { type: String, required: [true, 'Tiêu đề không được để trống'], trim: true },
+    title: { type: String, required: [true, 'Tiêu đề không được để trống'], trim: true, maxlength: 300 },
 
-    // Sinh tự động từ title lúc TẠO (hook pre('validate') bên dưới) và
-    // GIỮ NGUYÊN khi sửa title — link đã chia sẻ không bị gãy.
-    // `unique` tạo index trong MongoDB: hai bài trùng slug thì DB từ chối
-    // (errorHandler đổi thành 409).
+    // Sinh tự động từ title lúc TẠO và GIỮ NGUYÊN khi sửa title — link đã
+    // chia sẻ không bị gãy. `unique` tạo index: trùng thì DB từ chối (409).
     slug: { type: String, required: true, unique: true },
 
-    // THAM CHIẾU (reference): chỉ lưu id của thể loại.
-    // `ref: 'Category'` cho Mongoose biết id này trỏ tới model nào, để
-    // sau này gọi .populate('category') là nó tự thay id bằng object
-    // thể loại đầy đủ. 🔸 Giống foreign key + JOIN bên SQL.
     category: { type: Schema.Types.ObjectId, ref: 'Category', required: [true, 'Phải chọn thể loại'] },
 
     status: {
@@ -86,11 +61,31 @@ const documentSchema = new Schema(
       default: 'draft',
     },
 
-    // Không cho client gửi — luôn do hook bên dưới tính.
-    desc: { type: String, default: '' },
     blocks: { type: [blockSchema], default: [] },
+    version: { type: Number, default: 0 },
+
+    // Do hook tính — client gửi lên cũng bị bỏ qua.
+    desc: { type: String, default: '' },
+    // Toàn bộ chữ trong bài, đã bỏ dấu + chữ thường, để tìm kiếm.
+    // `select: false`: không bao giờ trả về client (nặng và vô dụng ở đó).
+    searchText: { type: String, default: '', select: false },
+
+    createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    updatedBy: { type: Schema.Types.ObjectId, ref: 'User' },
   },
-  { timestamps: true, toJSON },
+  {
+    timestamps: true,
+    toJSON: {
+      ...toJSON,
+      // `select: false` chỉ áp dụng khi TRUY VẤN. Tài liệu vừa tạo/sửa
+      // vẫn còn searchText trong bộ nhớ, nên phải gọt thêm ở đây.
+      transform(_doc: unknown, ret: Record<string, unknown>) {
+        delete ret._id;
+        delete ret.searchText;
+        return ret;
+      },
+    },
+  },
 );
 
 // Đọc field `text` trong props một cách an toàn: props là Mixed (unknown)
@@ -102,17 +97,39 @@ function getText(props: unknown): string {
   return '';
 }
 
-// Tạo mô tả ngắn từ khối văn bản đầu tiên có nội dung.
-// Tách thành hàm riêng để dễ đọc và dễ test.
-function buildDesc(blocks: { type?: string | null; props?: unknown }[]): string {
-  const first = blocks.find((b) => (b.type === 'paragraph' || b.type === 'step') && getText(b.props).trim());
-  const text = getText(first?.props)
-    // Bỏ ký hiệu Markdown để mô tả là chữ thuần:
-    // "[xem tại đây](http://...)" -> "xem tại đây", "**đậm**" -> "đậm"
+// Bỏ ký hiệu Markdown để thành chữ thuần:
+// "[xem tại đây](http://...)" -> "xem tại đây", "**đậm**" -> "đậm"
+function stripMarkdown(text: string): string {
+  return text
     .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/[*_`#>]/g, '')
     .trim();
+}
+
+// Mô tả ngắn = khối văn bản đầu tiên có nội dung.
+function buildDesc(blocks: { type?: string | null; props?: unknown }[]): string {
+  const first = blocks.find((b) => (b.type === 'paragraph' || b.type === 'step') && getText(b.props).trim());
+  const text = stripMarkdown(getText(first?.props)).replace(/\s+/g, ' ');
   return text.length > 160 ? `${text.slice(0, 160)}...` : text;
+}
+
+// Gom MỌI chuỗi chữ trong props (text, title, caption, ô bảng, mục
+// checklist...), bỏ qua các field không phải nội dung đọc được.
+const NON_TEXT_KEYS = new Set(['id', 'src', 'image', 'variant', 'language']);
+function collectText(value: unknown, out: string[]): void {
+  if (typeof value === 'string') out.push(value);
+  else if (Array.isArray(value)) value.forEach((v) => collectText(v, out));
+  else if (value && typeof value === 'object') {
+    for (const [key, v] of Object.entries(value)) {
+      if (!NON_TEXT_KEYS.has(key)) collectText(v, out);
+    }
+  }
+}
+
+function buildSearchText(title: string, blocks: { props?: unknown }[]): string {
+  const parts = [title];
+  blocks.forEach((b) => collectText(b.props, parts));
+  return removeDiacritics(stripMarkdown(parts.join(' '))).replace(/\s+/g, ' ');
 }
 
 // Slug từ tiêu đề; trùng thì gắn thêm đuôi ngẫu nhiên:
@@ -120,8 +137,8 @@ function buildDesc(blocks: { type?: string | null; props?: unknown }[]): string 
 async function uniqueSlug(title: string): Promise<string> {
   const base = slugify(title);
   let slug = base;
-  // Dùng DocumentModel ở đây dù nó được khai báo ở CUỐI file: hàm này chỉ
-  // CHẠY khi lưu tài liệu, lúc đó cả file đã chạy xong nên biến đã có giá trị.
+  // DocumentModel khai báo ở CUỐI file nhưng dùng được: hàm này chỉ CHẠY
+  // khi lưu tài liệu, lúc đó cả file đã chạy xong nên biến đã có giá trị.
   while (await DocumentModel.exists({ slug })) {
     slug = `${base}-${randomBytes(3).toString('hex')}`;
   }
@@ -129,28 +146,20 @@ async function uniqueSlug(title: string): Promise<string> {
 }
 
 export type DocumentData = InferSchemaType<typeof documentSchema>;
+export type DocumentDoc = HydratedDocument<DocumentData>;
 
-// HOOK (middleware của Mongoose): hàm tự chạy TRƯỚC một thao tác.
-// `this` ở đây chính là tài liệu sắp được lưu — vì vậy phải dùng
-// `function` thường, KHÔNG dùng arrow function (arrow không có `this`
-// riêng). 🔸 Dart không có khác biệt này — đây là "bẫy" riêng của JS.
-//
-// `this: HydratedDocument<DocumentData>` KHÔNG phải tham số thật — đó là
-// cú pháp TS để khai báo kiểu của `this`. Thiếu nó, TS coi `this` là
-// `unknown` và cấm đọc this.blocks. (HydratedDocument = dữ liệu thuần +
-// các hàm của Mongoose như save(), populate()...)
-
-// Slug phải sinh ở pre('validate'), KHÔNG phải pre('save'): Mongoose kiểm
-// tra `required` TRƯỚC khi chạy pre('save'), lúc đó slug còn trống thì
-// báo lỗi "slug is required" ngay.
-//   save() -> pre('validate') -> kiểm tra schema -> pre('save') -> ghi DB
-documentSchema.pre('validate', async function (this: HydratedDocument<DocumentData>) {
+// Thứ tự hook khi gọi save():
+//   pre('validate') -> kiểm tra required/enum -> pre('save') -> ghi DB
+// Slug phải sinh ở pre('validate'): để ở pre('save') thì bước kiểm tra
+// `required` chạy trước và báo thiếu slug.
+// Dùng `function` thường (không dùng arrow) vì cần `this` = tài liệu.
+documentSchema.pre('validate', async function (this: DocumentDoc) {
   if (!this.slug) this.slug = await uniqueSlug(this.title ?? '');
 });
 
-// Nhờ hook này, dù tạo mới hay sửa, desc luôn được tính theo đúng một cách.
-documentSchema.pre('save', function (this: HydratedDocument<DocumentData>) {
+documentSchema.pre('save', function (this: DocumentDoc) {
   this.desc = buildDesc(this.blocks);
+  this.searchText = buildSearchText(this.title ?? '', this.blocks);
 });
 
 // Đặt tên DocumentModel chứ không phải Document, vì `Document` trùng
