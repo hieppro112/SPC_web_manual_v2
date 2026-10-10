@@ -1,0 +1,137 @@
+# ============================================================
+# requests.http — Test API bằng extension "REST Client" (VS Code)
+# ============================================================
+# Cài extension: humao.rest-client
+# Mỗi request ngăn cách bằng ###. Bấm chữ "Send Request" nhỏ hiện phía
+# trên mỗi request để gửi; kết quả mở ở tab bên phải.
+# Chạy theo thứ tự từ trên xuống: request sau dùng kết quả request trước.
+# 🔸 Flutter: thay cho việc viết tạm một nút bấm gọi Dio để thử API.
+
+@api = http://localhost:5000/api
+
+### Server còn sống?
+GET {{api}}/health
+
+### ------------------------------------------------------------
+### THỂ LOẠI
+### ------------------------------------------------------------
+
+# `# @name` đặt tên cho request, để request sau lấy lại kết quả của nó.
+# @name createCategory
+POST {{api}}/categories
+Content-Type: application/json
+
+{ "name": "Bảo trì máy", "iconName": "Wrench" }
+
+###
+GET {{api}}/categories
+
+### Sửa tên/icon
+PUT {{api}}/categories/{{createCategory.response.body.id}}
+Content-Type: application/json
+
+{ "name": "Bảo trì thiết bị", "iconName": "Wrench" }
+
+### Tên trùng -> 409
+POST {{api}}/categories
+Content-Type: application/json
+
+{ "name": "Bảo trì thiết bị", "iconName": "Folder" }
+
+### ------------------------------------------------------------
+### TÀI LIỆU
+### ------------------------------------------------------------
+# Mỗi khối: { id, type, props }. `props` có hình dạng riêng theo `type`,
+# xem danh sách trong server/src/models/Document.ts (BLOCK_TYPES).
+
+@categoryId = {{createCategory.response.body.id}}
+
+# @name createDoc
+POST {{api}}/documents
+Content-Type: application/json
+
+{
+  "title": "Quy trình bảo trì máy CNC",
+  "category": "{{categoryId}}",
+  "blocks": [
+    { "id": "b1", "type": "heading", "props": { "text": "Chuẩn bị", "level": 2 } },
+    { "id": "b2", "type": "paragraph", "props": { "text": "Tắt nguồn chính và treo **biển cảnh báo** trước khi mở máy." } },
+    { "id": "b3", "type": "callout", "props": { "variant": "danger", "text": "Không mở nắp khi trục chính còn quay." } },
+    { "id": "b4", "type": "step", "props": { "title": "Vệ sinh bàn máy", "text": "Dùng khí nén thổi sạch phoi.", "image": "" } },
+    { "id": "b5", "type": "divider", "props": {} }
+  ]
+}
+
+### Danh sách (không có blocks, category đã được populate)
+GET {{api}}/documents
+
+### Chỉ bài đã xuất bản (bài vừa tạo là nháp nên KHÔNG có ở đây)
+GET {{api}}/documents?status=published
+
+### Chi tiết theo id
+GET {{api}}/documents/{{createDoc.response.body.id}}
+
+### Chi tiết theo slug — link chia sẻ
+GET {{api}}/documents/slug/{{createDoc.response.body.slug}}
+
+### Tạo bài TRÙNG tiêu đề -> slug tự gắn đuôi ngẫu nhiên, vd "...-3f9a1c"
+POST {{api}}/documents
+Content-Type: application/json
+
+{ "title": "Quy trình bảo trì máy CNC", "category": "{{categoryId}}" }
+
+### Sửa + xuất bản. Đổi title nhưng slug GIỮ NGUYÊN (link cũ không gãy)
+PUT {{api}}/documents/{{createDoc.response.body.id}}
+Content-Type: application/json
+
+{
+  "title": "Quy trình bảo trì máy CNC (bản 2)",
+  "category": "{{categoryId}}",
+  "status": "published",
+  "blocks": [
+    { "id": "b2", "type": "paragraph", "props": { "text": "Nội dung đã sửa — desc phải đổi theo." } }
+  ]
+}
+
+### ------------------------------------------------------------
+### CÁC CA LỖI — mỗi cái phải trả về { message } với mã đúng
+### ------------------------------------------------------------
+
+### Thiếu title -> 400 "Tiêu đề không được để trống"
+POST {{api}}/documents
+Content-Type: application/json
+
+{ "category": "{{categoryId}}" }
+
+### Loại khối lạ -> 400 "Loại khối không hợp lệ: banner"
+POST {{api}}/documents
+Content-Type: application/json
+
+{ "title": "x", "category": "{{categoryId}}", "blocks": [{ "id": "b1", "type": "banner", "props": {} }] }
+
+### Trạng thái lạ -> 400 "Trạng thái không hợp lệ: hidden"
+POST {{api}}/documents
+Content-Type: application/json
+
+{ "title": "x", "category": "{{categoryId}}", "status": "hidden" }
+
+### Thể loại không tồn tại (id đúng định dạng) -> 400 "Thể loại không tồn tại"
+POST {{api}}/documents
+Content-Type: application/json
+
+{ "title": "x", "category": "000000000000000000000000" }
+
+### id sai định dạng -> 400 "Giá trị không hợp lệ: _id"
+GET {{api}}/documents/abc
+
+### id đúng định dạng nhưng không có -> 404
+GET {{api}}/documents/000000000000000000000000
+
+### Route không tồn tại -> 404 JSON
+GET {{api}}/khong-co
+
+### Xóa thể loại còn tài liệu -> 409 "Còn 2 tài liệu thuộc thể loại này..."
+DELETE {{api}}/categories/{{categoryId}}
+
+### Xóa tài liệu -> 204 (không có body)
+DELETE {{api}}/documents/{{createDoc.response.body.id}}

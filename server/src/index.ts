@@ -3,13 +3,16 @@
 // ============================================================
 // Bản cũ nhồi mọi thứ (schema, route, middleware) vào 1 file 467 dòng.
 // Bản mới: file này CHỈ lắp ráp. Các phần sẽ nằm ở:
-//   src/models/      — schema Mongoose        (bước 1)
-//   src/routes/      — các nhóm API           (bước 1)
-//   src/middleware/  — requireAuth, xử lý lỗi (bước 4)
+//   src/models/      — schema Mongoose
+//   src/routes/      — các nhóm API
+//   src/middleware/  — xử lý lỗi, (bước 4) requireAuth
 
 import express from 'express';
 import mongoose from 'mongoose';
 import { config } from './config.ts';
+import { errorHandler } from './middleware/errorHandler.ts';
+import { categoriesRouter } from './routes/categories.ts';
+import { documentsRouter } from './routes/documents.ts';
 
 const app = express();
 
@@ -35,6 +38,20 @@ app.get('/api/hello/:name', (req, res) => {
   const name = req.params.name;
   res.json({ message: `Hello, ${name}!` });
 });
+
+// Gắn cả nhóm route vào một tiền tố. Thứ tự app.use() QUAN TRỌNG:
+// Express duyệt từ trên xuống, gặp cái nào khớp trước thì dùng cái đó.
+app.use('/api/documents', documentsRouter);
+app.use('/api/categories', categoriesRouter);
+
+// Không khớp route nào ở trên -> 404 dạng JSON (mặc định Express trả về
+// một trang HTML "Cannot GET ...", client không đọc được).
+app.use('/api', (_req, res) => {
+  res.status(404).json({ message: 'API không tồn tại' });
+});
+
+// Xử lý lỗi PHẢI đứng cuối cùng, sau mọi route.
+app.use(errorHandler);
 
 // Nối DB XONG rồi mới mở cổng nhận request. Bản cũ làm song song nên có
 // khoảng thời gian server nhận request trong khi DB chưa sẵn sàng.
