@@ -5,6 +5,18 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>KVH - IT DOCUMENT</title>
+    <!--
+      Gắn class "dark" TRƯỚC khi trang vẽ. Nếu đợi React chạy xong mới
+      gắn, người dùng theme tối sẽ thấy trang trắng nháy lên một chút.
+      Logic phải khớp với src/theme/useTheme.ts.
+    -->
+    <script>
+      try {
+        var t = localStorage.getItem('theme');
+        var dark = t === 'dark' || ((!t || t === 'system') && matchMedia('(prefers-color-scheme: dark)').matches);
+        if (dark) document.documentElement.classList.add('dark');
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

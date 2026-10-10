@@ -8,33 +8,25 @@ Lộ trình chỉnh lại ngày 2026-10-10 sau khi chốt yêu cầu: chạy tro
 
 - [x] **Bước 0** — Khung dự án: client (Vite + React + TS + Tailwind) và server (Express + TS)
 - [x] **Bước 1** — Backend: models + routes cho documents và categories; khối dạng `props`, `slug`, `status`
-- [ ] **Bước 2** — Khung client: Router + TanStack Query + shadcn/ui + theme sáng/tối + khung i18n
-- [ ] **Bước 3** — Trang đọc cho khách: danh sách theo thể loại, chi tiết, mục lục, tìm kiếm
-- [ ] **Bước 4** — Đăng nhập JWT, phân quyền editor/admin
-- [ ] **Bước 5** — Block registry + editor + 5 khối đầu (heading, paragraph, image, callout, divider) + kéo thả
-- [ ] **Bước 6** — Media: upload ảnh/video/file (multer + sharp)
-- [ ] **Bước 7** — Các khối còn lại: table, code, checklist, step, video, file
-- [ ] **Bước 8** — Quét QR bằng điện thoại để đưa ảnh vào khối
-- [ ] **Bước 9** — Lịch sử phiên bản
-- [ ] **Bước 10** — Chia sẻ (slug, link neo, QR tài liệu) + in PDF
+- [x] **Bước 2** — Khung client: Router + TanStack Query + UI dùng chung + theme sáng/tối + i18n vi/en/ja
+- [x] **Bước 3** — Trang đọc cho khách: danh sách theo thể loại, chi tiết, mục lục, tìm kiếm
+- [x] **Bước 4** — Đăng nhập JWT (cookie httpOnly), setup admin lần đầu, phân quyền editor/admin
+- [x] **Bước 5** — Block registry + trình soạn + kéo thả
+- [x] **Bước 6** — Media: upload ảnh/video/file (multer + sharp), thư viện media
+- [x] **Bước 7** — Đủ 11 loại khối
+- [x] **Bước 8** — Quét QR bằng điện thoại để đưa ảnh/video vào khối
+- [x] **Bước 9** — Lịch sử phiên bản
+- [x] **Bước 10** — Chia sẻ (slug, link neo, QR tài liệu) + in PDF
 - [ ] **Bước 11** — Chatbot Dify
+
+Từ bước 2, mentor tự xây toàn bộ theo yêu cầu (không còn bài tập). Cách chạy, triển khai, thêm khối mới: xem `README.md`.
 
 ## Cấu trúc
 
-```
-doc_app_v2/
-├── client/            # React — chạy trong TRÌNH DUYỆT  (npm run dev → :5173)
-│   ├── index.html     # trang HTML duy nhất, có <div id="root">
-│   ├── vite.config.ts # plugin + proxy /api → :5000
-│   └── src/
-│       ├── main.tsx   # 🔸 main() { runApp() }
-│       └── App.tsx    # component gốc
-└── server/            # Express — chạy bằng NODE            (npm run dev → :5000)
-    ├── .env           # bí mật thật, KHÔNG commit
-    └── src/
-        ├── config.ts  # nơi duy nhất đọc process.env
-        └── index.ts   # lắp ráp app + nối DB
-```
+Xem sơ đồ đầy đủ trong `README.md`. Hai chỗ quan trọng nhất để đọc trước:
+
+- `client/src/blocks/` — **block registry**. Mỗi loại khối là một thư mục `Edit.tsx` + `View.tsx` + `index.ts`. Trình soạn, trang đọc, menu "Thêm khối" đều tra `registry.ts`, không có `switch` theo type nào. 🔸 Flutter: `Map<String, WidgetBuilder>` chọn widget theo `type` trong JSON.
+- `client/src/features/<tính năng>/` — mỗi tính năng tự chứa `api.ts` (gọi HTTP) + `queries.ts` (hook TanStack Query) + trang/component. Sửa phần nào thì mở đúng một thư mục.
 
 **Khác bản cũ:** client và server có `package.json` RIÊNG. Bản cũ gộp chung nên `express`, `mongoose`, `bcryptjs` nằm lẫn trong dependency của frontend.
 
@@ -141,3 +133,36 @@ Cài extension VS Code **REST Client**, mở `server/requests.http`, bấm "Send
 cd server && npm run dev
 cd client && npm run dev
 ```
+
+## Bước 2–10 — những điều đáng nhớ ở client
+
+### TanStack Query thay cho hook tự viết
+
+| Việc | Hook | 🔸 Flutter |
+| --- | --- | --- |
+| Đọc (GET) | `useQuery({ queryKey, queryFn })` | FutureBuilder + cache dùng chung |
+| Ghi (POST/PUT/DELETE) | `useMutation({ mutationFn, onSuccess })` | gọi Repository rồi `ref.invalidate` |
+| Làm mới sau khi ghi | `queryClient.invalidateQueries({ queryKey: ['documents'] })` | `ref.invalidate(provider)` |
+| Hỏi lại định kỳ (QR) | `refetchInterval: 2000` | `Stream.periodic` |
+
+Query key có cấu trúc (`['documents', 'slug', slug]`) để làm mới theo nhóm.
+
+### Trạng thái nằm trên URL
+
+Bộ lọc thể loại, từ khóa tìm kiếm, trạng thái nằm ở `?category=&q=&status=` (dùng `useSearchParams`), không nằm trong `useState`. F5, nút Back, gửi link cho người khác đều giữ nguyên.
+
+### Tài liệu dài vẫn mượt: `memo` + `useCallback`
+
+`SortableBlockCard` bọc `memo`: gõ vào MỘT khối thì các khối khác không vẽ lại. Điều kiện: cha truyền callback ổn định (`useCallback` + `setDraft(prev => ...)`) và giá trị đơn giản (`stepNumber`), không truyền object mới mỗi lần vẽ.
+
+### Bẫy "secure context" khi chạy mạng nội bộ qua http://
+
+`crypto.randomUUID()` và `navigator.clipboard` chỉ có trên HTTPS hoặc `localhost`. Mở app qua `http://192.168.x.x` thì hai thứ này là `undefined`. Vì vậy `lib/utils.ts` có `newId()` và `copyText()` tự viết. Ngược lại, `<input type="file" capture>` (mở camera điện thoại) chạy được trên HTTP.
+
+### Chặn rời trang khi chưa lưu
+
+`useBlocker` (React Router) chặn chuyển trang trong app; `beforeunload` chặn đóng tab / F5. Xem `features/editor/useUnsavedGuard.ts`.
+
+### `cn()` = nối class + gộp class xung đột
+
+`cn('w-full', 'w-auto')` → `w-auto` nhờ `tailwind-merge`. Thiếu nó, component dùng chung có sẵn `w-full` thì nơi dùng không ghi đè được.

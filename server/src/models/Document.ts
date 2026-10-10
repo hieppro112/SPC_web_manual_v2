@@ -98,9 +98,11 @@ function getText(props: unknown): string {
 }
 
 // Bỏ ký hiệu Markdown để thành chữ thuần:
-// "[xem tại đây](http://...)" -> "xem tại đây", "**đậm**" -> "đậm"
+// "[xem tại đây](http://...)" -> "xem tại đây", "**đậm**" -> "đậm",
+// "- mục" / "1. mục" ở đầu dòng -> "mục"
 function stripMarkdown(text: string): string {
   return text
+    .replace(/^\s*(?:[-*+]|\d+\.)\s+/gm, '')
     .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/[*_`#>]/g, '')
     .trim();

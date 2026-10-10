@@ -1,0 +1,65 @@
+// ============================================================
+// app/router.tsx — Bản đồ các trang (React Router)
+// ============================================================
+//   /                         trang chủ (danh sách, lọc, tìm)      ai cũng xem
+//   /docs/:slug               đọc tài liệu                          ai cũng xem
+//   /login                    đăng nhập / setup lần đầu
+//   /m/upload/:token          trang upload trên điện thoại (không có header)
+//   /new                      tạo tài liệu                          editor
+//   /docs/:slug/edit          sửa tài liệu                          editor
+//   /docs/:slug/history       lịch sử phiên bản                     editor
+//   /admin/categories         quản lý thể loại                      admin
+//   /admin/users              quản lý tài khoản                     admin
+//
+// `lazy`: trang chỉ editor/admin dùng (trình soạn, kéo thả...) được tách
+// thành file JS riêng, chỉ tải khi mở trang đó. Người chỉ đọc tài liệu
+// không phải tải phần code này -> trang đọc mở nhanh hơn.
+// 🔸 Flutter: giống deferred import (`import ... deferred as`).
+
+import { createBrowserRouter } from 'react-router';
+import DocPage from '../features/documents/DocPage.tsx';
+import HomePage from '../features/documents/HomePage.tsx';
+import LoginPage from '../features/auth/LoginPage.tsx';
+import RequireAuth from '../features/auth/RequireAuth.tsx';
+import MobileUploadPage from '../features/media/MobileUploadPage.tsx';
+import AppLayout from './AppLayout.tsx';
+import NotFoundPage from './NotFoundPage.tsx';
+import RouteError from './RouteError.tsx';
+
+export const router = createBrowserRouter([
+  { path: '/m/upload/:token', element: <MobileUploadPage />, errorElement: <RouteError /> },
+  {
+    element: <AppLayout />,
+    errorElement: <RouteError />,
+    children: [
+      { index: true, element: <HomePage /> },
+      { path: 'login', element: <LoginPage /> },
+      { path: 'docs/:slug', element: <DocPage /> },
+      {
+        element: <RequireAuth />,
+        children: [
+          { path: 'new', lazy: () => import('../features/editor/EditorPage.tsx').then((m) => ({ Component: m.default })) },
+          { path: 'docs/:slug/edit', lazy: () => import('../features/editor/EditorPage.tsx').then((m) => ({ Component: m.default })) },
+          {
+            path: 'docs/:slug/history',
+            lazy: () => import('../features/documents/HistoryPage.tsx').then((m) => ({ Component: m.default })),
+          },
+          {
+            element: <RequireAuth role="admin" />,
+            children: [
+              {
+                path: 'admin/categories',
+                lazy: () => import('../features/categories/CategoriesAdminPage.tsx').then((m) => ({ Component: m.default })),
+              },
+              {
+                path: 'admin/users',
+                lazy: () => import('../features/users/UsersAdminPage.tsx').then((m) => ({ Component: m.default })),
+              },
+            ],
+          },
+        ],
+      },
+      { path: '*', element: <NotFoundPage /> },
+    ],
+  },
+]);

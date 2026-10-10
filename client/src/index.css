@@ -1,7 +1,161 @@
 /*
-  Dòng này nạp toàn bộ Tailwind. Từ đây, trong JSX bạn viết
-  className="p-4 text-blue-600" là có style, không cần viết CSS riêng.
-  🔸 Flutter: giống việc truyền thẳng padding/color vào widget thay vì
-     tạo một class style riêng.
+  index.css — Tailwind + DESIGN TOKENS (màu dùng chung cả app)
+
+  Màu KHÔNG viết thẳng kiểu bg-[#0f111a] trong component như bản cũ.
+  Mọi màu khai báo một lần ở đây dưới dạng biến CSS, rồi Tailwind đọc
+  biến đó thành class: bg-bg, bg-surface, text-fg, text-muted, border-border,
+  bg-accent, text-accent...
+
+  Đổi màu thương hiệu / thêm theme = sửa đúng file này.
+  🔸 Flutter: giống ThemeData + ColorScheme, khai báo một lần, widget chỉ đọc theme.
 */
 @import 'tailwindcss';
+@plugin '@tailwindcss/typography';
+
+/* `dark:` của Tailwind sẽ áp dụng khi <html> có class "dark" (do theme/useTheme.ts gắn). */
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --app-bg: #ffffff;
+  --app-surface: #f8fafc;
+  --app-surface-2: #f1f5f9;
+  --app-border: #e2e8f0;
+  --app-fg: #0f172a;
+  --app-muted: #64748b;
+  --app-accent: #2563eb;
+  --app-accent-hover: #1d4ed8;
+  --app-accent-fg: #ffffff;
+  --app-accent-soft: #eff6ff;
+
+  --app-info: #2563eb;
+  --app-info-soft: #eff6ff;
+  --app-success: #16a34a;
+  --app-success-soft: #f0fdf4;
+  --app-warning: #d97706;
+  --app-warning-soft: #fffbeb;
+  --app-danger: #dc2626;
+  --app-danger-soft: #fef2f2;
+
+  color-scheme: light;
+}
+
+.dark {
+  --app-bg: #0b1120;
+  --app-surface: #111827;
+  --app-surface-2: #1e293b;
+  --app-border: #263244;
+  --app-fg: #e5e7eb;
+  --app-muted: #94a3b8;
+  --app-accent: #60a5fa;
+  --app-accent-hover: #93c5fd;
+  --app-accent-fg: #0b1120;
+  --app-accent-soft: rgb(96 165 250 / 0.12);
+
+  --app-info: #60a5fa;
+  --app-info-soft: rgb(96 165 250 / 0.1);
+  --app-success: #4ade80;
+  --app-success-soft: rgb(74 222 128 / 0.1);
+  --app-warning: #fbbf24;
+  --app-warning-soft: rgb(251 191 36 / 0.1);
+  --app-danger: #f87171;
+  --app-danger-soft: rgb(248 113 113 / 0.1);
+
+  color-scheme: dark;
+}
+
+/* `inline`: class Tailwind tham chiếu thẳng tới biến, nên khi .dark đổi
+   biến thì mọi class tự đổi theo. */
+@theme inline {
+  --color-bg: var(--app-bg);
+  --color-surface: var(--app-surface);
+  --color-surface-2: var(--app-surface-2);
+  --color-border: var(--app-border);
+  --color-fg: var(--app-fg);
+  --color-muted: var(--app-muted);
+  --color-accent: var(--app-accent);
+  --color-accent-hover: var(--app-accent-hover);
+  --color-accent-fg: var(--app-accent-fg);
+  --color-accent-soft: var(--app-accent-soft);
+  --color-info: var(--app-info);
+  --color-info-soft: var(--app-info-soft);
+  --color-success: var(--app-success);
+  --color-success-soft: var(--app-success-soft);
+  --color-warning: var(--app-warning);
+  --color-warning-soft: var(--app-warning-soft);
+  --color-danger: var(--app-danger);
+  --color-danger-soft: var(--app-danger-soft);
+
+  /* Font hệ thống: mạng nội bộ có thể không ra internet, nên không tải
+     font từ Google Fonts. Có sẵn font tiếng Nhật cho giao diện ja. */
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', 'Noto Sans JP', 'Yu Gothic UI',
+    'Meiryo', sans-serif;
+}
+
+@layer base {
+  html {
+    /* Nhảy tới mục lục (#anchor) thì chừa chỗ cho header dính phía trên. */
+    scroll-padding-top: 5rem;
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-bg text-fg font-sans antialiased;
+  }
+  /* Viền focus rõ ràng khi dùng bàn phím (Tab), không hiện khi bấm chuột. */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-accent;
+  }
+}
+
+/* Văn bản Markdown trong tài liệu: dùng plugin typography rồi nối màu
+   của nó vào token của app, để sáng/tối tự đúng. */
+.doc-prose {
+  --tw-prose-body: var(--app-fg);
+  --tw-prose-headings: var(--app-fg);
+  --tw-prose-links: var(--app-accent);
+  --tw-prose-bold: var(--app-fg);
+  --tw-prose-bullets: var(--app-muted);
+  --tw-prose-counters: var(--app-muted);
+  --tw-prose-code: var(--app-fg);
+  --tw-prose-quotes: var(--app-fg);
+  --tw-prose-quote-borders: var(--app-border);
+  --tw-prose-hr: var(--app-border);
+  --tw-prose-th-borders: var(--app-border);
+  --tw-prose-td-borders: var(--app-border);
+}
+
+/* ---------- IN / XUẤT PDF ----------
+   Bấm "In / PDF" gọi window.print(); trình duyệt dùng các luật dưới đây.
+   Chọn máy in "Lưu thành PDF" để ra file PDF. */
+.print-only {
+  display: none;
+}
+@media print {
+  @page {
+    margin: 16mm 14mm;
+  }
+  html {
+    font-size: 12px;
+  }
+  /* In luôn ra nền trắng chữ đen, kể cả khi đang dùng theme tối. */
+  .dark {
+    --app-bg: #ffffff;
+    --app-surface: #ffffff;
+    --app-surface-2: #f1f5f9;
+    --app-border: #cbd5e1;
+    --app-fg: #000000;
+    --app-muted: #475569;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  /* Không cắt đôi ảnh / bước / callout / bảng giữa hai trang. */
+  .avoid-break {
+    break-inside: avoid;
+  }
+  a[href^='http']::after {
+    content: '';
+  }
+}
