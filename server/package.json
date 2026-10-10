@@ -4,6 +4,9 @@
   "private": true,
   "description": "Backend Doc App v2: Express + MongoDB, viết bằng TypeScript",
   "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "dev": "node --watch --env-file=.env src/index.ts",
     "start": "node --env-file=.env src/index.ts",

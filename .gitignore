@@ -4,3 +4,5 @@ dist
 *.log
 # File người dùng upload — dữ liệu thật, không phải mã nguồn
 server/uploads
+# Log khi chạy trên máy chủ (deploy/start.cmd ghi vào đây)
+logs/

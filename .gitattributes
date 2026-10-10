@@ -1,0 +1,4 @@
+# Script Windows phải có xuống dòng kiểu Windows (CRLF), nếu không cmd.exe
+# có thể đọc sai file .cmd khi clone trên máy cấu hình Git khác.
+*.cmd text eol=crlf
+*.ps1 text eol=crlf

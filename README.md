@@ -57,15 +57,9 @@ Test API: mở `server/requests.http` bằng extension REST Client của VS Code
 
 ## Triển khai trong mạng nội bộ
 
-Production chỉ cần **một tiến trình** — server phục vụ luôn giao diện đã build.
+**Hướng dẫn từng bước cho máy chủ Windows: xem [DEPLOY.md](DEPLOY.md)** (cài MongoDB, cấu hình, chạy nền, cập nhật, sao lưu). Các script nằm trong `deploy/`.
 
-```bash
-cd client && npm ci && npm run build      # tạo client/dist
-cd ../server && npm ci
-npm start                                  # http://<IP-máy-chủ>:5000
-```
-
-Trong `server/.env` nên đặt:
+Production chỉ cần **một tiến trình** — server phục vụ luôn giao diện đã build. Trong `server/.env` nên đặt:
 
 | Biến | Ví dụ | Ghi chú |
 | --- | --- | --- |
@@ -75,9 +69,7 @@ Trong `server/.env` nên đặt:
 | `UPLOAD_DIR` | `uploads` | Nơi lưu ảnh/video/file |
 | `COOKIE_SECURE` | `false` | Chỉ `true` khi chạy HTTPS |
 
-Để chạy nền và tự khởi động lại khi máy chủ reboot, dùng một trình quản lý tiến trình (vd `pm2` trên Linux, NSSM / Task Scheduler trên Windows) — chọn theo chính sách hạ tầng của công ty.
-
-**Sao lưu:** cần sao lưu CẢ HAI — database (`mongodump`) và thư mục `server/uploads/`.
+**Sao lưu:** cần sao lưu CẢ HAI — database (`mongodump`) và thư mục upload (`deploy/backup.ps1`).
 
 **Quên mật khẩu admin:** chạy trên máy chủ `npm run reset-password -- <tên đăng nhập> <mật khẩu mới>`.
 
