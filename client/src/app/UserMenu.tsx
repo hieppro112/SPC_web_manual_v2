@@ -7,6 +7,7 @@ import MenuItem from '../components/ui/MenuItem.tsx';
 import Popover from '../components/ui/Popover.tsx';
 import ChangePasswordDialog from '../features/auth/ChangePasswordDialog.tsx';
 import { useLogout } from '../features/auth/queries.ts';
+import { usePendingCount } from '../features/users/queries.ts';
 import type { User } from '../lib/types.ts';
 
 export default function UserMenu({ user }: { user: User }) {
@@ -14,6 +15,8 @@ export default function UserMenu({ user }: { user: User }) {
   const navigate = useNavigate();
   const logout = useLogout();
   const [passwordOpen, setPasswordOpen] = useState(false);
+  // Admin thấy số người đang chờ duyệt ngay trên avatar.
+  const pendingCount = usePendingCount(user.role === 'admin');
 
   return (
     <>
@@ -23,11 +26,16 @@ export default function UserMenu({ user }: { user: User }) {
           <button
             type="button"
             onClick={toggle}
-            className="flex h-9 w-9 items-center justify-center rounded-full bg-accent-soft text-sm font-semibold text-accent"
+            className="relative flex h-9 w-9 items-center justify-center rounded-full bg-accent-soft text-sm font-semibold text-accent"
             title={user.displayName}
           >
             {/* Chữ cái đầu của tên làm "avatar". */}
             {user.displayName.trim().charAt(0).toUpperCase()}
+            {pendingCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-white">
+                {pendingCount}
+              </span>
+            )}
           </button>
         )}
       >
@@ -58,7 +66,12 @@ export default function UserMenu({ user }: { user: User }) {
                     navigate('/admin/users');
                   }}
                 >
-                  {t('nav.users')}
+                  <span className="flex items-center justify-between gap-2">
+                    {t('nav.users')}
+                    {pendingCount > 0 && (
+                      <span className="rounded-full bg-danger px-1.5 text-[10px] font-bold text-white">{pendingCount}</span>
+                    )}
+                  </span>
                 </MenuItem>
               </>
             )}

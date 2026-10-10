@@ -4,6 +4,7 @@
 //   /                         trang chủ (danh sách, lọc, tìm)      ai cũng xem
 //   /docs/:slug               đọc tài liệu                          ai cũng xem
 //   /login                    đăng nhập / setup lần đầu
+//   /register                 tự đăng ký (chờ admin duyệt)
 //   /m/upload/:token          trang upload trên điện thoại (không có header)
 //   /new                      tạo tài liệu                          editor
 //   /docs/:slug/edit          sửa tài liệu                          editor
@@ -20,6 +21,7 @@ import { createBrowserRouter } from 'react-router';
 import DocPage from '../features/documents/DocPage.tsx';
 import HomePage from '../features/documents/HomePage.tsx';
 import LoginPage from '../features/auth/LoginPage.tsx';
+import RegisterPage from '../features/auth/RegisterPage.tsx';
 import RequireAuth from '../features/auth/RequireAuth.tsx';
 import MobileUploadPage from '../features/media/MobileUploadPage.tsx';
 import AppLayout from './AppLayout.tsx';
@@ -34,6 +36,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <HomePage /> },
       { path: 'login', element: <LoginPage /> },
+      { path: 'register', element: <RegisterPage /> },
       { path: 'docs/:slug', element: <DocPage /> },
       {
         element: <RequireAuth />,

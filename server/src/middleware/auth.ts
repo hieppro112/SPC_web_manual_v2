@@ -57,7 +57,8 @@ export const loadUser: RequestHandler = async (req, res, next) => {
       // Đọc lại user từ DB thay vì tin hoàn toàn vào token: tài khoản bị
       // xóa hoặc bị đổi quyền thì có hiệu lực NGAY, không đợi token hết hạn.
       const user = userId ? await UserModel.findById(userId) : null;
-      if (user) res.locals.user = user;
+      // Chỉ tài khoản đang hoạt động mới được coi là "đã đăng nhập".
+      if (user && user.status === 'active') res.locals.user = user;
     } catch {
       // Token sai chữ ký / hết hạn -> coi như khách, không báo lỗi.
     }

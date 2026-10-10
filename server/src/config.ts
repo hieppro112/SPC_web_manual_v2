@@ -37,6 +37,13 @@ export const config = {
   // http://192.168.1.20:5000. Để trống thì client tự đoán theo IP mạng LAN.
   publicBaseUrl: process.env.PUBLIC_BASE_URL ?? '',
 
+  // Đuôi email được phép tự đăng ký, cách nhau dấu phẩy: "spclt.com.vn,abc.vn".
+  // Để trống = chấp nhận mọi email (chỉ kiểm tra đúng định dạng).
+  allowedEmailDomains: (process.env.ALLOWED_EMAIL_DOMAINS ?? '')
+    .split(',')
+    .map((d) => d.trim().toLowerCase().replace(/^@/, ''))
+    .filter(Boolean),
+
   // Chỉ bật khi chạy HTTPS. Bật trên HTTP thì trình duyệt không gửi
   // cookie đăng nhập -> không đăng nhập được.
   cookieSecure: process.env.COOKIE_SECURE === 'true',

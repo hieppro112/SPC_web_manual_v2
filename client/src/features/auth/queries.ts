@@ -46,6 +46,11 @@ export function useSetup() {
   return useMutation({ mutationFn: authApi.setup, onSuccess: reset });
 }
 
+// Đăng ký KHÔNG đăng nhập luôn (phải chờ duyệt) nên không cần reset cache.
+export function useRegister() {
+  return useMutation({ mutationFn: authApi.register });
+}
+
 export function useLogout() {
   const reset = useResetAfterAuthChange();
   return useMutation({ mutationFn: authApi.logout, onSuccess: () => reset(null) });

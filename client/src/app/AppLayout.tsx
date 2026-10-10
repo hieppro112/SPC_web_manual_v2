@@ -7,7 +7,7 @@
 import { Link, Outlet, ScrollRestoration, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { Toaster } from 'sonner';
-import { BookOpen, FilePlus2, LogIn } from 'lucide-react';
+import { BookOpen, FilePlus2, LogIn, UserPlus } from 'lucide-react';
 import Button from '../components/ui/Button.tsx';
 import SearchBox from '../components/SearchBox.tsx';
 import { useCurrentUser } from '../features/auth/queries.ts';
@@ -49,11 +49,18 @@ export default function AppLayout() {
             {user ? (
               <UserMenu user={user} />
             ) : (
-              <Link to="/login">
-                <Button size="sm" variant="ghost">
-                  <LogIn className="h-4 w-4" /> <span className="hidden sm:inline">{t('nav.login')}</span>
-                </Button>
-              </Link>
+              <>
+                <Link to="/login">
+                  <Button size="sm" variant="ghost">
+                    <LogIn className="h-4 w-4" /> <span className="hidden sm:inline">{t('nav.login')}</span>
+                  </Button>
+                </Link>
+                <Link to="/register">
+                  <Button size="sm" variant="secondary">
+                    <UserPlus className="h-4 w-4" /> <span className="hidden sm:inline">{t('nav.register')}</span>
+                  </Button>
+                </Link>
+              </>
             )}
           </div>
         </div>

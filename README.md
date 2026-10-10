@@ -70,6 +70,7 @@ Trong `server/.env` nên đặt:
 | Biến | Ví dụ | Ghi chú |
 | --- | --- | --- |
 | `PUBLIC_BASE_URL` | `http://192.168.1.20:5000` | Địa chỉ điện thoại / đồng nghiệp mở được (dùng trong mã QR, link chia sẻ). Để trống thì tự đoán theo IP LAN |
+| `ALLOWED_EMAIL_DOMAINS` | `spclt.com.vn` | Đuôi email được tự đăng ký (nhiều đuôi: cách nhau dấu phẩy). Để trống = mọi email |
 | `MAX_UPLOAD_MB` | `500` | Giới hạn mỗi file (video) |
 | `UPLOAD_DIR` | `uploads` | Nơi lưu ảnh/video/file |
 | `COOKIE_SECURE` | `false` | Chỉ `true` khi chạy HTTPS |
@@ -79,6 +80,18 @@ Trong `server/.env` nên đặt:
 **Sao lưu:** cần sao lưu CẢ HAI — database (`mongodump`) và thư mục `server/uploads/`.
 
 **Quên mật khẩu admin:** chạy trên máy chủ `npm run reset-password -- <tên đăng nhập> <mật khẩu mới>`.
+
+## Tài khoản
+
+| Ai | Cách có tài khoản | Được làm gì |
+| --- | --- | --- |
+| Người xem | Không cần | Đọc tài liệu đã xuất bản, tìm kiếm, in |
+| Editor | Tự **Đăng ký** (email công ty) → admin **duyệt**; hoặc admin tạo | Soạn, sửa, xóa tài liệu, upload |
+| Admin | Tài khoản tạo ở lần chạy đầu; hoặc admin khác nâng quyền | Như editor + thể loại + tài khoản |
+
+- Đăng ký xong tài khoản ở trạng thái **chờ duyệt**, chưa đăng nhập được. Admin thấy số người chờ (chấm đỏ trên avatar) → **Quản lý tài khoản** → chọn quyền → **Duyệt** hoặc **Từ chối**.
+- Đăng nhập bằng **tên đăng nhập hoặc email**.
+- App chưa gửi email (không xác thực email). Admin nên kiểm tra tên + email trước khi duyệt.
 
 ## Thêm một loại khối mới
 

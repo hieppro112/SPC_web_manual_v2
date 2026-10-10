@@ -35,6 +35,22 @@ Content-Type: application/json
 ###
 GET {{api}}/auth/me
 
+### Tự đăng ký -> 201 { pending: true }, CHƯA đăng nhập được tới khi admin duyệt
+POST {{api}}/auth/register
+Content-Type: application/json
+
+{ "username": "nam.nguyen", "displayName": "Nguyễn Văn Nam", "email": "nam.nguyen@spclt.com.vn", "password": "<tối thiểu 8 ký tự>" }
+
+### (admin) Danh sách tài khoản — tài khoản chờ duyệt có "status": "pending"
+# @name users
+GET {{api}}/users
+
+### (admin) Duyệt tài khoản: thay <id> bằng id lấy từ request trên
+POST {{api}}/users/<id>/approve
+Content-Type: application/json
+
+{ "role": "editor" }
+
 ### ------------------------------------------------------------
 ### THỂ LOẠI
 ### ------------------------------------------------------------

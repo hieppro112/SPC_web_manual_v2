@@ -27,6 +27,14 @@ export class HttpError extends Error {
   }
 }
 
+// Tên dễ hiểu của các field `unique`, dùng trong câu báo trùng.
+const DUPLICATE_LABELS: Record<string, string> = {
+  username: 'Tên đăng nhập',
+  email: 'Email',
+  name: 'Tên thể loại',
+  slug: 'Đường dẫn tài liệu',
+};
+
 // Express nhận ra đây là middleware xử lý lỗi nhờ nó có ĐÚNG 4 tham số.
 // Bỏ `_next` đi là Express coi nó như middleware thường — lỗi khó tìm.
 export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
@@ -54,7 +62,11 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   if (err instanceof z.ZodError) {
     const issue = err.issues[0];
     const field = issue?.path.join('.');
-    res.status(400).json({ message: field ? `${field}: ${issue?.message}` : (issue?.message ?? 'Dữ liệu không hợp lệ') });
+    const message = issue?.message ?? 'Dữ liệu không hợp lệ';
+    // Câu báo lỗi tự viết (tiếng Việt) đã đủ rõ -> hiện nguyên văn. Câu mặc
+    // định của zod (tiếng Anh, vd "Invalid input") thì kèm tên field cho dễ tìm.
+    const isDefaultZodMessage = /^(Invalid|Expected|Too )/.test(message);
+    res.status(400).json({ message: field && isDefaultZodMessage ? `${field}: ${message}` : message });
     return;
   }
 
@@ -80,7 +92,9 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
 
   // 7. Trùng giá trị `unique` (vd tên thể loại đã có) -> 409 Conflict
   if (err?.code === 11000) {
-    res.status(409).json({ message: 'Dữ liệu này đã tồn tại' });
+    // err.keyValue = { email: '...' } -> biết trùng field nào để báo rõ.
+    const field = Object.keys(err.keyValue ?? {})[0] ?? '';
+    res.status(409).json({ message: `${DUPLICATE_LABELS[field] ?? 'Dữ liệu này'} đã tồn tại` });
     return;
   }
 

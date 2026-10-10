@@ -14,7 +14,10 @@ export type User = {
   id: string;
   username: string;
   displayName: string;
+  email?: string | null;
   role: Role;
+  // pending = tự đăng ký, chờ admin duyệt
+  status: 'active' | 'pending';
   createdAt: string;
 };
 
