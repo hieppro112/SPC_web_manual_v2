@@ -16,7 +16,7 @@
 import type { RequestHandler, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { config } from '../config.ts';
-import { UserModel, type UserDoc } from '../models/User.ts';
+import { findUserById, type User } from '../repositories/users.ts';
 import { HttpError } from './errorHandler.ts';
 
 const COOKIE_NAME = 'token';
@@ -27,13 +27,14 @@ const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 ngày
 declare global {
   namespace Express {
     interface Locals {
-      user?: UserDoc;
+      user?: User;
     }
   }
 }
 
-export function setAuthCookie(res: Response, user: UserDoc): void {
-  const token = jwt.sign({ sub: user.id, role: user.role }, config.jwtSecret, { expiresIn: '7d' });
+export function setAuthCookie(res: Response, user: User): void {
+  // `sub` (subject) của JWT phải là chuỗi -> String(id).
+  const token = jwt.sign({ sub: String(user.id), role: user.role }, config.jwtSecret, { expiresIn: '7d' });
   res.cookie(COOKIE_NAME, token, {
     httpOnly: true,
     // lax: trang web KHÁC không gửi kèm được cookie này trong request
@@ -50,18 +51,23 @@ export function clearAuthCookie(res: Response): void {
 
 export const loadUser: RequestHandler = async (req, res, next) => {
   const token: unknown = req.cookies?.[COOKIE_NAME];
+  let userId: number | null = null;
   if (typeof token === 'string' && token) {
     try {
       const payload = jwt.verify(token, config.jwtSecret);
-      const userId = typeof payload === 'object' ? payload.sub : undefined;
-      // Đọc lại user từ DB thay vì tin hoàn toàn vào token: tài khoản bị
-      // xóa hoặc bị đổi quyền thì có hiệu lực NGAY, không đợi token hết hạn.
-      const user = userId ? await UserModel.findById(userId) : null;
-      // Chỉ tài khoản đang hoạt động mới được coi là "đã đăng nhập".
-      if (user && user.status === 'active') res.locals.user = user;
+      const sub = typeof payload === 'object' ? Number(payload.sub) : NaN;
+      if (Number.isInteger(sub) && sub > 0) userId = sub;
     } catch {
       // Token sai chữ ký / hết hạn -> coi như khách, không báo lỗi.
     }
+  }
+  if (userId) {
+    // Đọc lại user từ DB thay vì tin hoàn toàn vào token: tài khoản bị
+    // xóa hoặc bị đổi quyền thì có hiệu lực NGAY, không đợi token hết hạn.
+    // (Để NGOÀI try/catch: DB lỗi thì báo lỗi thật, không lặng lẽ coi là khách.)
+    const user = await findUserById(userId);
+    // Chỉ tài khoản đang hoạt động mới được coi là "đã đăng nhập".
+    if (user && user.status === 'active') res.locals.user = user;
   }
   next();
 };
@@ -78,7 +84,7 @@ export const requireAdmin: RequestHandler = (_req, res, next) => {
 };
 
 // Lấy user trong route ĐÃ có requireAuth phía trước — chắc chắn có.
-export function currentUser(res: Response): UserDoc {
+export function currentUser(res: Response): User {
   const user = res.locals.user;
   if (!user) throw new HttpError(401, 'Bạn cần đăng nhập');
   return user;

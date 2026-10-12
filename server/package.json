@@ -2,7 +2,7 @@
   "name": "server",
   "version": "1.0.0",
   "private": true,
-  "description": "Backend Doc App v2: Express + MongoDB, viết bằng TypeScript",
+  "description": "Backend WebManual: Express + SQL Server, viết bằng TypeScript",
   "type": "module",
   "engines": {
     "node": ">=24"
@@ -11,6 +11,7 @@
     "dev": "node --watch --env-file=.env src/index.ts",
     "start": "node --env-file=.env src/index.ts",
     "reset-password": "node --env-file=.env src/scripts/resetPassword.ts",
+    "migrate-from-mongo": "node --env-file=.env src/scripts/migrateFromMongo.ts",
     "typecheck": "tsc"
   },
   "dependencies": {
@@ -18,7 +19,7 @@
     "cookie-parser": "^1.4.7",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
-    "mongoose": "^9.11.1",
+    "mssql": "^12.7.4",
     "multer": "^2.4.0",
     "sharp": "^0.35.5",
     "zod": "^4.6.5"
@@ -27,8 +28,10 @@
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/mssql": "^12.3.0",
     "@types/multer": "^2.3.0",
     "@types/node": "^24.19.1",
+    "mongoose": "^9.11.1",
     "typescript": "~6.0.2"
   }
 }

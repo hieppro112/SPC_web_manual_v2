@@ -1,10 +1,6 @@
 // ============================================================
 // routes/documents.ts — Mọi API của tài liệu
 // ============================================================
-// Router là một "mini app": gom các route cùng nhóm vào một file, rồi
-// index.ts gắn cả nhóm vào tiền tố '/api/documents'.
-// 🔸 Flutter: giống một GoRoute cha có nhiều route con.
-//
 // Khách (chưa đăng nhập) chỉ ĐỌC được bài đã xuất bản.
 // Editor/admin đọc được cả nháp và được ghi.
 //
@@ -19,21 +15,27 @@
 //   POST   /:id/versions/:version/restore (editor)          khôi phục
 
 import { Router, type Response } from 'express';
-import { isValidObjectId, type Types } from 'mongoose';
-import { CategoryModel } from '../models/Category.ts';
-import { DOC_STATUSES, DocumentModel, type DocumentDoc } from '../models/Document.ts';
-import { DocumentVersionModel } from '../models/DocumentVersion.ts';
+import { z } from 'zod';
+import { parseBlocks } from '../blocks/schemas.ts';
 import { HttpError } from '../middleware/errorHandler.ts';
 import { currentUser, requireAuth } from '../middleware/auth.ts';
-import { parseBlocks } from '../blocks/schemas.ts';
-import { saveWithVersion } from '../services/documents.ts';
-import { escapeRegex, removeDiacritics } from '../utils/slugify.ts';
+import { categoryExists } from '../repositories/categories.ts';
+import {
+  DOC_STATUSES,
+  deleteDocument,
+  findDocumentById,
+  findDocumentBySlug,
+  findVersion,
+  findVersionForRestore,
+  listDocuments,
+  listVersions,
+  type FullDocument,
+} from '../repositories/documents.ts';
+import { createDocument, updateDocument, type DocumentInput } from '../services/documents.ts';
+import { parseId, tryParseId } from '../utils/ids.ts';
+import { removeDiacritics } from '../utils/slugify.ts';
 
 export const documentsRouter = Router();
-
-// Thông tin cần hiển thị khi populate.
-const CATEGORY_FIELDS = 'name iconName';
-const USER_FIELDS = 'displayName';
 
 // "Type guard": nếu hàm trả true thì TS hiểu `value` CHẮC CHẮN là
 // 'draft' | 'published'. 🔸 Dart: giống `if (x is String)`.
@@ -41,110 +43,86 @@ function isDocStatus(value: unknown): value is (typeof DOC_STATUSES)[number] {
   return typeof value === 'string' && (DOC_STATUSES as readonly string[]).includes(value);
 }
 
-// ObjectId đúng định dạng nhưng KHÔNG có trong DB thì Mongoose vẫn cho
-// lưu (nó chỉ kiểm tra định dạng). Phải tự kiểm tra thể loại có thật.
-async function assertCategoryExists(id: Types.ObjectId | null | undefined) {
-  if (!id) return; // thiếu hẳn -> để schema báo lỗi "Phải chọn thể loại"
-  const exists = await CategoryModel.exists({ _id: id });
-  if (!exists) throw new HttpError(400, 'Thể loại không tồn tại');
-}
+// Luật dữ liệu gửi lên khi tạo/sửa. Hồi MongoDB một phần nằm trong schema
+// Mongoose; giờ gom hết vào zod cho rõ ràng.
+const titleSchema = z.string().trim().min(1, 'Tiêu đề không được để trống').max(300, 'Tiêu đề tối đa 300 ký tự');
+const statusSchema = z.string().refine(isDocStatus, { error: (issue) => `Trạng thái không hợp lệ: ${String(issue.input)}` });
 
 // Khách mở link bài nháp -> 404 (giả như không tồn tại), không phải 403,
 // để người ngoài không biết là có bài đó.
-function assertReadable(doc: DocumentDoc | null, res: Response): asserts doc is DocumentDoc {
+function assertReadable(doc: FullDocument | null, res: Response): asserts doc is FullDocument {
   if (!doc || (!res.locals.user && doc.status !== 'published')) {
     throw new HttpError(404, 'Không tìm thấy tài liệu');
   }
 }
 
-// Kiểu của req.params trong Express 5 là `string | string[]`, nên nhận
-// `unknown` rồi ép về chuỗi tại đây cho gọn ở nơi gọi.
-async function findForEdit(id: unknown): Promise<DocumentDoc> {
-  const doc = await DocumentModel.findById(String(id));
+async function findOr404(id: unknown): Promise<FullDocument> {
+  const doc = await findDocumentById(parseId(id));
   if (!doc) throw new HttpError(404, 'Không tìm thấy tài liệu');
   return doc;
 }
 
-async function populateForResponse(doc: DocumentDoc) {
-  await doc.populate([
-    { path: 'category', select: CATEGORY_FIELDS },
-    { path: 'updatedBy', select: USER_FIELDS },
-  ]);
-  return doc;
+// Thể loại phải CÓ THẬT. (Khóa ngoại trong DB cũng chặn, nhưng kiểm tra
+// trước để báo lỗi dễ hiểu thay vì lỗi SQL chung chung.)
+async function parseCategory(value: unknown): Promise<number> {
+  if (value === undefined || value === null || value === '') throw new HttpError(400, 'Phải chọn thể loại');
+  const id = tryParseId(value);
+  if (!id || !(await categoryExists(id))) throw new HttpError(400, 'Thể loại không tồn tại');
+  return id;
 }
 
 documentsRouter.get('/', async (req, res) => {
   const { q, category, status } = req.query;
-  const filter: Record<string, unknown> = {};
-
-  // Khách: luôn chỉ bài đã xuất bản, bỏ qua ?status gửi lên.
-  if (!res.locals.user) filter.status = 'published';
-  else if (isDocStatus(status)) filter.status = status;
-
-  if (typeof category === 'string' && isValidObjectId(category)) filter.category = category;
-
-  // Tìm kiếm: bỏ dấu câu hỏi rồi yêu cầu MỌI từ đều có trong searchText.
-  // "bao tri cnc" khớp bài có cả "bảo", "trì", "CNC" ở bất kỳ đâu.
-  // Dùng regex trên một field: đủ nhanh cho vài nghìn tài liệu nội bộ.
-  if (typeof q === 'string' && q.trim()) {
-    const words = removeDiacritics(q).split(/\s+/).filter(Boolean).slice(0, 8);
-    filter.$and = words.map((w) => ({ searchText: { $regex: escapeRegex(w) } }));
-  }
-
-  const docs = await DocumentModel.find(filter)
-    // '-blocks': trang danh sách chỉ cần tiêu đề + mô tả, không cần nội dung.
-    .select('-blocks')
-    .sort({ updatedAt: -1 })
-    .limit(500)
-    .populate('category', CATEGORY_FIELDS)
-    .populate('updatedBy', USER_FIELDS);
-  res.json(docs);
+  res.json(
+    await listDocuments({
+      // Khách: luôn chỉ bài đã xuất bản, bỏ qua ?status gửi lên.
+      status: !res.locals.user ? 'published' : isDocStatus(status) ? status : undefined,
+      categoryId: tryParseId(category),
+      // Tìm kiếm: bỏ dấu câu hỏi rồi yêu cầu MỌI từ đều có trong SearchText.
+      words: typeof q === 'string' ? removeDiacritics(q).split(/\s+/).filter(Boolean).slice(0, 8) : [],
+    }),
+  );
 });
 
 // '/slug/:slug' có HAI đoạn nên không xung đột với '/:id' (một đoạn).
 documentsRouter.get('/slug/:slug', async (req, res) => {
-  const doc = await DocumentModel.findOne({ slug: req.params.slug });
+  const doc = await findDocumentBySlug(String(req.params.slug));
   assertReadable(doc, res);
-  res.json(await populateForResponse(doc));
+  res.json(doc);
 });
 
 documentsRouter.get('/:id', async (req, res) => {
-  const doc = await DocumentModel.findById(req.params.id);
+  const doc = await findDocumentById(parseId(req.params.id));
   assertReadable(doc, res);
-  res.json(await populateForResponse(doc));
+  res.json(doc);
 });
 
 documentsRouter.post('/', requireAuth, async (req, res) => {
-  // Chỉ lấy đúng các field cho phép — desc, slug, version... do server tự lo.
-  const { title, category, blocks, status } = req.body ?? {};
-
-  const doc = new DocumentModel({ title, category, status, blocks: parseBlocks(blocks ?? []) });
-  await assertCategoryExists(doc.category);
-  await saveWithVersion(doc, currentUser(res)._id);
-  res.status(201).json(await populateForResponse(doc));
+  const body = req.body ?? {};
+  const input: DocumentInput = {
+    title: titleSchema.parse(body.title ?? ''),
+    categoryId: await parseCategory(body.category),
+    status: body.status === undefined ? 'draft' : (statusSchema.parse(body.status) as DocumentInput['status']),
+    blocks: parseBlocks(body.blocks ?? []),
+  };
+  res.status(201).json(await createDocument(input, currentUser(res).id));
 });
 
 documentsRouter.put('/:id', requireAuth, async (req, res) => {
-  // Tải về -> sửa -> save() (thay vì findByIdAndUpdate) để mọi hook và
-  // luật schema đều chạy giống hệt lúc tạo.
-  const doc = await findForEdit(req.params.id);
-  const { title, category, blocks, status } = req.body ?? {};
-
-  // Field nào không gửi thì giữ nguyên (đặt undefined trong Mongoose là XÓA).
-  if (title !== undefined) doc.title = title;
-  if (category !== undefined) doc.set('category', category);
-  if (status !== undefined) doc.set('status', status);
-  if (blocks !== undefined) doc.set('blocks', parseBlocks(blocks));
-
-  await assertCategoryExists(doc.category);
-  await saveWithVersion(doc, currentUser(res)._id);
-  res.json(await populateForResponse(doc));
+  const doc = await findOr404(req.params.id);
+  const body = req.body ?? {};
+  // Field nào không gửi thì giữ nguyên giá trị hiện tại.
+  const input: DocumentInput = {
+    title: body.title !== undefined ? titleSchema.parse(body.title) : doc.title,
+    categoryId: body.category !== undefined ? await parseCategory(body.category) : Number(doc.category?.id),
+    status: body.status !== undefined ? (statusSchema.parse(body.status) as DocumentInput['status']) : doc.status,
+    blocks: body.blocks !== undefined ? parseBlocks(body.blocks) : doc.blocks!,
+  };
+  res.json(await updateDocument(Number(doc.id), input, currentUser(res).id));
 });
 
 documentsRouter.delete('/:id', requireAuth, async (req, res) => {
-  const doc = await DocumentModel.findByIdAndDelete(req.params.id);
-  if (!doc) throw new HttpError(404, 'Không tìm thấy tài liệu');
-  await DocumentVersionModel.deleteMany({ document: doc._id });
+  if (!(await deleteDocument(parseId(req.params.id)))) throw new HttpError(404, 'Không tìm thấy tài liệu');
   // 204 No Content: thành công, không có gì để trả về.
   res.status(204).end();
 });
@@ -152,23 +130,13 @@ documentsRouter.delete('/:id', requireAuth, async (req, res) => {
 // ---------- Lịch sử phiên bản ----------
 
 documentsRouter.get('/:id/versions', requireAuth, async (req, res) => {
-  const versions = await DocumentVersionModel.find({ document: req.params.id })
-    .select('-blocks')
-    .sort({ version: -1 })
-    .populate('savedBy', USER_FIELDS);
-  res.json(versions);
+  res.json(await listVersions(parseId(req.params.id)));
 });
 
-async function findVersion(docId: unknown, version: unknown) {
-  const v = await DocumentVersionModel.findOne({ document: String(docId), version: Number(version) })
-    .populate('savedBy', USER_FIELDS)
-    .populate('category', CATEGORY_FIELDS);
-  if (!v) throw new HttpError(404, 'Không tìm thấy phiên bản');
-  return v;
-}
-
 documentsRouter.get('/:id/versions/:version', requireAuth, async (req, res) => {
-  res.json(await findVersion(req.params.id, req.params.version));
+  const version = await findVersion(parseId(req.params.id), parseId(req.params.version, 'version'));
+  if (!version) throw new HttpError(404, 'Không tìm thấy phiên bản');
+  res.json(version);
 });
 
 // Khôi phục = tạo một phiên bản MỚI có nội dung của bản cũ. Lịch sử
@@ -176,15 +144,17 @@ documentsRouter.get('/:id/versions/:version', requireAuth, async (req, res) => {
 // Giữ nguyên trạng thái xuất bản hiện tại: khôi phục nội dung không nên
 // vô tình làm bài đang công khai biến thành nháp (hoặc ngược lại).
 documentsRouter.post('/:id/versions/:version/restore', requireAuth, async (req, res) => {
-  const doc = await findForEdit(req.params.id);
-  const old = await DocumentVersionModel.findOne({ document: doc._id, version: Number(req.params.version) });
+  const doc = await findOr404(req.params.id);
+  const old = await findVersionForRestore(Number(doc.id), parseId(req.params.version, 'version'));
   if (!old) throw new HttpError(404, 'Không tìm thấy phiên bản');
 
-  doc.title = old.title;
-  doc.set('blocks', old.blocks);
   // Thể loại cũ có thể đã bị xóa -> giữ thể loại hiện tại.
-  if (old.category && (await CategoryModel.exists({ _id: old.category }))) doc.category = old.category;
-
-  await saveWithVersion(doc, currentUser(res)._id, old.version);
-  res.json(await populateForResponse(doc));
+  const keepOldCategory = old.categoryId !== null && (await categoryExists(old.categoryId));
+  const input: DocumentInput = {
+    title: old.title,
+    categoryId: keepOldCategory ? old.categoryId! : Number(doc.category?.id),
+    status: doc.status,
+    blocks: old.blocks,
+  };
+  res.json(await updateDocument(Number(doc.id), input, currentUser(res).id, old.version));
 });

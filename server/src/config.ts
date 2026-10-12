@@ -25,8 +25,23 @@ function required(name: string): string {
 // không bao giờ bị gán lại. 🔸 Dart: giống `const` object.
 export const config = {
   port: Number(process.env.PORT ?? 5000),
-  mongoUri: process.env.MONGO_URI ?? 'mongodb://localhost:27017/doc_app_v2',
   jwtSecret: required('JWT_SECRET'),
+
+  // Kết nối SQL Server. Mật khẩu CHỈ nằm trong file .env (không commit).
+  db: {
+    server: process.env.DB_SERVER ?? 'localhost',
+    port: Number(process.env.DB_PORT ?? 1433),
+    // Tên instance (vd SQLEXPRESS). Để trống khi dùng instance mặc định
+    // hoặc đã chỉ định cổng — có instance thì cần dịch vụ SQL Browser.
+    instanceName: process.env.DB_INSTANCE || undefined,
+    database: process.env.DB_NAME ?? 'WebManual',
+    user: required('DB_USER'),
+    password: required('DB_PASSWORD'),
+    // SQL Server 2022 mặc định mã hóa kết nối. Máy chủ nội bộ thường dùng
+    // chứng chỉ tự ký -> phải "tin" chứng chỉ đó, nếu không sẽ bị từ chối.
+    encrypt: process.env.DB_ENCRYPT !== 'false',
+    trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE !== 'false',
+  },
 
   // Thư mục lưu ảnh/video/file upload. Đường dẫn tương đối tính từ thư
   // mục chạy lệnh (server/).

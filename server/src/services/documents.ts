@@ -1,31 +1,61 @@
 // ============================================================
 // services/documents.ts — Lưu tài liệu KÈM bản chụp phiên bản
 // ============================================================
-// Mọi đường ghi tài liệu (tạo, sửa, khôi phục) đều phải đi qua hàm này,
-// để không bao giờ có lần lưu nào "quên" tạo phiên bản.
+// Mọi đường ghi tài liệu (tạo, sửa, khôi phục) đều đi qua đây.
+// Lưu tài liệu + lưu bản chụp nằm trong MỘT transaction: hoặc cả hai được
+// ghi, hoặc không gì cả — không bao giờ có tài liệu "mất" một phiên bản.
 
-import type { Types } from 'mongoose';
-import type { DocumentDoc } from '../models/Document.ts';
-import { DocumentVersionModel } from '../models/DocumentVersion.ts';
+import { randomBytes } from 'node:crypto';
+import { withTransaction } from '../db/pool.ts';
+import type { ParsedBlock } from '../blocks/schemas.ts';
+import {
+  findDocumentById,
+  insertDocument,
+  insertVersion,
+  slugExists,
+  updateDocumentRow,
+  type DocStatus,
+} from '../repositories/documents.ts';
+import { slugify } from '../utils/slugify.ts';
+import { buildDesc, buildSearchText } from './documentText.ts';
 
-export async function saveWithVersion(
-  doc: DocumentDoc,
-  userId: Types.ObjectId,
-  restoredFrom: number | null = null,
-): Promise<void> {
-  doc.version = (doc.version ?? 0) + 1;
-  doc.updatedBy = userId;
-  if (!doc.createdBy) doc.createdBy = userId;
-  await doc.save();
+export type DocumentInput = {
+  title: string;
+  categoryId: number;
+  status: DocStatus;
+  blocks: ParsedBlock[];
+};
 
-  await DocumentVersionModel.create({
-    document: doc._id,
-    version: doc.version,
-    title: doc.title,
-    category: doc.category,
-    status: doc.status,
-    blocks: doc.blocks,
-    savedBy: userId,
-    restoredFrom,
+// Slug từ tiêu đề; trùng thì gắn thêm đuôi ngẫu nhiên:
+//   "huong-dan-vpn" đã có -> "huong-dan-vpn-3f9a1c"
+// (Cột Slug có ràng buộc UNIQUE: lỡ hai người tạo cùng lúc thì DB vẫn chặn.)
+async function uniqueSlug(title: string): Promise<string> {
+  const base = slugify(title);
+  let slug = base;
+  while (await slugExists(slug)) slug = `${base}-${randomBytes(3).toString('hex')}`;
+  return slug;
+}
+
+function withComputed(input: DocumentInput) {
+  return { ...input, desc: buildDesc(input.blocks), searchText: buildSearchText(input.title, input.blocks) };
+}
+
+export async function createDocument(input: DocumentInput, userId: number) {
+  const slug = await uniqueSlug(input.title);
+  const record = withComputed(input);
+  return withTransaction(async (tx) => {
+    const id = await insertDocument({ ...record, slug, userId }, tx);
+    await insertVersion({ ...input, documentId: id, version: 1, userId, restoredFrom: null }, tx);
+    return (await findDocumentById(id, tx))!;
+  });
+}
+
+// Slug GIỮ NGUYÊN khi sửa tiêu đề -> link đã chia sẻ không bị gãy.
+export async function updateDocument(id: number, input: DocumentInput, userId: number, restoredFrom: number | null = null) {
+  const record = withComputed(input);
+  return withTransaction(async (tx) => {
+    const version = await updateDocumentRow(id, { ...record, userId }, tx);
+    await insertVersion({ ...input, documentId: id, version, userId, restoredFrom }, tx);
+    return (await findDocumentById(id, tx))!;
   });
 }

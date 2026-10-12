@@ -2,7 +2,8 @@
 // index.ts — Điểm khởi động backend
 // ============================================================
 // File này CHỈ lắp ráp. Các phần nằm ở:
-//   src/models/      — schema Mongoose
+//   src/db/          — kết nối SQL Server + migration (tạo bảng)
+//   src/repositories/— mọi câu SQL, mỗi bảng một file
 //   src/blocks/      — luật dữ liệu của từng loại khối (zod)
 //   src/routes/      — các nhóm API
 //   src/services/    — logic dùng chung giữa nhiều route (media, phiên bản)
@@ -12,8 +13,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import cookieParser from 'cookie-parser';
 import express from 'express';
-import mongoose from 'mongoose';
 import { config } from './config.ts';
+import { connectDb, isDbConnected } from './db/pool.ts';
+import { runMigrations } from './db/migrate.ts';
+import { deleteExpiredSessions } from './repositories/media.ts';
 import { errorHandler } from './middleware/errorHandler.ts';
 import { loadUser, requireAdmin, requireAuth } from './middleware/auth.ts';
 import { authRouter } from './routes/auth.ts';
@@ -36,8 +39,7 @@ app.use(cookieParser());
 // ---------- API ----------
 
 app.get('/api/health', (_req, res) => {
-  // readyState === 1 nghĩa là đã kết nối. (0 = ngắt, 2 = đang nối)
-  res.json({ ok: true, db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected' });
+  res.json({ ok: true, db: isDbConnected() ? 'connected' : 'disconnected' });
 });
 
 app.get('/api/hello/:name', (req, res) => {
@@ -107,14 +109,22 @@ if (fs.existsSync(indexHtml)) {
 // Xử lý lỗi PHẢI đứng cuối cùng, sau mọi route.
 app.use(errorHandler);
 
-// Nối DB XONG rồi mới mở cổng nhận request.
+// Nối DB + tạo/cập nhật bảng XONG rồi mới mở cổng nhận request.
 try {
-  await mongoose.connect(config.mongoUri);
-  console.log('✅ Đã kết nối MongoDB');
+  await connectDb();
+  console.log(`✅ Đã kết nối SQL Server (${config.db.server}/${config.db.database})`);
+  const ran = await runMigrations();
+  if (ran.length) console.log(`🗂️  Đã chạy migration: ${ran.join(', ')}`);
 } catch (err) {
-  console.error('❌ Không kết nối được MongoDB:', err);
+  console.error('❌ Không kết nối / khởi tạo được SQL Server:', err instanceof Error ? err.message : err);
   process.exit(1);
 }
+
+// Dọn phiên QR hết hạn mỗi 15 phút (MongoDB tự làm bằng TTL index, SQL
+// Server thì phải tự làm). .unref(): bộ hẹn giờ không giữ tiến trình sống.
+setInterval(() => {
+  deleteExpiredSessions().catch((err) => console.error('❌ Dọn phiên QR lỗi:', err.message));
+}, 15 * 60 * 1000).unref();
 
 app.listen(config.port, () => {
   console.log(`🚀 API chạy tại http://localhost:${config.port}`);

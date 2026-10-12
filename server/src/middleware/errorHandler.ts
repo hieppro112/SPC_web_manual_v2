@@ -1,12 +1,9 @@
 // ============================================================
 // errorHandler.ts — Xử lý lỗi TẬP TRUNG cho mọi route
 // ============================================================
-// Bản cũ: route nào cũng try/catch, mỗi chỗ trả lỗi một kiểu
-// (chỗ thì { message }, chỗ thì { error }), nên client phải đoán.
-//
-// Bản mới dựa vào một tính năng của Express 5: hàm route `async` mà
-// NÉM LỖI thì Express tự chuyển lỗi đó tới đây. Route chỉ việc `throw`,
-// không cần try/catch. Và client luôn nhận đúng một dạng: { message }.
+// Express 5: hàm route `async` mà NÉM LỖI thì Express tự chuyển lỗi đó
+// tới đây. Route chỉ việc `throw`, không cần try/catch. Và client luôn
+// nhận đúng một dạng: { message }.
 //
 //   route ──throw──▶ errorHandler ──▶ res.status(...).json({ message })
 //
@@ -14,7 +11,6 @@
 //    nhưng ở phía server.
 
 import type { ErrorRequestHandler } from 'express';
-import mongoose from 'mongoose';
 import multer from 'multer';
 import { z } from 'zod';
 
@@ -27,13 +23,20 @@ export class HttpError extends Error {
   }
 }
 
-// Tên dễ hiểu của các field `unique`, dùng trong câu báo trùng.
-const DUPLICATE_LABELS: Record<string, string> = {
-  username: 'Tên đăng nhập',
-  email: 'Email',
-  name: 'Tên thể loại',
-  slug: 'Đường dẫn tài liệu',
-};
+// Tên ràng buộc UNIQUE trong SQL (xem db/migrations/001_init.sql) -> câu
+// báo lỗi dễ hiểu khi trùng.
+const DUPLICATE_LABELS: [RegExp, string][] = [
+  [/Users_Username/, 'Tên đăng nhập'],
+  [/Users_Email/, 'Email'],
+  [/Categories_Name/, 'Tên thể loại'],
+  [/Documents_Slug/, 'Đường dẫn tài liệu'],
+];
+
+// Một số mã lỗi của SQL Server (err.number):
+const SQL_UNIQUE_CONSTRAINT = 2627; // vi phạm ràng buộc UNIQUE
+const SQL_UNIQUE_INDEX = 2601; // vi phạm unique index (vd UX_Users_Email)
+const SQL_CONSTRAINT_CONFLICT = 547; // vi phạm khóa ngoại / CHECK
+const SQL_TRUNCATION = [8152, 2628]; // chuỗi dài hơn cột cho phép
 
 // Express nhận ra đây là middleware xử lý lỗi nhờ nó có ĐÚNG 4 tham số.
 // Bỏ `_next` đi là Express coi nó như middleware thường — lỗi khó tìm.
@@ -44,21 +47,7 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     return;
   }
 
-  // 2. Dữ liệu sai luật schema (thiếu title, sai enum...) -> 400
-  if (err instanceof mongoose.Error.ValidationError) {
-    const first = Object.values(err.errors)[0];
-    res.status(400).json({ message: first?.message ?? 'Dữ liệu không hợp lệ' });
-    return;
-  }
-
-  // 3. id sai định dạng, ví dụ /api/documents/abc -> 400
-  //    (bản cũ để lọt thành 500 "lỗi máy chủ")
-  if (err instanceof mongoose.Error.CastError) {
-    res.status(400).json({ message: `Giá trị không hợp lệ: ${err.path}` });
-    return;
-  }
-
-  // 4. Body sai khuôn zod (vd mật khẩu quá ngắn) -> 400
+  // 2. Body sai khuôn zod (vd mật khẩu quá ngắn) -> 400
   if (err instanceof z.ZodError) {
     const issue = err.issues[0];
     const field = issue?.path.join('.');
@@ -70,7 +59,7 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     return;
   }
 
-  // 5. Lỗi upload: file quá lớn -> 413, lỗi khác của multer -> 400
+  // 3. Lỗi upload: file quá lớn -> 413, lỗi khác của multer -> 400
   if (err instanceof multer.MulterError) {
     if (err.code === 'LIMIT_FILE_SIZE') {
       res.status(413).json({ message: 'File quá lớn' });
@@ -80,7 +69,7 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     return;
   }
 
-  // 6. Body JSON hỏng hoặc quá lớn (lỗi từ express.json())
+  // 4. Body JSON hỏng hoặc quá lớn (lỗi từ express.json())
   if (err?.type === 'entity.parse.failed') {
     res.status(400).json({ message: 'Body JSON không hợp lệ' });
     return;
@@ -90,15 +79,32 @@ export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     return;
   }
 
-  // 7. Trùng giá trị `unique` (vd tên thể loại đã có) -> 409 Conflict
-  if (err?.code === 11000) {
-    // err.keyValue = { email: '...' } -> biết trùng field nào để báo rõ.
-    const field = Object.keys(err.keyValue ?? {})[0] ?? '';
-    res.status(409).json({ message: `${DUPLICATE_LABELS[field] ?? 'Dữ liệu này'} đã tồn tại` });
+  // 5. Lỗi từ SQL Server (thư viện mssql đặt mã lỗi SQL vào err.number)
+  if (err?.name === 'RequestError' && typeof err.number === 'number') {
+    const message: string = err.message ?? '';
+    if (err.number === SQL_UNIQUE_CONSTRAINT || err.number === SQL_UNIQUE_INDEX) {
+      const label = DUPLICATE_LABELS.find(([pattern]) => pattern.test(message))?.[1] ?? 'Dữ liệu này';
+      res.status(409).json({ message: `${label} đã tồn tại` });
+      return;
+    }
+    if (err.number === SQL_CONSTRAINT_CONFLICT) {
+      res.status(409).json({ message: 'Dữ liệu đang liên kết với dữ liệu khác hoặc không hợp lệ' });
+      return;
+    }
+    if (SQL_TRUNCATION.includes(err.number)) {
+      res.status(400).json({ message: 'Dữ liệu quá dài' });
+      return;
+    }
+  }
+
+  // 6. Mất kết nối tới SQL Server -> 503 (dịch vụ tạm thời không sẵn sàng)
+  if (err?.name === 'ConnectionError') {
+    console.error('❌ Mất kết nối SQL Server:', err.message);
+    res.status(503).json({ message: 'Không kết nối được cơ sở dữ liệu' });
     return;
   }
 
-  // 8. Còn lại là lỗi không lường trước: ghi log đầy đủ cho dev,
+  // 7. Còn lại là lỗi không lường trước: ghi log đầy đủ cho dev,
   //    nhưng KHÔNG gửi chi tiết cho client (có thể lộ cấu trúc hệ thống).
   console.error('❌ Lỗi không xử lý:', err);
   res.status(500).json({ message: 'Lỗi máy chủ' });

@@ -1,37 +1,27 @@
 # ============================================================
-# backup.ps1 - Sao luu database + file upload
+# backup.ps1 - Sao luu thu muc upload (anh, video, file dinh kem)
 # ============================================================
-# Can sao luu CA HAI: MongoDB (noi dung tai lieu) va thu muc upload (anh,
-# video, file). Thieu mot trong hai la khoi phuc khong day du.
+# Database WebManual nam tren SQL Server cong ty (192.168.122.2) va duoc
+# sao luu theo lich backup SQL Server cua IT - script nay KHONG dong vao DB.
 #
-#   .\deploy\backup.ps1 -UploadDir D:\kvh-it-docs-data\uploads
+#   .\deploy\backup.ps1 -UploadDir D:\kvh-it-docs-data\uploads -BackupRoot E:\kvh-it-docs-backup
 #
-# Moi lan chay tao thu muc <BackupRoot>\<ngay-gio>\ gom db\ va uploads\,
-# xoa cac ban cu hon KeepDays ngay. Nen hen gio chay hang ngay bang
-# Task Scheduler (xem DEPLOY.md).
+# Moi lan chay tao thu muc <BackupRoot>\<ngay-gio>\uploads\, xoa cac ban
+# cu hon KeepDays ngay. Nen hen gio chay hang ngay bang Task Scheduler.
 #
-# Khoi phuc database:  mongorestore --uri=<MongoUri> --drop <thu muc db\doc_app_v2>
-# Khoi phuc file:      chep thu muc uploads\ ve lai UPLOAD_DIR
+# Khoi phuc: chep thu muc uploads\ cua ban sao luu ve lai UPLOAD_DIR.
 
 param(
   [Parameter(Mandatory = $true)][string]$UploadDir,
   [string]$BackupRoot = 'D:\kvh-it-docs-backup',
-  [string]$MongoUri = 'mongodb://localhost:27017/doc_app_v2',
-  [int]$KeepDays = 14,
-  # mongodump nam trong goi "MongoDB Database Tools", mac dinh KHONG co trong PATH.
-  [string]$Mongodump = 'C:\Program Files\MongoDB\Tools\100\bin\mongodump.exe'
+  [int]$KeepDays = 14
 )
 $ErrorActionPreference = 'Stop'
 
-if (-not (Test-Path $Mongodump)) { throw "Khong thay mongodump: $Mongodump (cai MongoDB Database Tools)" }
 if (-not (Test-Path $UploadDir)) { throw "Khong thay thu muc upload: $UploadDir" }
 
 $dest = Join-Path $BackupRoot (Get-Date -Format 'yyyyMMdd-HHmm')
 New-Item -ItemType Directory -Force -Path $dest | Out-Null
-
-Write-Host "==> Sao luu database -> $dest\db" -ForegroundColor Cyan
-& $Mongodump "--uri=$MongoUri" "--out=$dest\db" --quiet
-if ($LASTEXITCODE -ne 0) { throw 'mongodump that bai' }
 
 Write-Host "==> Sao luu file upload -> $dest\uploads" -ForegroundColor Cyan
 robocopy $UploadDir "$dest\uploads" /E /NFL /NDL /NJH /NJS /NP | Out-Null

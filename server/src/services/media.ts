@@ -17,9 +17,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import multer from 'multer';
 import sharp from 'sharp';
-import type { Types } from 'mongoose';
 import { config } from '../config.ts';
-import { MediaModel, type MediaKind } from '../models/Media.ts';
+import { createMedia, type MediaKind } from '../repositories/media.ts';
 import { HttpError } from '../middleware/errorHandler.ts';
 
 const MAX_IMAGE_SIZE = 1920;
@@ -65,7 +64,7 @@ function fixFileName(name: string): string {
   return decoded.includes('�') ? name : decoded;
 }
 
-export async function storeUpload(file: Express.Multer.File, userId: Types.ObjectId | null) {
+export async function storeUpload(file: Express.Multer.File, userId: number | null) {
   const kind = kindOf(file.mimetype);
   const originalName = fixFileName(file.originalname);
   const id = randomBytes(12).toString('hex');
@@ -109,15 +108,15 @@ export async function storeUpload(file: Express.Multer.File, userId: Types.Objec
     await fs.promises.rename(file.path, path.join(dir, filename));
   }
 
-  return MediaModel.create({
+  return createMedia({
     kind,
     url: `/uploads/${SUBDIRS[kind]}/${filename}`,
     originalName,
     mime,
     size,
-    width,
-    height,
-    uploadedBy: userId,
+    width: width ?? null,
+    height: height ?? null,
+    uploadedById: userId,
   });
 }
 

@@ -23,27 +23,32 @@ doc_app_v2/
 │       ├── i18n/           chữ giao diện vi / en / ja
 │       ├── lib/            http.ts (nơi DUY NHẤT gọi fetch), types, tiện ích
 │       └── index.css       ★ DESIGN TOKENS — toàn bộ màu sáng/tối
-└── server/                 Express + MongoDB + TypeScript (Node chạy thẳng file .ts)
+└── server/                 Express + SQL Server + TypeScript (Node chạy thẳng file .ts)
+    ├── sql/                setup-database.sql — tạo database WebManual + tài khoản app (chạy 1 lần trong SSMS)
     └── src/
+        ├── db/             kết nối SQL Server (pool.ts) + migrations/*.sql (app tự tạo/cập nhật bảng)
+        ├── repositories/   ★ mọi câu SQL, mỗi bảng một file (users, categories, documents, media)
         ├── blocks/         luật dữ liệu từng loại khối (zod)
-        ├── models/         User, Category, Document, DocumentVersion, Media, UploadSession
         ├── routes/         auth, users, categories, documents, media, upload-sessions, meta
         ├── services/       xử lý upload (thu nhỏ ảnh), lưu kèm phiên bản
         └── middleware/     đăng nhập (cookie JWT), xử lý lỗi tập trung
 ```
 
-Quy tắc: component → hook (`queries.ts`) → `api.ts` → `lib/http.ts`. Component không gọi `fetch`.
+Quy tắc:
+- Client: component → hook (`queries.ts`) → `api.ts` → `lib/http.ts`. Component không gọi `fetch`.
+- Server: route → (service) → `repositories/*.ts` → `db/pool.ts`. Chỉ repository viết SQL; giá trị luôn truyền qua tham số `@ten`, không ghép chuỗi.
 
 ## Chạy khi phát triển
 
-Cần: Node 24+, MongoDB đang chạy.
+Cần: Node 24+, một SQL Server (2019+) có database `WebManual` + tài khoản app (tạo bằng `server/sql/setup-database.sql`).
 
 ```bash
 cd server
-cp .env.example .env      # rồi điền JWT_SECRET
 npm install
-npm run dev               # API :5000
+npm run dev               # API :5000 — lần đầu tự tạo bảng
 ```
+
+`server/.env` cần các biến: `JWT_SECRET`, `DB_SERVER`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` (xem mẫu đầy đủ trong DEPLOY.md bước 3).
 
 ```bash
 cd client
@@ -57,7 +62,7 @@ Test API: mở `server/requests.http` bằng extension REST Client của VS Code
 
 ## Triển khai trong mạng nội bộ
 
-**Hướng dẫn từng bước cho máy chủ Windows: xem [DEPLOY.md](DEPLOY.md)** (cài MongoDB, cấu hình, chạy nền, cập nhật, sao lưu). Các script nằm trong `deploy/`.
+**Hướng dẫn từng bước cho máy chủ Windows: xem [DEPLOY.md](DEPLOY.md)** (chuẩn bị SQL Server, cấu hình, chạy nền, cập nhật, sao lưu, chuyển dữ liệu từ MongoDB cũ). Các script nằm trong `deploy/`.
 
 Production chỉ cần **một tiến trình** — server phục vụ luôn giao diện đã build. Trong `server/.env` nên đặt:
 
@@ -69,7 +74,7 @@ Production chỉ cần **một tiến trình** — server phục vụ luôn giao
 | `UPLOAD_DIR` | `uploads` | Nơi lưu ảnh/video/file |
 | `COOKIE_SECURE` | `false` | Chỉ `true` khi chạy HTTPS |
 
-**Sao lưu:** cần sao lưu CẢ HAI — database (`mongodump`) và thư mục upload (`deploy/backup.ps1`).
+**Sao lưu:** cần sao lưu CẢ HAI — database `WebManual` (lịch backup SQL Server của IT) và thư mục upload (`deploy/backup.ps1`).
 
 **Quên mật khẩu admin:** chạy trên máy chủ `npm run reset-password -- <tên đăng nhập> <mật khẩu mới>`.
 
@@ -94,6 +99,8 @@ Production chỉ cần **một tiến trình** — server phục vụ luôn giao
 5. `client/src/i18n/vi.ts`, `en.ts`, `ja.ts` — thêm `blocks.<tên>.label` / `desc`
 
 TypeScript báo lỗi nếu quên bước 1, 3, 4 hoặc 5. Menu "Thêm khối", trình soạn, trang đọc, mục lục tự nhận khối mới.
+
+**Không phải sửa database**: mọi khối nằm chung trong cột JSON `Documents.Blocks`, nên thêm loại khối không cần migration.
 
 ## Đổi màu / thương hiệu
 

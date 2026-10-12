@@ -6,9 +6,8 @@
 // Chỉ người có quyền vào máy chủ mới chạy được lệnh này.
 
 import bcrypt from 'bcryptjs';
-import mongoose from 'mongoose';
-import { config } from '../config.ts';
-import { UserModel } from '../models/User.ts';
+import { closeDb, connectDb, queryOne } from '../db/pool.ts';
+import { updateUser } from '../repositories/users.ts';
 import { BCRYPT_ROUNDS } from '../routes/auth.ts';
 
 const [username, password] = process.argv.slice(2);
@@ -17,13 +16,14 @@ if (!username || !password || password.length < 8) {
   process.exit(1);
 }
 
-await mongoose.connect(config.mongoUri);
-const user = await UserModel.findOne({ username: username.toLowerCase() });
-if (!user) {
+await connectDb();
+const row = await queryOne<{ Id: number; Role: string }>('SELECT Id, Role FROM Users WHERE Username = @username', {
+  username: username.toLowerCase(),
+});
+if (!row) {
   console.error(`❌ Không có tài khoản "${username}"`);
 } else {
-  user.passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
-  await user.save();
-  console.log(`✅ Đã đặt lại mật khẩu cho "${user.username}" (${user.role})`);
+  await updateUser(row.Id, { passwordHash: await bcrypt.hash(password, BCRYPT_ROUNDS) });
+  console.log(`✅ Đã đặt lại mật khẩu cho "${username.toLowerCase()}" (${row.Role})`);
 }
-await mongoose.disconnect();
+await closeDb();
