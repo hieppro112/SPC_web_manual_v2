@@ -22,6 +22,15 @@ IF DB_ID(N'WebManual') IS NULL
   CREATE DATABASE WebManual;
 GO
 
+-- AN TOÀN: tạo database thất bại (thiếu quyền) thì DỪNG HẲN, mọi lô lệnh
+-- phía sau không chạy (SET NOEXEC ON) -> không tạo user/quyền nhầm chỗ.
+IF DB_ID(N'WebManual') IS NULL
+BEGIN
+  RAISERROR(N'Chưa có database WebManual (có thể do thiếu quyền tạo) -> DỪNG. Nhờ IT chạy script này.', 16, 1);
+  SET NOEXEC ON;
+END
+GO
+
 -- 2. Login cấp máy chủ (tên đăng nhập + mật khẩu)
 IF SUSER_ID(N'kvh_write') IS NULL
   CREATE LOGIN kvh_write
@@ -32,6 +41,13 @@ GO
 
 -- 3. User trong database + quyền tối thiểu cần thiết
 USE WebManual;
+GO
+
+IF DB_NAME() <> N'WebManual'
+BEGIN
+  RAISERROR(N'Không chuyển được sang database WebManual -> DỪNG.', 16, 1);
+  SET NOEXEC ON;
+END
 GO
 
 IF USER_ID(N'kvh_write') IS NULL
@@ -67,3 +83,8 @@ FROM sys.database_role_members rm
 JOIN sys.database_principals r  ON r.principal_id  = rm.role_principal_id
 JOIN sys.database_principals dp ON dp.principal_id = rm.member_principal_id
 WHERE dp.name = N'kvh_write';
+GO
+
+-- Bật lại chế độ chạy lệnh bình thường cho cửa sổ query này.
+SET NOEXEC OFF;
+GO

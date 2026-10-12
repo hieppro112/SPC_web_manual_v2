@@ -1,18 +1,35 @@
 -- ============================================================
 -- create-tables.sql — Tạo toàn bộ bảng của WebManual (chạy trong SSMS)
 -- ============================================================
--- Cách chạy: SSMS -> kết nối 192.168.122.2 -> New Query -> dán toàn bộ
--- file này -> Execute (F5). Chạy MỘT lần trên database WebManual trống.
+-- Database WebManual phải CÓ SẴN (IT tạo — tạo database cần quyền riêng).
+-- Cách chạy: SSMS -> kết nối 192.168.122.2 -> New Query -> chọn database
+-- WebManual ở ô chọn database trên thanh công cụ -> dán toàn bộ file
+-- này -> Execute (F5). Chạy MỘT lần trên database WebManual trống.
 --
 -- Nội dung giống hệt server/src/db/migrations/001_init.sql, cộng thêm
 -- bảng SchemaMigrations ở cuối để app biết "bảng đã được tạo sẵn",
 -- không tự tạo lại.
 
-IF DB_ID(N'WebManual') IS NULL
-  CREATE DATABASE WebManual;
+USE WebManual;
 GO
 
-USE WebManual;
+-- AN TOÀN: nếu không đứng đúng database WebManual (vd USE ở trên thất
+-- bại vì database chưa có) thì DỪNG HẲN — mọi lô lệnh phía sau chỉ được
+-- kiểm tra cú pháp, KHÔNG chạy (SET NOEXEC ON). Tránh tạo nhầm bảng vào
+-- database khác.
+IF DB_NAME() <> N'WebManual'
+BEGIN
+  RAISERROR(N'Không đứng ở database WebManual -> DỪNG, không tạo bảng nào. Nhờ IT tạo database WebManual trước.', 16, 1);
+  SET NOEXEC ON;
+END
+GO
+
+-- Database phải còn trống (chưa có bảng Users) -> tránh chạy lần hai.
+IF OBJECT_ID(N'Users', N'U') IS NOT NULL
+BEGIN
+  RAISERROR(N'Database WebManual đã có bảng Users -> DỪNG, không tạo lại.', 16, 1);
+  SET NOEXEC ON;
+END
 GO
 
 CREATE TABLE Users (
@@ -138,4 +155,9 @@ INSERT INTO SchemaMigrations (Name) VALUES (N'001_init.sql');
 GO
 
 -- Kiểm tra: phải ra 7 bảng
-SELECT name AS TableName FROM sys.tables ORDER BY name;
+SELECT DB_NAME() AS DatabaseName, name AS TableName FROM sys.tables ORDER BY name;
+GO
+
+-- Bật lại chế độ chạy lệnh bình thường cho cửa sổ query này.
+SET NOEXEC OFF;
+GO
