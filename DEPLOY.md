@@ -10,6 +10,15 @@ Máy bạn ──git push──▶ GitLab/GitHub nội bộ ──git pull──
 Đồng nghiệp / điện thoại ──http://<IP-máy-chủ>:5000──▶ app
 ```
 
+## Thông số máy chủ của công ty
+
+| | Giá trị |
+| --- | --- |
+| IP máy chủ (cố định) | `192.168.122.15` |
+| Địa chỉ người dùng mở | **http://192.168.122.15:5000** |
+| `PUBLIC_BASE_URL` trong `.env` | `http://192.168.122.15:5000` |
+| Cổng | 5000 (đã kiểm tra còn trống) |
+
 > ⚠️ Một số bước cần **quyền Administrator** trên máy chủ và đụng tới **tường lửa / Task Scheduler**. Máy công ty có Defender for Endpoint, việc tạo tác vụ nền có thể bị cảnh báo. **Báo bộ phận IT trước**, hoặc nhờ IT thực hiện các bước đó.
 
 ---
@@ -74,7 +83,7 @@ MONGO_URI=mongodb://localhost:27017/doc_app_v2
 JWT_SECRET=<chuỗi vừa tạo ở trên>
 UPLOAD_DIR=D:\kvh-it-docs-data\uploads
 MAX_UPLOAD_MB=500
-PUBLIC_BASE_URL=http://<IP hoặc tên máy chủ>:5000
+PUBLIC_BASE_URL=http://192.168.122.15:5000
 ALLOWED_EMAIL_DOMAINS=spclt.com.vn
 COOKIE_SECURE=false
 ```
