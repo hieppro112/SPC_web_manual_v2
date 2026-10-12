@@ -24,6 +24,17 @@ export async function runMigrations(): Promise<string[]> {
   `);
 
   const applied = new Set((await query<{ Name: string }>('SELECT Name FROM SchemaMigrations')).map((r) => r.Name));
+
+  // Bảng đã được tạo TAY bằng server/sql/create-tables.sql (trong SSMS)
+  // nhưng chưa có dòng đánh dấu -> coi như 001 đã chạy, không tạo lại
+  // (tạo lại sẽ lỗi "There is already an object named 'Users'").
+  if (applied.size === 0) {
+    const usersExists = await query<{ Found: number }>(`SELECT 1 AS Found WHERE OBJECT_ID(N'Users', N'U') IS NOT NULL`);
+    if (usersExists.length) {
+      await execute(`INSERT INTO SchemaMigrations (Name) VALUES (N'001_init.sql')`);
+      applied.add('001_init.sql');
+    }
+  }
   const files = fs
     .readdirSync(MIGRATIONS_DIR)
     .filter((f) => f.endsWith('.sql'))
