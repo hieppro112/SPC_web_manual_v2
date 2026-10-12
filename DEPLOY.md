@@ -10,7 +10,7 @@ Máy bạn ──git push──▶ GitLab/GitHub nội bộ ──git pull──
                                                                     │ cổng 1433
                                                                     ▼
                                                        SQL Server công ty 192.168.122.2
-                                                          └─ database WebManual
+                                                          └─ database KVH (bảng WebManual...)
 Đồng nghiệp / điện thoại ──http://192.168.122.15:5000──▶ app
 ```
 
@@ -21,7 +21,7 @@ Máy bạn ──git push──▶ GitLab/GitHub nội bộ ──git pull──
 | Máy chủ app (IP cố định) | `192.168.122.15` |
 | Địa chỉ người dùng mở | **http://192.168.122.15:5000** |
 | SQL Server | `192.168.122.2`, cổng `1433` — SQL Server 2022 Standard |
-| Database | `WebManual` |
+| Database | `KVH` (các bảng `WebManualUsers`, `WebManualDocuments`...) |
 | Tài khoản SQL của app | `kvh_write` (mật khẩu chỉ nằm trong `server\.env`) |
 | Thư mục code trên máy chủ (ví dụ) | `D:\Hiep\manual_web_2\SPC_web_manual_v2` |
 
@@ -42,12 +42,11 @@ git push
 
 ## Bước 1 — Chuẩn bị database trên SQL Server (một lần)
 
-1. Mở **SSMS**, kết nối `192.168.122.2` bằng tài khoản có quyền tạo database + login (hoặc nhờ IT).
-2. Mở file **`server\sql\setup-database.sql`** trong SSMS.
-3. Thay `<MAT_KHAU_MANH>` bằng mật khẩu mạnh **ngay trong SSMS** → bấm **Execute**. **Đóng file, không lưu** (để mật khẩu không nằm lại trong file).
-4. Kết quả cuối phải hiện `kvh_write` với 3 quyền: `db_datareader`, `db_datawriter`, `db_ddladmin`.
+App dùng database **`KVH` có sẵn** của công ty; mọi bảng có tiền tố **`WebManual`** để không đụng bảng của hệ thống khác.
 
-Script chỉ tạo **database rỗng + tài khoản**. Các bảng (Users, Documents...) do **app tự tạo** ở lần chạy đầu.
+1. **Tạo bảng**: SSMS → kết nối `192.168.122.2` → New Query → dán toàn bộ **`server\sql\create-tables.sql`** → F5. Kết quả cuối phải liệt kê **7 bảng** `WebManual...` (schema `dbo`). Script tự dừng nếu không đứng đúng database `KVH` hoặc bảng đã có.
+2. **Cấp quyền cho tài khoản app** (IT hoặc người có quyền db_owner): chạy **`server\sql\setup-database.sql`**. `kvh_write` chỉ được đọc/ghi **đúng 7 bảng WebManual**, không phải cả database KVH.
+3. Login `kvh_write` do IT tạo (mật khẩu mạnh, không gửi qua chat/email).
 
 Lưu ý: SQL Server phải bật **Mixed Mode** (đăng nhập bằng tài khoản SQL). Nếu đăng nhập `kvh_write` báo lỗi *"Login failed"* dù đúng mật khẩu → nhờ IT kiểm tra Mixed Mode.
 
@@ -86,7 +85,7 @@ PORT=5000
 JWT_SECRET=$secret
 DB_SERVER=192.168.122.2
 DB_PORT=1433
-DB_NAME=WebManual
+DB_NAME=KVH
 DB_USER=kvh_write
 DB_PASSWORD=
 DB_ENCRYPT=true
@@ -128,7 +127,7 @@ npm start
 Lần đầu sẽ thấy:
 
 ```
-✅ Đã kết nối SQL Server (192.168.122.2/WebManual)
+✅ Đã kết nối SQL Server (192.168.122.2/KVH)
 🗂️  Đã chạy migration: 001_init.sql        ← app tự tạo các bảng
 🚀 API chạy tại http://localhost:5000
 ```
@@ -191,7 +190,7 @@ Nếu bản mới có thay đổi cấu trúc bảng (file `server/src/db/migrat
 
 | Dữ liệu | Nằm ở | Cách sao lưu |
 | --- | --- | --- |
-| Tài liệu, tài khoản, lịch sử | SQL Server `WebManual` (192.168.122.2) | **Nhờ IT đưa `WebManual` vào lịch backup SQL Server** của công ty (SQL Agent / Maintenance Plan) |
+| Tài liệu, tài khoản, lịch sử | Các bảng `WebManual...` trong database `KVH` (192.168.122.2) | Nằm trong lịch **backup database KVH** của IT — nhờ IT xác nhận |
 | Ảnh, video, file | `D:\kvh-it-docs-data\uploads` trên máy chủ app | `.\deploy\backup.ps1` (hẹn giờ hằng ngày) |
 
 ```powershell
@@ -218,6 +217,7 @@ Hẹn giờ: **Task Scheduler** → *Create Basic Task* → Daily 02:00 → *Sta
 | `Login failed for user 'kvh_write'` | Sai mật khẩu, hoặc SQL Server chưa bật Mixed Mode (hỏi IT) |
 | `Failed to connect ... 1433` / timeout | Máy chủ app không thông tới 192.168.122.2:1433 → `Test-NetConnection`, nhờ IT mở |
 | `self signed certificate` / lỗi chứng chỉ | Đặt `DB_TRUST_SERVER_CERTIFICATE=true` |
-| `CREATE TABLE permission denied` | Tài khoản thiếu quyền `db_ddladmin` (bước 1) |
+| `The SELECT permission was denied on the object 'WebManual...'` | Chưa chạy `setup-database.sql` (bước 1) |
+| `Invalid object name 'WebManual...'` | Chưa chạy `create-tables.sql`, hoặc `DB_NAME` trong `.env` không phải `KVH` |
 | `EADDRINUSE` | Cổng 5000 bị chương trình khác dùng |
 | Máy khác không vào được | Tường lửa cổng 5000 (bước 6) |

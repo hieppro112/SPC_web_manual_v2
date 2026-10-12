@@ -16,22 +16,22 @@ const MIGRATIONS_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), '
 
 export async function runMigrations(): Promise<string[]> {
   await execute(`
-    IF OBJECT_ID(N'SchemaMigrations', N'U') IS NULL
-      CREATE TABLE SchemaMigrations (
-        Name      NVARCHAR(200) NOT NULL CONSTRAINT PK_SchemaMigrations PRIMARY KEY,
-        AppliedAt DATETIME2(3)  NOT NULL CONSTRAINT DF_SchemaMigrations_AppliedAt DEFAULT SYSUTCDATETIME()
+    IF OBJECT_ID(N'WebManualSchemaMigrations', N'U') IS NULL
+      CREATE TABLE WebManualSchemaMigrations (
+        Name      NVARCHAR(200) NOT NULL CONSTRAINT PK_WebManualSchemaMigrations PRIMARY KEY,
+        AppliedAt DATETIME2(3)  NOT NULL CONSTRAINT DF_WebManualSchemaMigrations_AppliedAt DEFAULT SYSUTCDATETIME()
       );
   `);
 
-  const applied = new Set((await query<{ Name: string }>('SELECT Name FROM SchemaMigrations')).map((r) => r.Name));
+  const applied = new Set((await query<{ Name: string }>('SELECT Name FROM WebManualSchemaMigrations')).map((r) => r.Name));
 
   // Bảng đã được tạo TAY bằng server/sql/create-tables.sql (trong SSMS)
   // nhưng chưa có dòng đánh dấu -> coi như 001 đã chạy, không tạo lại
-  // (tạo lại sẽ lỗi "There is already an object named 'Users'").
+  // (tạo lại sẽ lỗi "There is already an object named 'WebManualUsers'").
   if (applied.size === 0) {
-    const usersExists = await query<{ Found: number }>(`SELECT 1 AS Found WHERE OBJECT_ID(N'Users', N'U') IS NOT NULL`);
+    const usersExists = await query<{ Found: number }>(`SELECT 1 AS Found WHERE OBJECT_ID(N'WebManualUsers', N'U') IS NOT NULL`);
     if (usersExists.length) {
-      await execute(`INSERT INTO SchemaMigrations (Name) VALUES (N'001_init.sql')`);
+      await execute(`INSERT INTO WebManualSchemaMigrations (Name) VALUES (N'001_init.sql')`);
       applied.add('001_init.sql');
     }
   }
@@ -56,7 +56,7 @@ export async function runMigrations(): Promise<string[]> {
     // database "nửa vời".
     await withTransaction(async (tx) => {
       for (const batch of batches) await execute(batch, {}, tx);
-      await execute('INSERT INTO SchemaMigrations (Name) VALUES (@name)', { name: file }, tx);
+      await execute('INSERT INTO WebManualSchemaMigrations (Name) VALUES (@name)', { name: file }, tx);
     });
     ran.push(file);
   }

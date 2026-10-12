@@ -48,7 +48,7 @@ export async function createMedia(data: {
   uploadedById: number | null;
 }): Promise<MediaJson & { rawId: number }> {
   const row = await queryOne<MediaRow>(
-    `INSERT INTO Media (Kind, Url, OriginalName, Mime, Size, Width, Height, UploadedById)
+    `INSERT INTO WebManualMedia (Kind, Url, OriginalName, Mime, Size, Width, Height, UploadedById)
      OUTPUT ${MEDIA_COLUMNS.split(', ').map((c) => `INSERTED.${c}`).join(', ')}
      VALUES (@kind, @url, @originalName, @mime, @size, @width, @height, @uploadedById)`,
     data,
@@ -58,7 +58,7 @@ export async function createMedia(data: {
 
 export async function listMedia(kind?: MediaKind) {
   const rows = await query<MediaRow>(
-    `SELECT TOP 200 ${MEDIA_COLUMNS} FROM Media ${kind ? 'WHERE Kind = @kind' : ''} ORDER BY CreatedAt DESC, Id DESC`,
+    `SELECT TOP 200 ${MEDIA_COLUMNS} FROM WebManualMedia ${kind ? 'WHERE Kind = @kind' : ''} ORDER BY CreatedAt DESC, Id DESC`,
     kind ? { kind } : {},
   );
   return rows.map(toJson);
@@ -78,7 +78,7 @@ type SessionRow = {
 
 export async function createUploadSession(token: string, kind: 'image' | 'video', userId: number, expiresAt: Date) {
   await execute(
-    'INSERT INTO UploadSessions (Token, Kind, CreatedById, ExpiresAt) VALUES (@token, @kind, @userId, @expiresAt)',
+    'INSERT INTO WebManualUploadSessions (Token, Kind, CreatedById, ExpiresAt) VALUES (@token, @kind, @userId, @expiresAt)',
     { token, kind, userId, expiresAt },
   );
   return { token, kind, expiresAt };
@@ -88,12 +88,12 @@ export async function createUploadSession(token: string, kind: 'image' | 'video'
 export async function findActiveSession(token: string) {
   const row = await queryOne<SessionRow>(
     `SELECT Id, Token, Kind, Status, CreatedById, ExpiresAt, MediaId
-     FROM UploadSessions WHERE Token = @token AND ExpiresAt > SYSUTCDATETIME()`,
+     FROM WebManualUploadSessions WHERE Token = @token AND ExpiresAt > SYSUTCDATETIME()`,
     { token },
   );
   if (!row) return null;
   const media = row.MediaId
-    ? await queryOne<MediaRow>(`SELECT ${MEDIA_COLUMNS} FROM Media WHERE Id = @id`, { id: row.MediaId })
+    ? await queryOne<MediaRow>(`SELECT ${MEDIA_COLUMNS} FROM WebManualMedia WHERE Id = @id`, { id: row.MediaId })
     : null;
   return {
     id: row.Id,
@@ -109,7 +109,7 @@ export async function findActiveSession(token: string) {
 // Hai điện thoại gửi cùng lúc thì chỉ MỘT câu UPDATE ảnh hưởng được 1 dòng.
 export async function claimSession(sessionId: number, mediaId: number): Promise<boolean> {
   const affected = await execute(
-    `UPDATE UploadSessions SET Status = N'done', MediaId = @mediaId WHERE Id = @sessionId AND Status = N'pending'`,
+    `UPDATE WebManualUploadSessions SET Status = N'done', MediaId = @mediaId WHERE Id = @sessionId AND Status = N'pending'`,
     { sessionId, mediaId },
   );
   return affected === 1;
@@ -118,5 +118,5 @@ export async function claimSession(sessionId: number, mediaId: number): Promise<
 // MongoDB có TTL index tự xóa; SQL Server không có -> server gọi hàm này
 // định kỳ (xem index.ts). Code luôn tự kiểm tra hạn nên chậm xóa không sao.
 export async function deleteExpiredSessions(): Promise<number> {
-  return execute('DELETE FROM UploadSessions WHERE ExpiresAt < SYSUTCDATETIME()');
+  return execute('DELETE FROM WebManualUploadSessions WHERE ExpiresAt < SYSUTCDATETIME()');
 }

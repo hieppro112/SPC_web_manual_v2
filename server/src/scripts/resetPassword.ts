@@ -17,7 +17,7 @@ if (!username || !password || password.length < 8) {
 }
 
 await connectDb();
-const row = await queryOne<{ Id: number; Role: string }>('SELECT Id, Role FROM Users WHERE Username = @username', {
+const row = await queryOne<{ Id: number; Role: string }>('SELECT Id, Role FROM WebManualUsers WHERE Username = @username', {
   username: username.toLowerCase(),
 });
 if (!row) {

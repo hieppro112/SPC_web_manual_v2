@@ -39,9 +39,9 @@ const DOC_SELECT = `
          c.Id AS CategoryId, c.Name AS CategoryName, c.IconName AS CategoryIconName,
          u.Id AS UpdatedById, u.DisplayName AS UpdatedByName`;
 const DOC_FROM = `
-  FROM Documents d
-  LEFT JOIN Categories c ON c.Id = d.CategoryId
-  LEFT JOIN Users u ON u.Id = d.UpdatedById`;
+  FROM WebManualDocuments d
+  LEFT JOIN WebManualCategories c ON c.Id = d.CategoryId
+  LEFT JOIN WebManualUsers u ON u.Id = d.UpdatedById`;
 
 // Đổi một dòng SQL thành đúng hình dạng JSON mà client đang dùng.
 function toJson(row: DocRow) {
@@ -104,7 +104,7 @@ export async function findDocumentById(id: number, tx?: Tx) {
 export type FullDocument = NonNullable<Awaited<ReturnType<typeof findDocumentById>>>;
 
 export async function slugExists(slug: string): Promise<boolean> {
-  return !!(await queryOne('SELECT 1 AS Found FROM Documents WHERE Slug = @slug', { slug }));
+  return !!(await queryOne('SELECT 1 AS Found FROM WebManualDocuments WHERE Slug = @slug', { slug }));
 }
 
 // ---------- Ghi (luôn gọi qua services/documents.ts để có bản chụp phiên bản) ----------
@@ -120,7 +120,7 @@ export type DocumentRecord = {
 
 export async function insertDocument(data: DocumentRecord & { slug: string; userId: number }, tx: Tx): Promise<number> {
   const row = await queryOne<{ Id: number }>(
-    `INSERT INTO Documents (Title, Slug, CategoryId, Status, Blocks, Version, Description, SearchText, CreatedById, UpdatedById)
+    `INSERT INTO WebManualDocuments (Title, Slug, CategoryId, Status, Blocks, Version, Description, SearchText, CreatedById, UpdatedById)
      OUTPUT INSERTED.Id
      VALUES (@title, @slug, @categoryId, @status, @blocks, 1, @desc, @searchText, @userId, @userId)`,
     { ...data, blocks: JSON.stringify(data.blocks) },
@@ -132,7 +132,7 @@ export async function insertDocument(data: DocumentRecord & { slug: string; user
 // Tăng Version lên 1 và trả về số phiên bản MỚI.
 export async function updateDocumentRow(id: number, data: DocumentRecord & { userId: number }, tx: Tx): Promise<number> {
   const row = await queryOne<{ Version: number }>(
-    `UPDATE Documents
+    `UPDATE WebManualDocuments
      SET Title = @title, CategoryId = @categoryId, Status = @status, Blocks = @blocks,
          Description = @desc, SearchText = @searchText, UpdatedById = @userId,
          Version = Version + 1, UpdatedAt = SYSUTCDATETIME()
@@ -146,7 +146,7 @@ export async function updateDocumentRow(id: number, data: DocumentRecord & { use
 
 export async function deleteDocument(id: number): Promise<boolean> {
   // DocumentVersions có ON DELETE CASCADE -> các phiên bản tự xóa theo.
-  return (await execute('DELETE FROM Documents WHERE Id = @id', { id })) > 0;
+  return (await execute('DELETE FROM WebManualDocuments WHERE Id = @id', { id })) > 0;
 }
 
 // ---------- Phiên bản ----------
@@ -156,7 +156,7 @@ export async function insertVersion(
   tx: Tx,
 ): Promise<void> {
   await execute(
-    `INSERT INTO DocumentVersions (DocumentId, Version, Title, CategoryId, Status, Blocks, SavedById, RestoredFrom)
+    `INSERT INTO WebManualDocumentVersions (DocumentId, Version, Title, CategoryId, Status, Blocks, SavedById, RestoredFrom)
      VALUES (@documentId, @version, @title, @categoryId, @status, @blocks, @userId, @restoredFrom)`,
     { ...data, blocks: JSON.stringify(data.blocks) },
     tx,
@@ -199,7 +199,7 @@ function versionToJson(row: VersionRow) {
 export async function listVersions(documentId: number) {
   const rows = await query<VersionRow>(
     `SELECT v.Id, v.Version, v.Title, v.Status, v.RestoredFrom, v.CreatedAt, u.Id AS SavedById, u.DisplayName AS SavedByName
-     FROM DocumentVersions v LEFT JOIN Users u ON u.Id = v.SavedById
+     FROM WebManualDocumentVersions v LEFT JOIN WebManualUsers u ON u.Id = v.SavedById
      WHERE v.DocumentId = @documentId
      ORDER BY v.Version DESC`,
     { documentId },
@@ -212,9 +212,9 @@ export async function findVersion(documentId: number, version: number) {
     `SELECT v.Id, v.Version, v.Title, v.Status, v.RestoredFrom, v.CreatedAt, v.Blocks,
             u.Id AS SavedById, u.DisplayName AS SavedByName,
             c.Id AS CategoryId, c.Name AS CategoryName, c.IconName AS CategoryIconName
-     FROM DocumentVersions v
-     LEFT JOIN Users u ON u.Id = v.SavedById
-     LEFT JOIN Categories c ON c.Id = v.CategoryId
+     FROM WebManualDocumentVersions v
+     LEFT JOIN WebManualUsers u ON u.Id = v.SavedById
+     LEFT JOIN WebManualCategories c ON c.Id = v.CategoryId
      WHERE v.DocumentId = @documentId AND v.Version = @version`,
     { documentId, version },
   );
@@ -225,7 +225,7 @@ export async function findVersion(documentId: number, version: number) {
 // trong bản chụp (có thể là thể loại đã bị xóa — nơi gọi tự kiểm tra).
 export async function findVersionForRestore(documentId: number, version: number) {
   const row = await queryOne<{ Version: number; Title: string; CategoryId: number | null; Blocks: string }>(
-    'SELECT Version, Title, CategoryId, Blocks FROM DocumentVersions WHERE DocumentId = @documentId AND Version = @version',
+    'SELECT Version, Title, CategoryId, Blocks FROM WebManualDocumentVersions WHERE DocumentId = @documentId AND Version = @version',
     { documentId, version },
   );
   return row && { version: row.Version, title: row.Title, categoryId: row.CategoryId, blocks: JSON.parse(row.Blocks) as ParsedBlock[] };

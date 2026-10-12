@@ -1,90 +1,66 @@
 -- ============================================================
--- setup-database.sql — Tạo database WebManual + tài khoản cho app
+-- setup-database.sql — Quyền cho tài khoản app trên các bảng WebManual
 -- ============================================================
--- Chạy MỘT LẦN trong SSMS, đăng nhập bằng tài khoản có quyền tạo database
--- và login (sysadmin, hoặc dbcreator + securityadmin).
+-- Chạy SAU create-tables.sql, trong SSMS, bằng tài khoản có quyền cấp
+-- quyền trong database KVH (thường là IT / db_owner).
 --
--- TRƯỚC KHI CHẠY: thay <MAT_KHAU_MANH> bằng mật khẩu mạnh NGAY TRONG SSMS.
---   - KHÔNG lưu file này sau khi đã điền mật khẩu, KHÔNG commit, KHÔNG gửi qua chat.
---   - Điền cùng mật khẩu đó vào DB_PASSWORD trong server\.env.
+-- KVH là database DÙNG CHUNG của công ty. Tài khoản app (kvh_write) chỉ
+-- được cấp quyền trên ĐÚNG 7 bảng WebManual..., KHÔNG dùng db_datareader /
+-- db_datawriter (hai role đó cho đọc/ghi MỌI bảng của các hệ thống khác).
 --
--- App chỉ cần tài khoản này. Bảng KHÔNG tạo ở đây — app tự tạo khi khởi
--- động lần đầu (file server/src/db/migrations/*.sql).
---
--- Yêu cầu: SQL Server bật chế độ đăng nhập "SQL Server and Windows
--- Authentication mode" (Mixed Mode) — nếu không, tài khoản SQL không đăng nhập được.
+-- Login kvh_write (tên + mật khẩu cấp máy chủ) do IT tạo. Nếu chưa có,
+-- bỏ dấu -- ở khối (1), thay <MAT_KHAU_MANH> NGAY TRONG SSMS, chạy xong
+-- đóng file KHÔNG lưu. Không gửi mật khẩu qua chat / email / Git.
 
-USE master;
+USE KVH;
 GO
 
--- 1. Database
-IF DB_ID(N'WebManual') IS NULL
-  CREATE DATABASE WebManual;
-GO
-
--- AN TOÀN: tạo database thất bại (thiếu quyền) thì DỪNG HẲN, mọi lô lệnh
--- phía sau không chạy (SET NOEXEC ON) -> không tạo user/quyền nhầm chỗ.
-IF DB_ID(N'WebManual') IS NULL
+IF DB_NAME() <> N'KVH'
 BEGIN
-  RAISERROR(N'Chưa có database WebManual (có thể do thiếu quyền tạo) -> DỪNG. Nhờ IT chạy script này.', 16, 1);
+  RAISERROR(N'Không đứng ở database KVH -> DỪNG.', 16, 1);
   SET NOEXEC ON;
 END
 GO
 
--- 2. Login cấp máy chủ (tên đăng nhập + mật khẩu)
-IF SUSER_ID(N'kvh_write') IS NULL
-  CREATE LOGIN kvh_write
-    WITH PASSWORD = N'<MAT_KHAU_MANH>',
-         DEFAULT_DATABASE = WebManual,
-         CHECK_POLICY = ON;
-GO
-
--- 3. User trong database + quyền tối thiểu cần thiết
-USE WebManual;
-GO
-
-IF DB_NAME() <> N'WebManual'
+IF OBJECT_ID(N'WebManualUsers', N'U') IS NULL
 BEGIN
-  RAISERROR(N'Không chuyển được sang database WebManual -> DỪNG.', 16, 1);
+  RAISERROR(N'Chưa có bảng WebManualUsers -> chạy create-tables.sql trước. DỪNG.', 16, 1);
   SET NOEXEC ON;
 END
 GO
 
+-- (1) Login cấp máy chủ — chỉ khi IT chưa tạo
+-- IF SUSER_ID(N'kvh_write') IS NULL
+--   CREATE LOGIN kvh_write WITH PASSWORD = N'<MAT_KHAU_MANH>', DEFAULT_DATABASE = KVH, CHECK_POLICY = ON;
+-- GO
+
+-- (2) User trong database KVH
 IF USER_ID(N'kvh_write') IS NULL
-  CREATE USER kvh_write FOR LOGIN kvh_write;
+  CREATE USER kvh_write FOR LOGIN kvh_write WITH DEFAULT_SCHEMA = dbo;
 GO
 
-ALTER ROLE db_datareader ADD MEMBER kvh_write;  -- đọc dữ liệu
-ALTER ROLE db_datawriter ADD MEMBER kvh_write;  -- thêm / sửa / xóa dữ liệu
-ALTER ROLE db_ddladmin   ADD MEMBER kvh_write;  -- tạo / sửa bảng (app tự chạy migration)
+-- (3) Quyền đọc/ghi CHỈ trên các bảng của WebManual
+GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.WebManualUsers            TO kvh_write;
+GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.WebManualCategories       TO kvh_write;
+GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.WebManualDocuments        TO kvh_write;
+GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.WebManualDocumentVersions TO kvh_write;
+GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.WebManualMedia            TO kvh_write;
+GRANT SELECT, INSERT, UPDATE, DELETE ON dbo.WebManualUploadSessions   TO kvh_write;
+GRANT SELECT, INSERT                 ON dbo.WebManualSchemaMigrations TO kvh_write;
 GO
 
--- ------------------------------------------------------------
--- (CHỈ TRÊN MÁY PHÁT TRIỂN) Database riêng để chạy test tự động.
--- Test sẽ XÓA SẠCH dữ liệu trong database này mỗi lần chạy.
--- Bỏ dấu -- ở các dòng dưới nếu cần.
--- ------------------------------------------------------------
--- USE master;
--- GO
--- IF DB_ID(N'WebManual_Test') IS NULL CREATE DATABASE WebManual_Test;
--- GO
--- USE WebManual_Test;
--- GO
--- IF USER_ID(N'kvh_write') IS NULL CREATE USER kvh_write FOR LOGIN kvh_write;
--- ALTER ROLE db_datareader ADD MEMBER kvh_write;
--- ALTER ROLE db_datawriter ADD MEMBER kvh_write;
--- ALTER ROLE db_ddladmin   ADD MEMBER kvh_write;
--- GO
+-- Kiểm tra: kvh_write phải có quyền trên đúng 7 bảng WebManual
+SELECT OBJECT_NAME(major_id) AS TableName, permission_name AS Permission
+FROM sys.database_permissions
+WHERE grantee_principal_id = USER_ID(N'kvh_write') AND class = 1
+ORDER BY TableName, Permission;
 
--- Kiểm tra: phải thấy kvh_write với 3 quyền trên
-USE WebManual;
-SELECT dp.name AS UserName, r.name AS RoleName
+-- Kiểm tra: kvh_write KHÔNG nên nằm trong role đọc/ghi toàn database
+SELECT r.name AS RoleName
 FROM sys.database_role_members rm
-JOIN sys.database_principals r  ON r.principal_id  = rm.role_principal_id
-JOIN sys.database_principals dp ON dp.principal_id = rm.member_principal_id
-WHERE dp.name = N'kvh_write';
+JOIN sys.database_principals r ON r.principal_id = rm.role_principal_id
+WHERE rm.member_principal_id = USER_ID(N'kvh_write');
 GO
 
--- Bật lại chế độ chạy lệnh bình thường cho cửa sổ query này.
 SET NOEXEC OFF;
 GO

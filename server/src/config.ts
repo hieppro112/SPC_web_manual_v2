@@ -34,7 +34,7 @@ export const config = {
     // Tên instance (vd SQLEXPRESS). Để trống khi dùng instance mặc định
     // hoặc đã chỉ định cổng — có instance thì cần dịch vụ SQL Browser.
     instanceName: process.env.DB_INSTANCE || undefined,
-    database: process.env.DB_NAME ?? 'WebManual',
+    database: process.env.DB_NAME ?? 'KVH',
     user: required('DB_USER'),
     password: required('DB_PASSWORD'),
     // SQL Server 2022 mặc định mã hóa kết nối. Máy chủ nội bộ thường dùng

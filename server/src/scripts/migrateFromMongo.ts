@@ -70,7 +70,7 @@ await connectDb();
 await runMigrations();
 
 const existing = await queryOne<{ Total: number }>(
-  'SELECT (SELECT COUNT(*) FROM Users) + (SELECT COUNT(*) FROM Categories) + (SELECT COUNT(*) FROM Documents) AS Total',
+  'SELECT (SELECT COUNT(*) FROM WebManualUsers) + (SELECT COUNT(*) FROM WebManualCategories) + (SELECT COUNT(*) FROM WebManualDocuments) AS Total',
 );
 if ((existing?.Total ?? 0) > 0 && !force) {
   console.error('❌ Database SQL Server đã có dữ liệu. Thêm --force để XÓA hết và chép lại từ MongoDB.');
@@ -91,7 +91,7 @@ console.log(
 await withTransaction(async (tx: Tx) => {
   if (force) {
     console.log('🧹 Xóa dữ liệu cũ trong SQL Server...');
-    for (const table of ['UploadSessions', 'DocumentVersions', 'Documents', 'Media', 'Categories', 'Users']) {
+    for (const table of ['WebManualUploadSessions', 'WebManualDocumentVersions', 'WebManualDocuments', 'WebManualMedia', 'WebManualCategories', 'WebManualUsers']) {
       await execute(`DELETE FROM ${table}`, {}, tx);
     }
   }
@@ -102,7 +102,7 @@ await withTransaction(async (tx: Tx) => {
 
   for (const u of users) {
     const row = await queryOne<{ Id: number }>(
-      `INSERT INTO Users (Username, DisplayName, Email, PasswordHash, Role, Status, CreatedAt, UpdatedAt)
+      `INSERT INTO WebManualUsers (Username, DisplayName, Email, PasswordHash, Role, Status, CreatedAt, UpdatedAt)
        OUTPUT INSERTED.Id
        VALUES (@username, @displayName, @email, @passwordHash, @role, @status, @createdAt, @updatedAt)`,
       {
@@ -122,7 +122,7 @@ await withTransaction(async (tx: Tx) => {
 
   for (const c of categories) {
     const row = await queryOne<{ Id: number }>(
-      `INSERT INTO Categories (Name, IconName, CreatedAt, UpdatedAt) OUTPUT INSERTED.Id
+      `INSERT INTO WebManualCategories (Name, IconName, CreatedAt, UpdatedAt) OUTPUT INSERTED.Id
        VALUES (@name, @iconName, @createdAt, @updatedAt)`,
       { name: c.name, iconName: c.iconName || 'Folder', createdAt: date(c.createdAt), updatedAt: date(c.updatedAt) },
       tx,
@@ -137,7 +137,7 @@ await withTransaction(async (tx: Tx) => {
     if (id) return id;
     if (!fallbackCategoryId) {
       const row = await queryOne<{ Id: number }>(
-        `INSERT INTO Categories (Name, IconName) OUTPUT INSERTED.Id VALUES (N'Chưa phân loại', N'Folder')`,
+        `INSERT INTO WebManualCategories (Name, IconName) OUTPUT INSERTED.Id VALUES (N'Chưa phân loại', N'Folder')`,
         {},
         tx,
       );
@@ -149,7 +149,7 @@ await withTransaction(async (tx: Tx) => {
 
   for (const m of media) {
     await execute(
-      `INSERT INTO Media (Kind, Url, OriginalName, Mime, Size, Width, Height, UploadedById, CreatedAt)
+      `INSERT INTO WebManualMedia (Kind, Url, OriginalName, Mime, Size, Width, Height, UploadedById, CreatedAt)
        VALUES (@kind, @url, @originalName, @mime, @size, @width, @height, @uploadedById, @createdAt)`,
       {
         kind: m.kind,
@@ -185,7 +185,7 @@ await withTransaction(async (tx: Tx) => {
     const currentVersion = Math.max(Number(d.version ?? 0), ...docVersions.map((v) => Number(v.version)), 1);
 
     const row = await queryOne<{ Id: number }>(
-      `INSERT INTO Documents (Title, Slug, CategoryId, Status, Blocks, Version, Description, SearchText,
+      `INSERT INTO WebManualDocuments (Title, Slug, CategoryId, Status, Blocks, Version, Description, SearchText,
                               CreatedById, UpdatedById, CreatedAt, UpdatedAt)
        OUTPUT INSERTED.Id
        VALUES (@title, @slug, @categoryId, @status, @blocks, @version, @desc, @searchText,
@@ -210,7 +210,7 @@ await withTransaction(async (tx: Tx) => {
 
     const insertVersion = (v: { version: number; title: string; categoryId: number | null; status: string; blocks: ParsedBlock[]; savedById: number | null; restoredFrom: number | null; createdAt: Date }) =>
       execute(
-        `INSERT INTO DocumentVersions (DocumentId, Version, Title, CategoryId, Status, Blocks, SavedById, RestoredFrom, CreatedAt)
+        `INSERT INTO WebManualDocumentVersions (DocumentId, Version, Title, CategoryId, Status, Blocks, SavedById, RestoredFrom, CreatedAt)
          VALUES (@documentId, @version, @title, @categoryId, @status, @blocks, @savedById, @restoredFrom, @createdAt)`,
         { ...v, documentId, blocks: JSON.stringify(v.blocks) },
         tx,

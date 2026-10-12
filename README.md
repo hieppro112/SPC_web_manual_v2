@@ -24,7 +24,7 @@ doc_app_v2/
 │       ├── lib/            http.ts (nơi DUY NHẤT gọi fetch), types, tiện ích
 │       └── index.css       ★ DESIGN TOKENS — toàn bộ màu sáng/tối
 └── server/                 Express + SQL Server + TypeScript (Node chạy thẳng file .ts)
-    ├── sql/                setup-database.sql — tạo database WebManual + tài khoản app (chạy 1 lần trong SSMS)
+    ├── sql/                create-tables.sql (tạo bảng WebManual trong KVH) + setup-database.sql (cấp quyền cho app)
     └── src/
         ├── db/             kết nối SQL Server (pool.ts) + migrations/*.sql (app tự tạo/cập nhật bảng)
         ├── repositories/   ★ mọi câu SQL, mỗi bảng một file (users, categories, documents, media)
@@ -40,7 +40,7 @@ Quy tắc:
 
 ## Chạy khi phát triển
 
-Cần: Node 24+, một SQL Server (2019+) có database `WebManual` + tài khoản app (tạo bằng `server/sql/setup-database.sql`).
+Cần: Node 24+, SQL Server (2019+) có các bảng WebManual (tạo bằng `server/sql/create-tables.sql`) + tài khoản app có quyền (`server/sql/setup-database.sql`).
 
 ```bash
 cd server
@@ -74,7 +74,7 @@ Production chỉ cần **một tiến trình** — server phục vụ luôn giao
 | `UPLOAD_DIR` | `uploads` | Nơi lưu ảnh/video/file |
 | `COOKIE_SECURE` | `false` | Chỉ `true` khi chạy HTTPS |
 
-**Sao lưu:** cần sao lưu CẢ HAI — database `WebManual` (lịch backup SQL Server của IT) và thư mục upload (`deploy/backup.ps1`).
+**Sao lưu:** cần sao lưu CẢ HAI — các bảng WebManual trong database `KVH` (lịch backup SQL Server của IT) và thư mục upload (`deploy/backup.ps1`).
 
 **Quên mật khẩu admin:** chạy trên máy chủ `npm run reset-password -- <tên đăng nhập> <mật khẩu mới>`.
 

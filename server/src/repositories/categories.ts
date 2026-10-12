@@ -16,8 +16,8 @@ function toJson(row: CategoryRow) {
 export async function listCategoriesWithCount(onlyPublished: boolean) {
   const rows = await query<CategoryRow & { DocCount: number }>(
     `SELECT c.Id, c.Name, c.IconName, c.CreatedAt, c.UpdatedAt, COUNT(d.Id) AS DocCount
-     FROM Categories c
-     LEFT JOIN Documents d ON d.CategoryId = c.Id AND (@onlyPublished = 0 OR d.Status = N'published')
+     FROM WebManualCategories c
+     LEFT JOIN WebManualDocuments d ON d.CategoryId = c.Id AND (@onlyPublished = 0 OR d.Status = N'published')
      GROUP BY c.Id, c.Name, c.IconName, c.CreatedAt, c.UpdatedAt
      ORDER BY c.Name`,
     { onlyPublished: onlyPublished ? 1 : 0 },
@@ -26,17 +26,17 @@ export async function listCategoriesWithCount(onlyPublished: boolean) {
 }
 
 export async function findCategoryById(id: number) {
-  const row = await queryOne<CategoryRow>('SELECT Id, Name, IconName, CreatedAt, UpdatedAt FROM Categories WHERE Id = @id', { id });
+  const row = await queryOne<CategoryRow>('SELECT Id, Name, IconName, CreatedAt, UpdatedAt FROM WebManualCategories WHERE Id = @id', { id });
   return row && toJson(row);
 }
 
 export async function categoryExists(id: number): Promise<boolean> {
-  return !!(await queryOne('SELECT 1 AS Found FROM Categories WHERE Id = @id', { id }));
+  return !!(await queryOne('SELECT 1 AS Found FROM WebManualCategories WHERE Id = @id', { id }));
 }
 
 export async function createCategory(name: string, iconName: string) {
   const row = await queryOne<CategoryRow>(
-    `INSERT INTO Categories (Name, IconName)
+    `INSERT INTO WebManualCategories (Name, IconName)
      OUTPUT INSERTED.Id, INSERTED.Name, INSERTED.IconName, INSERTED.CreatedAt, INSERTED.UpdatedAt
      VALUES (@name, @iconName)`,
     { name, iconName },
@@ -46,17 +46,17 @@ export async function createCategory(name: string, iconName: string) {
 
 export async function updateCategory(id: number, name: string, iconName: string) {
   await execute(
-    'UPDATE Categories SET Name = @name, IconName = @iconName, UpdatedAt = SYSUTCDATETIME() WHERE Id = @id',
+    'UPDATE WebManualCategories SET Name = @name, IconName = @iconName, UpdatedAt = SYSUTCDATETIME() WHERE Id = @id',
     { id, name, iconName },
   );
   return findCategoryById(id);
 }
 
 export async function countDocumentsInCategory(id: number): Promise<number> {
-  const row = await queryOne<{ Total: number }>('SELECT COUNT(*) AS Total FROM Documents WHERE CategoryId = @id', { id });
+  const row = await queryOne<{ Total: number }>('SELECT COUNT(*) AS Total FROM WebManualDocuments WHERE CategoryId = @id', { id });
   return row?.Total ?? 0;
 }
 
 export async function deleteCategory(id: number): Promise<void> {
-  await execute('DELETE FROM Categories WHERE Id = @id', { id });
+  await execute('DELETE FROM WebManualCategories WHERE Id = @id', { id });
 }

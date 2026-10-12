@@ -10,8 +10,8 @@
 //   withTransaction(fn)    -> chạy nhiều câu SQL "cùng sống cùng chết"
 //
 // LUÔN truyền giá trị qua `params` (@ten), KHÔNG ghép chuỗi vào SQL:
-//   ✅ query('SELECT * FROM Users WHERE Username = @username', { username })
-//   ❌ query(`SELECT * FROM Users WHERE Username = '${username}'`)
+//   ✅ query('SELECT * FROM WebManualUsers WHERE Username = @username', { username })
+//   ❌ query(`SELECT * FROM WebManualUsers WHERE Username = '${username}'`)
 // Ghép chuỗi là lỗ hổng SQL injection: người dùng gõ ' OR 1=1 -- là vào được.
 // 🔸 Flutter: giống truyền tham số `?` trong sqflite thay vì nối chuỗi.
 

@@ -59,7 +59,7 @@ function toUser(row: UserRow): User {
 }
 
 export async function findUserById(id: number): Promise<User | null> {
-  const row = await queryOne<UserRow>(`SELECT ${USER_COLUMNS} FROM Users WHERE Id = @id`, { id });
+  const row = await queryOne<UserRow>(`SELECT ${USER_COLUMNS} FROM WebManualUsers WHERE Id = @id`, { id });
   return row && toUser(row);
 }
 
@@ -67,33 +67,33 @@ export async function findUserById(id: number): Promise<User | null> {
 export async function findUserForLogin(login: string): Promise<{ user: User; passwordHash: string } | null> {
   const column = login.includes('@') ? 'Email' : 'Username';
   const row = await queryOne<UserRow & { PasswordHash: string }>(
-    `SELECT ${USER_COLUMNS}, PasswordHash FROM Users WHERE ${column} = @login`,
+    `SELECT ${USER_COLUMNS}, PasswordHash FROM WebManualUsers WHERE ${column} = @login`,
     { login },
   );
   return row && { user: toUser(row), passwordHash: row.PasswordHash };
 }
 
 export async function getPasswordHash(id: number): Promise<string | null> {
-  const row = await queryOne<{ PasswordHash: string }>('SELECT PasswordHash FROM Users WHERE Id = @id', { id });
+  const row = await queryOne<{ PasswordHash: string }>('SELECT PasswordHash FROM WebManualUsers WHERE Id = @id', { id });
   return row?.PasswordHash ?? null;
 }
 
 export async function countUsers(): Promise<number> {
-  const row = await queryOne<{ Total: number }>('SELECT COUNT(*) AS Total FROM Users');
+  const row = await queryOne<{ Total: number }>('SELECT COUNT(*) AS Total FROM WebManualUsers');
   return row?.Total ?? 0;
 }
 
 // Số admin ĐANG HOẠT ĐỘNG khác `exceptId` — để chặn xóa/hạ quyền admin cuối cùng.
 export async function countOtherActiveAdmins(exceptId: number): Promise<number> {
   const row = await queryOne<{ Total: number }>(
-    `SELECT COUNT(*) AS Total FROM Users WHERE Role = N'admin' AND Status = N'active' AND Id <> @exceptId`,
+    `SELECT COUNT(*) AS Total FROM WebManualUsers WHERE Role = N'admin' AND Status = N'active' AND Id <> @exceptId`,
     { exceptId },
   );
   return row?.Total ?? 0;
 }
 
 export async function listUsers(): Promise<User[]> {
-  return (await query<UserRow>(`SELECT ${USER_COLUMNS} FROM Users ORDER BY CreatedAt, Id`)).map(toUser);
+  return (await query<UserRow>(`SELECT ${USER_COLUMNS} FROM WebManualUsers ORDER BY CreatedAt, Id`)).map(toUser);
 }
 
 export type NewUser = {
@@ -109,7 +109,7 @@ export async function createUser(data: NewUser): Promise<User> {
   // OUTPUT INSERTED.* : trả về luôn dòng vừa thêm (kèm Id tự tăng), khỏi
   // phải SELECT lại lần nữa.
   const row = await queryOne<UserRow>(
-    `INSERT INTO Users (Username, DisplayName, Email, PasswordHash, Role, Status)
+    `INSERT INTO WebManualUsers (Username, DisplayName, Email, PasswordHash, Role, Status)
      OUTPUT ${USER_COLUMNS.split(', ').map((c) => `INSERTED.${c}`).join(', ')}
      VALUES (@username, @displayName, @email, @passwordHash, @role, @status)`,
     data,
@@ -130,7 +130,7 @@ export async function updateUser(id: number, changes: UserChanges): Promise<User
   const keys = (Object.keys(changes) as (keyof UserChanges)[]).filter((k) => changes[k] !== undefined);
   if (keys.length) {
     const sets = keys.map((k) => `${COLUMN[k]} = @${k}`).join(', ');
-    await execute(`UPDATE Users SET ${sets}, UpdatedAt = SYSUTCDATETIME() WHERE Id = @id`, { ...changes, id });
+    await execute(`UPDATE WebManualUsers SET ${sets}, UpdatedAt = SYSUTCDATETIME() WHERE Id = @id`, { ...changes, id });
   }
   return findUserById(id);
 }
@@ -140,11 +140,11 @@ export async function updateUser(id: number, changes: UserChanges): Promise<User
 // Tài liệu vẫn còn nguyên, chỉ không còn hiện tên người sửa.
 export async function deleteUser(id: number): Promise<void> {
   await withTransaction(async (tx: Tx) => {
-    await execute('UPDATE Documents SET CreatedById = NULL WHERE CreatedById = @id', { id }, tx);
-    await execute('UPDATE Documents SET UpdatedById = NULL WHERE UpdatedById = @id', { id }, tx);
-    await execute('UPDATE DocumentVersions SET SavedById = NULL WHERE SavedById = @id', { id }, tx);
-    await execute('UPDATE Media SET UploadedById = NULL WHERE UploadedById = @id', { id }, tx);
-    await execute('DELETE FROM UploadSessions WHERE CreatedById = @id', { id }, tx);
-    await execute('DELETE FROM Users WHERE Id = @id', { id }, tx);
+    await execute('UPDATE WebManualDocuments SET CreatedById = NULL WHERE CreatedById = @id', { id }, tx);
+    await execute('UPDATE WebManualDocuments SET UpdatedById = NULL WHERE UpdatedById = @id', { id }, tx);
+    await execute('UPDATE WebManualDocumentVersions SET SavedById = NULL WHERE SavedById = @id', { id }, tx);
+    await execute('UPDATE WebManualMedia SET UploadedById = NULL WHERE UploadedById = @id', { id }, tx);
+    await execute('DELETE FROM WebManualUploadSessions WHERE CreatedById = @id', { id }, tx);
+    await execute('DELETE FROM WebManualUsers WHERE Id = @id', { id }, tx);
   });
 }
