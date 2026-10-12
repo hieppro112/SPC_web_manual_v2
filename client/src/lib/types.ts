@@ -25,6 +25,9 @@ export type Category = {
   id: string;
   name: string;
   iconName: string;
+  // Thể loại cha; null = cấp cao nhất (thể loại dạng cây)
+  parentId: string | null;
+  // Số tài liệu nằm TRỰC TIẾP trong thể loại này (chưa cộng thể loại con)
   docCount: number;
 };
 

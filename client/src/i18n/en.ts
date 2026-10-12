@@ -33,6 +33,8 @@ export const en: Messages = {
     all: 'All',
     error: 'Something went wrong',
     networkError: 'Cannot reach the server',
+    expand: 'Expand',
+    collapse: 'Collapse',
   },
   nav: {
     home: 'Home',
@@ -242,6 +244,8 @@ export const en: Messages = {
     deleteConfirm: 'Delete category “{{name}}”?',
     saved: 'Category saved',
     deleted: 'Category deleted',
+    parent: 'Parent category',
+    noParent: '— Top level —',
   },
   users: {
     title: 'Manage accounts',

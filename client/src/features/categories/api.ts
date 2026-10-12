@@ -2,7 +2,8 @@
 import { http } from '../../lib/http.ts';
 import type { Category } from '../../lib/types.ts';
 
-type CategoryInput = { name: string; iconName: string };
+// parentId: null = cấp cao nhất
+export type CategoryInput = { name: string; iconName: string; parentId: string | null };
 
 export const categoriesApi = {
   list: () => http.get<Category[]>('/categories'),

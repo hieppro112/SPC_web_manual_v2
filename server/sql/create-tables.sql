@@ -142,6 +142,15 @@ GO
 CREATE INDEX IX_WebManualUploadSessions_ExpiresAt ON WebManualUploadSessions (ExpiresAt);
 GO
 
+-- Thể loại dạng cây (giống src/db/migrations/002_category_tree.sql)
+ALTER TABLE WebManualCategories
+  ADD ParentId INT NULL
+      CONSTRAINT FK_WebManualCategories_Parent REFERENCES WebManualCategories (Id);
+GO
+
+CREATE INDEX IX_WebManualCategories_ParentId ON WebManualCategories (ParentId);
+GO
+
 -- Đánh dấu cho app biết bảng đã được tạo sẵn, không tạo lại
 CREATE TABLE WebManualSchemaMigrations (
   Name      NVARCHAR(200) NOT NULL CONSTRAINT PK_WebManualSchemaMigrations PRIMARY KEY,
@@ -149,7 +158,7 @@ CREATE TABLE WebManualSchemaMigrations (
 );
 GO
 
-INSERT INTO WebManualSchemaMigrations (Name) VALUES (N'001_init.sql');
+INSERT INTO WebManualSchemaMigrations (Name) VALUES (N'001_init.sql'), (N'002_category_tree.sql');
 GO
 
 -- Kiểm tra: phải ra đúng 7 bảng WebManual...

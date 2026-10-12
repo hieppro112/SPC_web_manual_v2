@@ -29,6 +29,8 @@ import { createBlock } from '../../blocks/registry.ts';
 import type { Block, BlockPropsMap, BlockType } from '../../blocks/types.ts';
 import type { Category, DocInput } from '../../lib/types.ts';
 import { cn, errorMessage, newId } from '../../lib/utils.ts';
+import CategoryOptions from '../categories/CategoryOptions.tsx';
+import { buildCategoryTree } from '../categories/tree.ts';
 import DocContent from '../documents/DocContent.tsx';
 import { useSaveDocument } from '../documents/queries.ts';
 import BlockPicker from './BlockPicker.tsx';
@@ -56,6 +58,7 @@ export default function EditorForm({ docId, initial, categories, backTo }: Props
   const dirty = useMemo(() => JSON.stringify(draft) !== savedJson, [draft, savedJson]);
   const { allowNextNavigation } = useUnsavedGuard(dirty, t('editor.leaveConfirm'));
   const { meta } = useMemo(() => computeBlockMeta(draft.blocks), [draft.blocks]);
+  const categoryTree = useMemo(() => buildCategoryTree(categories), [categories]);
 
   // ---------- Thao tác trên khối ----------
   // useCallback + setDraft(prev => ...) : hàm giữ NGUYÊN tham chiếu qua các
@@ -225,11 +228,8 @@ export default function EditorForm({ docId, initial, categories, backTo }: Props
               <span className="font-medium">{t('editor.category')}</span>
               <Select value={draft.category} onChange={(e) => setDraft((d) => ({ ...d, category: e.target.value }))} className="w-auto min-w-56">
                 <option value="">{t('editor.chooseCategory')}</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
+                {/* Thụt lề theo cây: IT, └ AI, PC... */}
+                <CategoryOptions tree={categoryTree} />
               </Select>
               {categories.length === 0 && <span className="text-warning">{t('editor.noCategory')}</span>}
             </label>

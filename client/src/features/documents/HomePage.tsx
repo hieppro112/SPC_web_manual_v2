@@ -7,7 +7,7 @@
 
 import { Link, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { FilePlus2, FileSearch, FolderOpen } from 'lucide-react';
+import { ChevronRight, FilePlus2, FileSearch, FolderOpen } from 'lucide-react';
 import Button from '../../components/ui/Button.tsx';
 import EmptyState from '../../components/ui/EmptyState.tsx';
 import Spinner from '../../components/ui/Spinner.tsx';
@@ -18,6 +18,7 @@ import { useDocumentTitle } from '../../lib/useDocumentTitle.ts';
 import { useCurrentUser } from '../auth/queries.ts';
 import CategoryNav from '../categories/CategoryNav.tsx';
 import { useCategories } from '../categories/queries.ts';
+import { categoryPath } from '../categories/tree.ts';
 import DocCard from './DocCard.tsx';
 import { useDocuments } from './queries.ts';
 
@@ -35,6 +36,8 @@ export default function HomePage() {
   const { data: categories } = useCategories();
   const { data: docs, isPending, error, refetch } = useDocuments({ q, category, status });
   const categoryName = categories?.find((c) => c.id === category)?.name;
+  // Các thể loại cha của thể loại đang chọn (AI -> [IT]) để hiện "IT ›" phía trên tiêu đề.
+  const parents = categoryPath(categories ?? [], category).slice(0, -1);
   const heading = q ? t('home.searchResults', { q }) : (categoryName ?? t('home.allDocs'));
   useDocumentTitle(categoryName);
 
@@ -64,6 +67,18 @@ export default function HomePage() {
         <SearchBox className="mb-4 md:hidden" />
         <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
           <div>
+            {!q && parents.length > 0 && (
+              <nav className="mb-1 flex flex-wrap items-center gap-1 text-sm text-muted">
+                {parents.map((p) => (
+                  <span key={p.id} className="flex items-center gap-1">
+                    <Link to={`/?category=${p.id}`} className="hover:text-fg">
+                      {p.name}
+                    </Link>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </span>
+                ))}
+              </nav>
+            )}
             <h1 className="text-2xl font-bold">{heading}</h1>
             {docs && <p className="mt-1 text-sm text-muted">{t('home.count', { count: docs.length })}</p>}
           </div>

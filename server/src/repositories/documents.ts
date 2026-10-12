@@ -61,7 +61,9 @@ function toJson(row: DocRow) {
   };
 }
 
-export type DocListFilter = { status?: DocStatus; categoryId?: number | null; words?: string[] };
+// categoryIds: thể loại được chọn + mọi thể loại con cháu (tính sẵn ở route),
+// để bấm "IT" thì thấy cả tài liệu của "AI" nằm bên trong.
+export type DocListFilter = { status?: DocStatus; categoryIds?: number[]; words?: string[] };
 
 export async function listDocuments(filter: DocListFilter) {
   const where: string[] = [];
@@ -70,9 +72,13 @@ export async function listDocuments(filter: DocListFilter) {
     where.push('d.Status = @status');
     params.status = filter.status;
   }
-  if (filter.categoryId) {
-    where.push('d.CategoryId = @categoryId');
-    params.categoryId = filter.categoryId;
+  if (filter.categoryIds?.length) {
+    // Mỗi id một tham số riêng (@c0, @c1...) -> d.CategoryId IN (@c0, @c1, ...)
+    const names = filter.categoryIds.map((id, i) => {
+      params[`c${i}`] = id;
+      return `@c${i}`;
+    });
+    where.push(`d.CategoryId IN (${names.join(', ')})`);
   }
   // Tìm kiếm: MỌI từ phải có trong SearchText (đã bỏ dấu). Mỗi từ là một
   // tham số riêng @w0, @w1... — không bao giờ ghép chữ người dùng gõ vào SQL.
