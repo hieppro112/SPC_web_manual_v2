@@ -37,6 +37,8 @@ export const vi = {
     all: 'Tất cả',
     error: 'Đã có lỗi xảy ra',
     networkError: 'Không kết nối được máy chủ',
+    expand: 'Mở rộng',
+    collapse: 'Thu gọn',
   },
   nav: {
     home: 'Trang chủ',
@@ -246,6 +248,8 @@ export const vi = {
     deleteConfirm: 'Xóa thể loại “{{name}}”?',
     saved: 'Đã lưu thể loại',
     deleted: 'Đã xóa thể loại',
+    parent: 'Thuộc thể loại',
+    noParent: '— Cấp cao nhất —',
   },
   users: {
     title: 'Quản lý tài khoản',

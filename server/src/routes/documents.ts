@@ -19,7 +19,8 @@ import { z } from 'zod';
 import { parseBlocks } from '../blocks/schemas.ts';
 import { HttpError } from '../middleware/errorHandler.ts';
 import { currentUser, requireAuth } from '../middleware/auth.ts';
-import { categoryExists } from '../repositories/categories.ts';
+import { categoryExists, listCategoryLinks } from '../repositories/categories.ts';
+import { descendantIds } from '../services/categoryTree.ts';
 import {
   DOC_STATUSES,
   deleteDocument,
@@ -73,11 +74,14 @@ async function parseCategory(value: unknown): Promise<number> {
 
 documentsRouter.get('/', async (req, res) => {
   const { q, category, status } = req.query;
+  // Lọc theo thể loại = thể loại đó + toàn bộ thể loại con cháu.
+  const categoryId = tryParseId(category);
+  const categoryIds = categoryId ? descendantIds(await listCategoryLinks(), categoryId) : undefined;
   res.json(
     await listDocuments({
       // Khách: luôn chỉ bài đã xuất bản, bỏ qua ?status gửi lên.
       status: !res.locals.user ? 'published' : isDocStatus(status) ? status : undefined,
-      categoryId: tryParseId(category),
+      categoryIds,
       // Tìm kiếm: bỏ dấu câu hỏi rồi yêu cầu MỌI từ đều có trong SearchText.
       words: typeof q === 'string' ? removeDiacritics(q).split(/\s+/).filter(Boolean).slice(0, 8) : [],
     }),

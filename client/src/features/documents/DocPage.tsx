@@ -24,6 +24,8 @@ import { cn, errorMessage, formatDateTime } from '../../lib/utils.ts';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.ts';
 import { useCurrentUser } from '../auth/queries.ts';
 import CategoryIcon from '../categories/CategoryIcon.tsx';
+import { useCategories } from '../categories/queries.ts';
+import { categoryPath } from '../categories/tree.ts';
 import DocContent from './DocContent.tsx';
 import ShareDialog from './ShareDialog.tsx';
 import Toc from './Toc.tsx';
@@ -42,6 +44,15 @@ export default function DocPage() {
 
   // Tài liệu cùng thể loại cho cột trái.
   const { data: siblings } = useDocuments({ category: doc?.category?.id }, !!doc?.category);
+
+  // Đường dẫn thể loại đầy đủ cho breadcrumb: Trang chủ › IT › AI
+  const { data: categories } = useCategories();
+  const docCategory = doc?.category;
+  const categoryTrail = useMemo(() => {
+    const trail = categoryPath(categories ?? [], docCategory?.id);
+    // Danh sách thể loại chưa tải xong -> tạm hiện mỗi thể loại của tài liệu.
+    return trail.length ? trail : docCategory ? [{ id: docCategory.id, name: docCategory.name }] : [];
+  }, [categories, docCategory]);
 
   // useMemo: chỉ tính lại khi `doc` đổi, không tính lại mỗi lần vẽ
   // (vd mỗi lần mở/đóng hộp thoại chia sẻ). 🔸 Flutter: giống cache một
@@ -115,14 +126,14 @@ export default function DocPage() {
           <Link to="/" className="hover:text-fg">
             {t('nav.home')}
           </Link>
-          {doc.category && (
-            <>
+          {categoryTrail.map((c) => (
+            <span key={c.id} className="flex items-center gap-1">
               <ChevronRight className="h-3.5 w-3.5" />
-              <Link to={`/?category=${doc.category.id}`} className="hover:text-fg">
-                {doc.category.name}
+              <Link to={`/?category=${c.id}`} className="hover:text-fg">
+                {c.name}
               </Link>
-            </>
-          )}
+            </span>
+          ))}
         </nav>
 
         <header className="mb-6 border-b border-border pb-5">

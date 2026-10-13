@@ -54,10 +54,20 @@ export async function runMigrations(): Promise<string[]> {
 
     // Cả file chạy trong MỘT transaction: lỗi giữa chừng thì không để lại
     // database "nửa vời".
-    await withTransaction(async (tx) => {
-      for (const batch of batches) await execute(batch, {}, tx);
-      await execute('INSERT INTO WebManualSchemaMigrations (Name) VALUES (@name)', { name: file }, tx);
-    });
+    try {
+      await withTransaction(async (tx) => {
+        for (const batch of batches) await execute(batch, {}, tx);
+        await execute('INSERT INTO WebManualSchemaMigrations (Name) VALUES (@name)', { name: file }, tx);
+      });
+    } catch (err) {
+      // Thường gặp nhất: tài khoản app chỉ có quyền đọc/ghi dữ liệu, không
+      // có quyền sửa cấu trúc bảng -> hướng dẫn chạy script tay trong SSMS.
+      const message = err instanceof Error ? err.message : String(err);
+      throw new Error(
+        `Cập nhật cấu trúc database "${file}" thất bại: ${message}\n` +
+          `   -> Chạy file server/sql/${file} trong SSMS bằng tài khoản có quyền sửa bảng, rồi khởi động lại app.`,
+      );
+    }
     ran.push(file);
   }
   return ran;

@@ -33,6 +33,8 @@ export const ja: Messages = {
     all: 'すべて',
     error: 'エラーが発生しました',
     networkError: 'サーバーに接続できません',
+    expand: '展開',
+    collapse: '折りたたむ',
   },
   nav: {
     home: 'ホーム',
@@ -242,6 +244,8 @@ export const ja: Messages = {
     deleteConfirm: 'カテゴリ「{{name}}」を削除しますか?',
     saved: 'カテゴリを保存しました',
     deleted: 'カテゴリを削除しました',
+    parent: '親カテゴリ',
+    noParent: '— 最上位 —',
   },
   users: {
     title: 'アカウント管理',
