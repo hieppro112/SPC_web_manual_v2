@@ -2,7 +2,7 @@
 
 Web lưu tài liệu hướng dẫn / quy trình nội bộ. Chạy trong mạng nội bộ: **ai vào được mạng là đọc được** tài liệu đã xuất bản, **người đăng nhập** (editor/admin) mới được soạn.
 
-- Soạn theo **khối** (form từng khối): tiêu đề mục, văn bản (Markdown), bước thực hiện tự đánh số, ảnh, video, **sơ đồ (draw.io)**, hộp lưu ý, checklist, bảng, mã lệnh, file đính kèm, đường kẻ
+- Soạn theo **khối** (form từng khối): tiêu đề mục, văn bản (Markdown), bước thực hiện tự đánh số, ảnh, video, **sơ đồ (draw.io)**, **biểu đồ** (cột, đường, tròn... nhập số hoặc dán từ Excel), hộp lưu ý, checklist, bảng, mã lệnh, file đính kèm, đường kẻ
 - Ảnh/video: chọn từ máy, kéo thả, dán (Ctrl+V), thư viện media, dán URL, hoặc **quét QR chụp bằng điện thoại**
 - Lịch sử phiên bản (xem + khôi phục), nháp / đã xuất bản
 - Chia sẻ link + mã QR của tài liệu, link tới từng mục, in / xuất PDF

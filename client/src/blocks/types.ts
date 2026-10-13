@@ -20,6 +20,7 @@ import type { ComponentType } from 'react';
 import type { LucideIcon } from 'lucide-react';
 
 export type CalloutVariant = 'info' | 'success' | 'warning' | 'danger';
+export type ChartKind = 'bar' | 'barH' | 'line' | 'area' | 'pie' | 'donut' | 'combo';
 
 // Dữ liệu riêng của từng loại khối. PHẢI khớp với zod ở server.
 export type BlockPropsMap = {
@@ -35,6 +36,18 @@ export type BlockPropsMap = {
   divider: Record<string, never>;
   step: { title: string; text: string; image: string };
   diagram: { xml: string; src: string; caption: string };
+  // rows[0] = hàng tiêu đề: ['', 'Mạng', 'PC'] (ô đầu bỏ trống, sau là tên từng chuỗi số liệu)
+  // rows[1..] = ['T1', '12', '5'] (nhãn + số). Lưu số dạng CHUỖI như khối bảng,
+  // để ô đang gõ dở ("12,") không bị mất; lúc vẽ mới đổi sang số.
+  chart: {
+    kind: ChartKind;
+    title: string;
+    unit: string;
+    legend: boolean;
+    stacked: boolean;
+    rows: string[][];
+    colors: string[]; // màu từng chuỗi, '' = màu mặc định
+  };
 };
 
 export type BlockType = keyof BlockPropsMap;
