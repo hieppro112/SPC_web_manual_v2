@@ -8,6 +8,7 @@
 import { calloutBlock } from './callout/index.ts';
 import { checklistBlock } from './checklist/index.ts';
 import { codeBlock } from './code/index.ts';
+import { diagramBlock } from './diagram/index.ts';
 import { dividerBlock } from './divider/index.ts';
 import { fileBlock } from './file/index.ts';
 import { headingBlock } from './heading/index.ts';
@@ -24,6 +25,7 @@ export const registry: BlockRegistry = {
   step: stepBlock,
   image: imageBlock,
   video: videoBlock,
+  diagram: diagramBlock,
   callout: calloutBlock,
   checklist: checklistBlock,
   table: tableBlock,

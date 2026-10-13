@@ -25,10 +25,14 @@ const MAX_IMAGE_SIZE = 1920;
 
 // Thư mục con theo loại media.
 const SUBDIRS: Record<MediaKind, string> = { image: 'images', video: 'videos', file: 'files' };
+// Ảnh SVG của khối "Sơ đồ" — không ghi vào bảng WebManualMedia (không
+// hiện trong thư viện ảnh), chỉ là file đi kèm khối.
+const DIAGRAM_DIR = 'diagrams';
+const MAX_DIAGRAM_BYTES = 4 * 1024 * 1024;
 
 // Tạo sẵn các thư mục lúc khởi động (recursive: có rồi thì thôi, không lỗi).
 export function ensureUploadDirs(): void {
-  for (const sub of ['tmp', ...Object.values(SUBDIRS)]) {
+  for (const sub of ['tmp', DIAGRAM_DIR, ...Object.values(SUBDIRS)]) {
     fs.mkdirSync(path.join(config.uploadDir, sub), { recursive: true });
   }
 }
@@ -118,6 +122,27 @@ export async function storeUpload(file: Express.Multer.File, userId: number | nu
     height: height ?? null,
     uploadedById: userId,
   });
+}
+
+// Lưu ảnh SVG do draw.io xuất ra. SVG là XML có thể chứa script, nên:
+//   1. từ chối nếu thấy dấu hiệu script (ở đây)
+//   2. phục vụ kèm header CSP cấm chạy script (xem index.ts)
+// Hiển thị bằng <img> thì trình duyệt vốn đã không chạy script trong SVG;
+// 2 lớp trên chặn trường hợp ai đó mở thẳng link file SVG.
+export async function storeDiagramSvg(svg: string): Promise<string> {
+  if (Buffer.byteLength(svg) > MAX_DIAGRAM_BYTES) throw new HttpError(413, 'Sơ đồ quá lớn (tối đa 4 MB)');
+  const head = svg.slice(0, 2000).trimStart();
+  if (!/^(<\?xml[^>]*>\s*)?(<!DOCTYPE svg[^>]*>\s*)?<svg[\s>]/i.test(head)) {
+    throw new HttpError(400, 'Dữ liệu không phải ảnh SVG');
+  }
+  // Chỉ xét BÊN TRONG thẻ (<...>), để chữ thường trên sơ đồ như
+  // "online = true" không bị chặn nhầm.
+  if (/<\s*(script|iframe|embed|object)\b|<[^>]*\son[a-z]+\s*=|<[^>]*href\s*=\s*["']?\s*javascript:/i.test(svg)) {
+    throw new HttpError(400, 'Ảnh SVG chứa nội dung không cho phép');
+  }
+  const filename = `${randomBytes(12).toString('hex')}.svg`;
+  await fs.promises.writeFile(path.join(config.uploadDir, DIAGRAM_DIR, filename), svg, 'utf8');
+  return `/uploads/${DIAGRAM_DIR}/${filename}`;
 }
 
 // Lỗi xảy ra SAU khi multer đã ghi file tạm (vd token hết hạn) -> xóa file tạm.

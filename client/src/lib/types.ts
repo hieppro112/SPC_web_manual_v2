@@ -98,4 +98,5 @@ export type UploadSessionStatus = {
 export type ServerMeta = {
   publicBaseUrl: string | null;
   lanAddresses: string[];
+  drawio: boolean; // server đã cài draw.io chưa (khối Sơ đồ)
 };

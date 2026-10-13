@@ -11,5 +11,8 @@ export const mediaApi = {
   uploadToSession: (token: string, file: File, onProgress?: (percent: number) => void) =>
     uploadFile<Media>(`/upload-sessions/${token}/file`, file, onProgress),
 
+  // Lưu ảnh SVG xuất từ draw.io, trả về đường dẫn /uploads/diagrams/...svg
+  uploadDiagram: (svg: string) => http.post<{ url: string }>('/media/diagram', { svg }),
+
   meta: () => http.get<ServerMeta>('/meta'),
 };

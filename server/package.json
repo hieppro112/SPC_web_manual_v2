@@ -12,6 +12,7 @@
     "start": "node --env-file=.env src/index.ts",
     "reset-password": "node --env-file=.env src/scripts/resetPassword.ts",
     "migrate-from-mongo": "node --env-file=.env src/scripts/migrateFromMongo.ts",
+    "install-drawio": "node src/scripts/installDrawio.ts",
     "typecheck": "tsc"
   },
   "dependencies": {

@@ -4,5 +4,8 @@ dist
 *.log
 # File người dùng upload — dữ liệu thật, không phải mã nguồn
 server/uploads
+# draw.io tự host — cài bằng `npm run install-drawio`, không phải mã nguồn của mình
+server/drawio
+server/drawio.tmp
 # Log khi chạy trên máy chủ (deploy/start.cmd ghi vào đây)
 logs/

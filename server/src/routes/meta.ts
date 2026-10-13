@@ -1,13 +1,15 @@
 // ============================================================
 // routes/meta.ts — Thông tin máy chủ cho client
 // ============================================================
-//   GET /api/meta -> { publicBaseUrl, lanAddresses }
+//   GET /api/meta -> { publicBaseUrl, lanAddresses, drawio }
 //
 // Dùng khi tạo mã QR: điện thoại không mở được "localhost" (localhost
 // của điện thoại là chính nó). Client cần biết IP mạng LAN của máy chủ
 // để ghép thành link điện thoại mở được.
 
+import fs from 'node:fs';
 import os from 'node:os';
+import path from 'node:path';
 import { Router } from 'express';
 import { config } from '../config.ts';
 
@@ -22,5 +24,10 @@ function lanAddresses(): string[] {
 }
 
 metaRouter.get('/', (_req, res) => {
-  res.json({ publicBaseUrl: config.publicBaseUrl || null, lanAddresses: lanAddresses() });
+  res.json({
+    publicBaseUrl: config.publicBaseUrl || null,
+    lanAddresses: lanAddresses(),
+    // Đã cài draw.io chưa -> trình soạn biết có mở được trình vẽ không.
+    drawio: fs.existsSync(path.join(config.drawioDir, 'index.html')),
+  });
 });

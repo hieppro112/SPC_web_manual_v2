@@ -166,3 +166,9 @@ Bộ lọc thể loại, từ khóa tìm kiếm, trạng thái nằm ở `?categ
 ### `cn()` = nối class + gộp class xung đột
 
 `cn('w-full', 'w-auto')` → `w-auto` nhờ `tailwind-merge`. Thiếu nó, component dùng chung có sẵn `w-full` thì nơi dùng không ghi đè được.
+
+### Nhúng một app khác vào trang: `<iframe>` + `postMessage` (khối Sơ đồ)
+
+draw.io là một web app riêng, chạy trong `<iframe>`. App của mình và draw.io không gọi thẳng hàm của nhau, chỉ gửi tin nhắn JSON qua `window.postMessage`. Bên nhận nghe sự kiện `message` và **luôn kiểm tra `e.source`** để chỉ tin tin nhắn từ đúng iframe đó. Xem `blocks/diagram/DrawioEditor.tsx`. 🔸 Flutter: giống `WebView` + `JavascriptChannel`.
+
+Trình vẽ dùng `createPortal(..., document.body)` để phủ toàn màn hình. Nếu vẽ ngay trong khung khối thì `position: fixed` bị lệch, vì khung kéo-thả có `transform`.

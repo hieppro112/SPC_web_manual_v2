@@ -87,9 +87,21 @@ app.use(
       if (filePath.includes(`${path.sep}files${path.sep}`)) {
         res.setHeader('Content-Disposition', 'attachment');
       }
+      // Ảnh SVG của sơ đồ: chỉ cho vẽ, cấm chạy script, kể cả khi mở thẳng link.
+      if (filePath.endsWith('.svg')) {
+        res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:; sandbox");
+      }
     },
   }),
 );
+
+// ---------- draw.io (khối "Sơ đồ") ----------
+// Trang tĩnh của draw.io, mở trong iframe khi soạn sơ đồ. Chưa cài thì 404
+// (không rơi xuống SPA fallback bên dưới, kẻo iframe hiện trang của app).
+app.use('/drawio', express.static(config.drawioDir, { maxAge: '7d' }));
+app.use('/drawio', (_req, res) => {
+  res.status(404).end();
+});
 
 // ---------- Giao diện (production) ----------
 // Sau khi `npm run build` trong client/, server phục vụ luôn giao diện:
