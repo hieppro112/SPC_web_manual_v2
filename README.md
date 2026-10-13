@@ -2,7 +2,7 @@
 
 Web lưu tài liệu hướng dẫn / quy trình nội bộ. Chạy trong mạng nội bộ: **ai vào được mạng là đọc được** tài liệu đã xuất bản, **người đăng nhập** (editor/admin) mới được soạn.
 
-- Soạn theo **khối** (form từng khối): tiêu đề mục, văn bản (Markdown), bước thực hiện tự đánh số, ảnh, video, hộp lưu ý, checklist, bảng, mã lệnh, file đính kèm, đường kẻ
+- Soạn theo **khối** (form từng khối): tiêu đề mục, văn bản (Markdown), bước thực hiện tự đánh số, ảnh, video, **sơ đồ (draw.io)**, hộp lưu ý, checklist, bảng, mã lệnh, file đính kèm, đường kẻ
 - Ảnh/video: chọn từ máy, kéo thả, dán (Ctrl+V), thư viện media, dán URL, hoặc **quét QR chụp bằng điện thoại**
 - Lịch sử phiên bản (xem + khôi phục), nháp / đã xuất bản
 - Chia sẻ link + mã QR của tài liệu, link tới từng mục, in / xuất PDF
@@ -45,6 +45,7 @@ Cần: Node 24+, SQL Server (2019+) có các bảng WebManual (tạo bằng `ser
 ```bash
 cd server
 npm install
+npm run install-drawio    # một lần: tải draw.io về server/drawio (cho khối Sơ đồ)
 npm run dev               # API :5000 — lần đầu tự tạo bảng
 ```
 
@@ -53,7 +54,7 @@ npm run dev               # API :5000 — lần đầu tự tạo bảng
 ```bash
 cd client
 npm install
-npm run dev               # giao diện :5173 (tự chuyển /api, /uploads sang :5000)
+npm run dev               # giao diện :5173 (tự chuyển /api, /uploads, /drawio sang :5000)
 ```
 
 Mở http://localhost:5173 → **Đăng nhập** → lần đầu sẽ được mời tạo tài khoản admin.

@@ -124,6 +124,16 @@ export const vi = {
     image: { label: 'Hình ảnh', desc: 'Ảnh từ máy, URL hoặc chụp bằng điện thoại', alt: 'Mô tả ảnh (cho người khiếm thị)', caption: 'Chú thích (không bắt buộc)' },
     video: { label: 'Video', desc: 'Video từ máy, URL hoặc quay bằng điện thoại', caption: 'Chú thích (không bắt buộc)', printHint: 'Quét mã để xem video' },
     file: { label: 'File đính kèm', desc: 'PDF, Excel, Word... người đọc tải về', name: 'Tên hiển thị' },
+    diagram: {
+      label: 'Sơ đồ',
+      desc: 'Vẽ lưu đồ, sơ đồ mạng, quy trình bằng draw.io',
+      empty: 'Bấm để vẽ sơ đồ',
+      draw: 'Vẽ sơ đồ',
+      edit: 'Sửa sơ đồ',
+      caption: 'Chú thích (không bắt buộc)',
+      saved: 'Đã lưu',
+      notInstalled: 'Máy chủ chưa cài draw.io. Quản trị viên chạy "npm run install-drawio" trong thư mục server rồi khởi động lại.',
+    },
     table: {
       label: 'Bảng',
       desc: 'Bảng dữ liệu nhiều hàng, nhiều cột',

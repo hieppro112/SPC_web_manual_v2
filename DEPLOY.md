@@ -117,6 +117,19 @@ Notepad mở ra → điền mật khẩu SQL vào sau `DB_PASSWORD=` → **Ctrl 
 .\deploy\update.ps1 -SkipPull
 ```
 
+### Bước 4b — Cài draw.io (cho khối "Sơ đồ"), làm MỘT lần
+
+Khối "Sơ đồ" mở draw.io **tự host trên chính máy chủ app** (máy người dùng không cần internet). Cài một lần, cập nhật code sau này không cần cài lại:
+
+```powershell
+cd server
+npm run install-drawio
+```
+
+Máy chủ không ra được internet: trên máy khác tải `draw.war` (bản ghi trong `server/src/scripts/installDrawio.ts`, ~55 MB) từ https://github.com/jgraph/drawio/releases, chép sang máy chủ rồi chạy `npm run install-drawio -- D:\đường\dẫn\draw.war`.
+
+Bản draw.io nằm ở `server\drawio` (không nằm trong git). Chưa cài thì app vẫn chạy bình thường, chỉ có nút vẽ sơ đồ bị khóa kèm hướng dẫn cài. Ảnh sơ đồ lưu ở `UPLOAD_DIR\diagrams`, được sao lưu chung với thư mục upload.
+
 ## Bước 5 — Chạy thử bằng tay
 
 ```powershell

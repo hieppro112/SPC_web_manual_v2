@@ -120,6 +120,16 @@ export const en: Messages = {
     image: { label: 'Image', desc: 'From computer, URL or phone camera', alt: 'Alt text (for screen readers)', caption: 'Caption (optional)' },
     video: { label: 'Video', desc: 'From computer, URL or phone camera', caption: 'Caption (optional)', printHint: 'Scan to watch the video' },
     file: { label: 'Attachment', desc: 'PDF, Excel, Word... for readers to download', name: 'Display name' },
+    diagram: {
+      label: 'Diagram',
+      desc: 'Flowcharts, network diagrams, processes with draw.io',
+      empty: 'Click to draw a diagram',
+      draw: 'Draw diagram',
+      edit: 'Edit diagram',
+      caption: 'Caption (optional)',
+      saved: 'Saved',
+      notInstalled: 'draw.io is not installed on the server. An admin should run "npm run install-drawio" in the server folder and restart.',
+    },
     table: {
       label: 'Table',
       desc: 'Data in rows and columns',

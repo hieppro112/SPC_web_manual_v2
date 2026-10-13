@@ -34,6 +34,7 @@ export type BlockPropsMap = {
   checklist: { items: { id: string; text: string }[] };
   divider: Record<string, never>;
   step: { title: string; text: string; image: string };
+  diagram: { xml: string; src: string; caption: string };
 };
 
 export type BlockType = keyof BlockPropsMap;

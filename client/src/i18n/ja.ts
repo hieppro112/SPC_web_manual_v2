@@ -120,6 +120,16 @@ export const ja: Messages = {
     image: { label: '画像', desc: 'PC・URL・スマホのカメラから', alt: '代替テキスト', caption: 'キャプション(任意)' },
     video: { label: '動画', desc: 'PC・URL・スマホのカメラから', caption: 'キャプション(任意)', printHint: 'スキャンして動画を見る' },
     file: { label: '添付ファイル', desc: 'PDF・Excel・Word など', name: '表示名' },
+    diagram: {
+      label: '図',
+      desc: 'draw.io でフローチャート・ネットワーク図・手順図を作成',
+      empty: 'クリックして図を作成',
+      draw: '図を作成',
+      edit: '図を編集',
+      caption: 'キャプション(任意)',
+      saved: '保存しました',
+      notInstalled: 'サーバーに draw.io がインストールされていません。管理者が server フォルダで "npm run install-drawio" を実行し、再起動してください。',
+    },
     table: {
       label: '表',
       desc: '行と列のデータ',

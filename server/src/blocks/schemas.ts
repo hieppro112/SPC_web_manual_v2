@@ -28,6 +28,7 @@ export const BLOCK_TYPES = [
   'checklist',
   'divider',
   'step',
+  'diagram',
 ] as const;
 
 export type BlockType = (typeof BLOCK_TYPES)[number];
@@ -44,6 +45,15 @@ const mediaUrl = z
   .max(2000)
   .refine((v) => v === '' || /^https?:\/\//i.test(v) || v.startsWith('/uploads/'), {
     message: 'Đường dẫn phải bắt đầu bằng http(s):// hoặc /uploads/',
+  })
+  .default('');
+
+// Ảnh sơ đồ chỉ được là file SVG do chính server lưu (POST /api/media/diagram).
+const diagramUrl = z
+  .string()
+  .max(200)
+  .refine((v) => v === '' || /^\/uploads\/diagrams\/[a-f0-9]+\.svg$/.test(v), {
+    message: 'Ảnh sơ đồ không hợp lệ',
   })
   .default('');
 
@@ -66,6 +76,8 @@ export const blockPropsSchemas = {
   }),
   divider: z.object({}),
   step: z.object({ title: text(300), text: text(), image: mediaUrl }),
+  // xml: bản gốc để mở draw.io sửa tiếp; src: ảnh SVG xuất ra để hiển thị.
+  diagram: z.object({ xml: z.string().max(2_000_000).default(''), src: diagramUrl, caption: text(500) }),
 } satisfies Record<BlockType, z.ZodType>;
 
 const blockShape = z.object({

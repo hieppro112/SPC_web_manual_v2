@@ -63,6 +63,9 @@ export const config = {
   // cookie đăng nhập -> không đăng nhập được.
   cookieSecure: process.env.COOKIE_SECURE === 'true',
 
+  // draw.io tự host cho khối "Sơ đồ" (cài bằng `npm run install-drawio`).
+  drawioDir: path.resolve(process.env.DRAWIO_DIR ?? 'drawio'),
+
   // Bản build của client (npm run build trong client/). Nếu có, server
   // phục vụ luôn giao diện -> production chỉ cần chạy MỘT tiến trình.
   clientDist: path.resolve(process.env.CLIENT_DIST ?? '../client/dist'),
