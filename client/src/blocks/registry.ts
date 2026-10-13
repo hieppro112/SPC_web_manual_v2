@@ -6,6 +6,7 @@
 // quên đăng ký là TypeScript báo lỗi ngay.
 
 import { calloutBlock } from './callout/index.ts';
+import { chartBlock } from './chart/index.ts';
 import { checklistBlock } from './checklist/index.ts';
 import { codeBlock } from './code/index.ts';
 import { diagramBlock } from './diagram/index.ts';
@@ -26,6 +27,7 @@ export const registry: BlockRegistry = {
   image: imageBlock,
   video: videoBlock,
   diagram: diagramBlock,
+  chart: chartBlock,
   callout: calloutBlock,
   checklist: checklistBlock,
   table: tableBlock,

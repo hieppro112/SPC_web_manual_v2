@@ -155,6 +155,13 @@
   .avoid-break {
     break-inside: avoid;
   }
+  /* Biểu đồ vẽ theo bề rộng màn hình; khổ giấy hẹp hơn thì thu nhỏ theo
+     tỉ lệ (SVG của Recharts có viewBox) thay vì bị cắt mất bên phải. */
+  .chart-figure .recharts-wrapper,
+  .chart-figure .recharts-surface {
+    max-width: 100% !important;
+    height: auto !important;
+  }
   a[href^='http']::after {
     content: '';
   }

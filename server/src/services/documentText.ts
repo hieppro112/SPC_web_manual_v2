@@ -37,7 +37,7 @@ export function buildDesc(blocks: BlockLike[]): string {
 
 // Gom MỌI chuỗi chữ trong props (text, title, caption, ô bảng, mục
 // checklist...), bỏ qua các field không phải nội dung đọc được.
-const NON_TEXT_KEYS = new Set(['id', 'src', 'image', 'variant', 'language', 'xml']);
+const NON_TEXT_KEYS = new Set(['id', 'src', 'image', 'variant', 'language', 'xml', 'kind', 'colors']);
 function collectText(value: unknown, out: string[]): void {
   if (typeof value === 'string') out.push(value);
   else if (Array.isArray(value)) value.forEach((v) => collectText(v, out));

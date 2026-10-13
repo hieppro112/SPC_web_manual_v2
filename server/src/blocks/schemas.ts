@@ -29,6 +29,7 @@ export const BLOCK_TYPES = [
   'divider',
   'step',
   'diagram',
+  'chart',
 ] as const;
 
 export type BlockType = (typeof BLOCK_TYPES)[number];
@@ -78,6 +79,16 @@ export const blockPropsSchemas = {
   step: z.object({ title: text(300), text: text(), image: mediaUrl }),
   // xml: bản gốc để mở draw.io sửa tiếp; src: ảnh SVG xuất ra để hiển thị.
   diagram: z.object({ xml: z.string().max(2_000_000).default(''), src: diagramUrl, caption: text(500) }),
+  // rows[0] = tên các chuỗi số liệu, rows[1..] = [nhãn, số, số...] (số lưu dạng chuỗi)
+  chart: z.object({
+    kind: z.enum(['bar', 'barH', 'line', 'area', 'pie', 'donut', 'combo']).default('bar'),
+    title: text(300),
+    unit: text(50),
+    legend: z.boolean().default(true),
+    stacked: z.boolean().default(false),
+    rows: z.array(z.array(z.string().max(200)).max(21)).max(501).default([]),
+    colors: z.array(z.union([z.literal(''), z.string().regex(/^#[0-9a-f]{6}$/i)])).max(20).default([]),
+  }),
 } satisfies Record<BlockType, z.ZodType>;
 
 const blockShape = z.object({
