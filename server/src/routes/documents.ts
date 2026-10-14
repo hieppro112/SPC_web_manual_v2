@@ -32,6 +32,7 @@ import {
   listVersions,
   type FullDocument,
 } from '../repositories/documents.ts';
+import { requestIndexSync } from '../services/ai/searchIndex.ts';
 import { createDocument, updateDocument, type DocumentInput } from '../services/documents.ts';
 import { parseId, tryParseId } from '../utils/ids.ts';
 import { removeDiacritics } from '../utils/slugify.ts';
@@ -48,6 +49,17 @@ function isDocStatus(value: unknown): value is (typeof DOC_STATUSES)[number] {
 // Mongoose; giờ gom hết vào zod cho rõ ràng.
 const titleSchema = z.string().trim().min(1, 'Tiêu đề không được để trống').max(300, 'Tiêu đề tối đa 300 ký tự');
 const statusSchema = z.string().refine(isDocStatus, { error: (issue) => `Trạng thái không hợp lệ: ${String(issue.input)}` });
+
+// Mọi lần ghi (tạo / sửa / xóa / khôi phục) thành công -> báo trợ lý AI
+// cập nhật chỉ mục, để AI biết bài mới gần như ngay lập tức.
+documentsRouter.use((req, res, next) => {
+  if (req.method !== 'GET') {
+    res.on('finish', () => {
+      if (res.statusCode < 400) requestIndexSync();
+    });
+  }
+  next();
+});
 
 // Khách mở link bài nháp -> 404 (giả như không tồn tại), không phải 403,
 // để người ngoài không biết là có bài đó.

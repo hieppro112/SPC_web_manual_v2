@@ -43,6 +43,33 @@ export const http = {
   delete: (url: string) => request<void>('DELETE', url),
 };
 
+// POST rồi đọc câu trả lời dạng "stream", mỗi dòng một JSON (NDJSON), gọi
+// onLine NGAY khi từng dòng tới — dùng cho trợ lý AI trả lời từng chữ.
+// signal: AbortController.signal để bấm "Dừng" giữa chừng.
+export async function postStream<T>(url: string, body: unknown, onLine: (line: T) => void, signal?: AbortSignal): Promise<void> {
+  const res = await fetch(`/api${url}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal,
+  });
+  if (!res.ok) throw await readError(res);
+  if (!res.body) throw new ApiError(0, 'Máy chủ không trả dữ liệu');
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? ''; // dòng cuối có thể chưa tới đủ -> giữ lại chờ phần sau
+    for (const line of lines) if (line.trim()) onLine(JSON.parse(line) as T);
+  }
+  if (buffer.trim()) onLine(JSON.parse(buffer) as T);
+}
+
 // Upload file kèm % tiến độ. fetch() chưa báo được tiến độ UPLOAD, nên
 // chỗ này dùng XMLHttpRequest — cần thiết khi tải video vài trăm MB.
 export function uploadFile<T>(url: string, file: File, onProgress?: (percent: number) => void): Promise<T> {

@@ -178,3 +178,10 @@ Trình vẽ dùng `createPortal(..., document.body)` để phủ toàn màn hìn
 Recharts khá nặng (~120 KB nén). `blocks/chart/View.tsx` dùng `lazy(() => import('./ChartRenderer.tsx'))`. Vite tách file đó (cùng Recharts) thành một file JS riêng, và trình duyệt chỉ tải nó khi trang thật sự có biểu đồ. Trong lúc tải, `<Suspense fallback={...}>` hiện vòng quay. 🔸 Flutter: giống `import '...' deferred as charts;` rồi `await charts.loadLibrary()`.
 
 Luật đi kèm: chỉ MỘT file được import `recharts` (`ChartRenderer.tsx`). Phần xử lý số liệu (`data.ts`) là hàm thuần, nên trình soạn dùng được mà không kéo theo thư viện chart.
+
+### Trợ lý AI: RAG + stream (server/src/services/ai/, client/src/features/ai/)
+
+- **RAG** (tìm rồi mới hỏi): AI không tự biết tài liệu của công ty. Trước mỗi câu hỏi, app tìm 6 đoạn tài liệu liên quan nhất rồi gửi kèm câu hỏi, và dặn AI "chỉ trả lời dựa trên các đoạn này, kèm link nguồn".
+- **Tìm theo ý nghĩa bằng vector:** model *embedding* đổi mỗi đoạn chữ thành một dãy ~1000 số. Hai đoạn cùng ý thì hai dãy số "gần nhau" (độ giống cosine). Câu hỏi "cách thêm tool" vẫn tìm ra đoạn "Bước 3: Khai báo công cụ mới" dù không trùng chữ nào.
+- **Stream:** server gửi câu trả lời thành nhiều dòng JSON (NDJSON). Client đọc bằng `res.body.getReader()` trong `lib/http.ts → postStream`, mỗi mẩu chữ tới là nối vào tin nhắn, nên chữ hiện ra dần. 🔸 Flutter: giống `StreamBuilder` nghe `http.Client().send()` theo từng chunk.
+- **Dừng giữa chừng:** `AbortController`. Client hủy fetch, server thấy kết nối đóng (`res.on('close')`) nên hủy luôn request sang LM Studio, đỡ tốn GPU.

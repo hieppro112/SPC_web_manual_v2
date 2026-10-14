@@ -190,6 +190,45 @@ Test-NetConnection 192.168.122.15 -Port 5000
 
 Rồi mở **http://192.168.122.15:5000**. Điện thoại (Wi-Fi công ty) mở cùng địa chỉ để dùng được tính năng quét QR chụp ảnh.
 
+## Bước 9 (tùy chọn) — Trợ lý AI chạy local
+
+Nút 💬 ở góc màn hình: hỏi đáp trên toàn bộ tài liệu, hỏi về bài đang đọc, tóm tắt bài. App tự tìm đoạn tài liệu liên quan (RAG), phần mềm AI chỉ việc trả lời. Không bật thì nút 💬 tự ẩn, app chạy bình thường.
+
+**1. Trong LM Studio (cùng máy với app):**
+
+- Tải và **nạp (Load)** một model trả lời, vd `qwen3.5-9b`. Khi nạp, đặt **Context Length ≥ 16384** (bằng `AI_NUM_CTX` bên dưới). Model Qwen có tùy chọn "thinking" thì nên tắt để trả lời nhanh hơn.
+- Tải thêm một model **embedding** đọc tốt tiếng Việt/Nhật: tìm `bge-m3` (bản GGUF).
+- Tab **Developer** → bật server (Status: **Running**), cổng `1234`.
+- Lấy **tên chính xác** của 2 model: mở http://localhost:1234/v1/models trên máy chủ, copy giá trị `"id"`.
+
+GPU dùng chung: model nào đang nạp sẵn trong LM Studio thì dùng luôn model đó cho app là tiết kiệm VRAM nhất.
+
+**2. Thêm vào `server\.env`:**
+
+```
+AI_API=openai
+AI_BASE_URL=http://localhost:1234
+AI_CHAT_MODEL=<id model trả lời, lấy từ /v1/models>
+AI_EMBED_MODEL=<id model bge-m3, lấy từ /v1/models>
+AI_NUM_CTX=16384
+AI_GUEST_LIMIT_PER_HOUR=10
+AI_DATA_DIR=D:\kvh-it-docs-data\ai-data
+AI_LOG_DAYS=7
+```
+
+Restart app (Tool Manager). Log sẽ có `🤖 AI (openai): ...` rồi `🤖 AI: cập nhật chỉ mục N tài liệu`.
+
+| Biến | Ý nghĩa |
+| --- | --- |
+| `AI_API` | `openai` = LM Studio (và mọi phần mềm theo chuẩn OpenAI); `ollama` = dùng Ollama (`AI_BASE_URL=http://localhost:11434`) |
+| `AI_NUM_CTX` | Độ dài ngữ cảnh. Với LM Studio phải ≤ Context Length đã đặt khi nạp model |
+| `AI_GUEST_LIMIT_PER_HOUR` | Số câu hỏi / giờ / máy cho khách chưa đăng nhập (người đăng nhập không giới hạn) |
+| `AI_DATA_DIR` | Chỉ mục tìm kiếm (`index.json`, xóa được, tự tạo lại) + log hỏi đáp (`logs\`, tự xóa sau `AI_LOG_DAYS` ngày) |
+| `AI_API_KEY` | (tùy chọn) chỉ khi LM Studio bật yêu cầu xác thực |
+| `AI_EXPORT_KEY` | (tùy chọn) bật `GET /api/ai/documents` cho công cụ AI khác đọc tài liệu dạng Markdown (gửi header `x-api-key`). Tự tạo chuỗi ngẫu nhiên dài, **không gửi qua chat** |
+
+Log hỏi đáp có IP, tên đăng nhập và nội dung câu hỏi → chỉ giữ 7 ngày, không đưa vào sao lưu.
+
 ---
 
 ## Cập nhật phiên bản mới

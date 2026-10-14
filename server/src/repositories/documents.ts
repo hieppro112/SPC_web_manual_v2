@@ -109,6 +109,14 @@ export async function findDocumentById(id: number, tx?: Tx) {
 
 export type FullDocument = NonNullable<Awaited<ReturnType<typeof findDocumentById>>>;
 
+// Danh sách gọn mọi bài đã xuất bản — trợ lý AI dùng để biết bài nào mới/sửa/xóa.
+export async function listPublishedStamps() {
+  const rows = await query<{ Id: number; UpdatedAt: Date }>(
+    `SELECT Id, UpdatedAt FROM WebManualDocuments WHERE Status = N'published'`,
+  );
+  return rows.map((r) => ({ id: String(r.Id), updatedAt: r.UpdatedAt.toISOString() }));
+}
+
 export async function slugExists(slug: string): Promise<boolean> {
   return !!(await queryOne('SELECT 1 AS Found FROM WebManualDocuments WHERE Slug = @slug', { slug }));
 }

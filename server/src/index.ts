@@ -17,8 +17,11 @@ import { config } from './config.ts';
 import { connectDb, isDbConnected } from './db/pool.ts';
 import { runMigrations } from './db/migrate.ts';
 import { deleteExpiredSessions } from './repositories/media.ts';
+import { startLogCleanup } from './services/ai/chatLog.ts';
+import { startIndexing } from './services/ai/searchIndex.ts';
 import { errorHandler } from './middleware/errorHandler.ts';
 import { loadUser, requireAdmin, requireAuth } from './middleware/auth.ts';
+import { aiRouter } from './routes/ai.ts';
 import { authRouter } from './routes/auth.ts';
 import { categoriesRouter } from './routes/categories.ts';
 import { documentsRouter } from './routes/documents.ts';
@@ -60,6 +63,8 @@ app.use('/api/media', requireAuth, mediaRouter);
 app.use('/api/users', requireAdmin, usersRouter);
 // Không gắn requireAuth cho cả nhóm: điện thoại upload bằng token, không đăng nhập.
 app.use('/api/upload-sessions', uploadSessionsRouter);
+// Khách cũng hỏi được (có giới hạn số câu) -> không gắn requireAuth.
+app.use('/api/ai', aiRouter);
 
 // Không khớp route nào ở trên -> 404 dạng JSON.
 app.use('/api', (_req, res) => {
@@ -137,6 +142,13 @@ try {
 setInterval(() => {
   deleteExpiredSessions().catch((err) => console.error('❌ Dọn phiên QR lỗi:', err.message));
 }, 15 * 60 * 1000).unref();
+
+// Trợ lý AI (nếu bật AI_BASE_URL): dựng chỉ mục tài liệu chạy nền + dọn log cũ.
+if (config.ai.baseUrl) {
+  console.log(`🤖 AI (${config.ai.api}): ${config.ai.baseUrl} — model ${config.ai.chatModel} / ${config.ai.embedModel}`);
+  startIndexing();
+  startLogCleanup();
+}
 
 app.listen(config.port, () => {
   console.log(`🚀 API chạy tại http://localhost:${config.port}`);
