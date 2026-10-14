@@ -50,7 +50,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 md:grid md:grid-cols-[220px_1fr] md:gap-8 md:py-8">
+    <div className="mx-auto max-w-page px-4 py-6 lg:px-8 md:grid md:grid-cols-[220px_1fr] md:gap-8 md:py-8">
       <aside className="mb-6 md:mb-0">
         {/* Điện thoại: thu gọn danh sách thể loại vào một mục bấm mở. */}
         <details className="rounded-xl border border-border p-2 md:hidden">
@@ -126,7 +126,7 @@ export default function HomePage() {
             }
           />
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {docs.map((doc) => (
               <DocCard key={doc.id} doc={doc} />
             ))}

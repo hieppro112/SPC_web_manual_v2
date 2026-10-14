@@ -30,7 +30,7 @@ export default function QuizListPage() {
   useDocumentTitle(t('quiz.title'));
 
   return (
-    <div className="mx-auto max-w-5xl space-y-10 px-4 py-8">
+    <div className="mx-auto max-w-form space-y-10 px-4 py-8">
       <section>
         <h1 className="mb-4 flex items-center gap-2 text-2xl font-bold">
           <ClipboardCheck className="h-6 w-6 text-accent" /> {t('quiz.myQuizzes')}

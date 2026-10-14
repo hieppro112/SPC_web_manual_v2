@@ -104,7 +104,7 @@ export default function DocPage() {
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 lg:grid lg:grid-cols-[200px_minmax(0,1fr)_220px] lg:gap-10 lg:py-8">
+    <div className="mx-auto max-w-page px-4 py-6 lg:grid lg:grid-cols-[220px_minmax(0,1fr)_240px] lg:gap-10 lg:px-8 lg:py-8">
       {/* Cột trái: tài liệu cùng thể loại */}
       <aside className="no-print hidden lg:block">
         <div className="sticky top-20 space-y-1">

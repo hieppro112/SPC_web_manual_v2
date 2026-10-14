@@ -27,7 +27,7 @@ export default function AppLayout() {
   return (
     <div className="min-h-screen">
       <header className="no-print sticky top-0 z-40 h-14 border-b border-border bg-bg/90 backdrop-blur">
-        <div className="mx-auto flex h-full max-w-7xl items-center gap-3 px-4">
+        <div className="mx-auto flex h-full max-w-page items-center gap-3 px-4 lg:px-8">
           <Link to="/" className="flex shrink-0 items-center gap-2 font-semibold">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-accent-fg">
               <BookOpen className="h-4 w-4" />

@@ -45,7 +45,7 @@ export default function UsersAdminPage() {
   };
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8 px-4 py-8">
+    <div className="mx-auto max-w-form space-y-8 px-4 py-8">
       <div>
         <h1 className="mb-2 text-2xl font-bold">{t('users.title')}</h1>
         <p className="text-sm text-muted">{t('users.roleHint')}</p>
