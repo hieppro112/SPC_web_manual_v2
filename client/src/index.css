@@ -91,6 +91,13 @@
     'Meiryo', sans-serif;
 }
 
+/* ĐỘ RỘNG KHUNG TRANG — đổi ở đây là cả app đổi theo.
+   Tailwind tự sinh class max-w-page / max-w-form từ 2 biến này. */
+@theme {
+  --container-page: 100rem; /* 1600px: header, trang chủ, trang đọc, lịch sử */
+  --container-form: 72rem; /* 1152px: trình soạn tài liệu, sửa đề, trang quản trị */
+}
+
 @layer base {
   html {
     /* Nhảy tới mục lục (#anchor) thì chừa chỗ cho header dính phía trên. */

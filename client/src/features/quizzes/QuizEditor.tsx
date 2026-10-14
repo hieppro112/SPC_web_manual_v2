@@ -122,7 +122,7 @@ export default function QuizEditor({ id, initial }: Props) {
   };
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-6">
+    <div className="mx-auto max-w-form px-4 py-6">
       {/* Thanh công cụ */}
       <div className="sticky top-14 z-30 -mx-4 mb-6 flex flex-wrap items-center gap-2 border-b border-border bg-bg/90 px-4 py-2 backdrop-blur">
         <Link to="/quizzes" className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-fg" title={t('common.back')}>

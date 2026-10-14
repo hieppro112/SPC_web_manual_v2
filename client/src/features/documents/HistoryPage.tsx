@@ -53,7 +53,7 @@ export default function HistoryPage() {
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 lg:py-8">
+    <div className="mx-auto max-w-page px-4 lg:px-8 py-6 lg:py-8">
       <div className="mb-6 flex items-center gap-3">
         <Link to={`/docs/${current.slug}`} className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-fg" title={t('history.backToDoc')}>
           <ArrowLeft className="h-5 w-5" />

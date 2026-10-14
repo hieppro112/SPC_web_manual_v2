@@ -167,7 +167,7 @@ export default function EditorForm({ docId, initial, categories, backTo }: Props
     <div>
       {/* Thanh công cụ dính dưới header */}
       <div className="sticky top-14 z-30 border-b border-border bg-bg/90 backdrop-blur">
-        <div className="mx-auto flex max-w-4xl flex-wrap items-center gap-2 px-4 py-2">
+        <div className="mx-auto flex max-w-form flex-wrap items-center gap-2 px-4 py-2">
           <Link to={backTo} className="rounded-md p-1.5 text-muted hover:bg-surface-2 hover:text-fg" title={t('common.back')}>
             <ArrowLeft className="h-5 w-5" />
           </Link>
@@ -208,7 +208,7 @@ export default function EditorForm({ docId, initial, categories, backTo }: Props
         </div>
       </div>
 
-      <div className="mx-auto max-w-4xl px-4 py-6">
+      <div className="mx-auto max-w-form px-4 py-6">
         {mode === 'preview' ? (
           <article>
             <h1 className="mb-6 border-b border-border pb-5 text-3xl font-bold">{draft.title}</h1>

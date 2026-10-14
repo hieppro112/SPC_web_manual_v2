@@ -29,7 +29,7 @@ export default function QuizResultsPage() {
   const passed = taken.filter((r) => r.passed).length;
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
+    <div className="mx-auto max-w-form px-4 py-8">
       <Link to="/quizzes" className="mb-4 inline-flex items-center gap-1 text-sm text-muted hover:text-fg">
         <ArrowLeft className="h-4 w-4" /> {t('quiz.title')}
       </Link>
