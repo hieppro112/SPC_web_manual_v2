@@ -224,6 +224,7 @@ Restart app (Tool Manager). Log sẽ có `🤖 AI (openai): ...` rồi `🤖 AI:
 | `AI_NUM_CTX` | Độ dài ngữ cảnh. Với LM Studio phải ≤ Context Length đã đặt khi nạp model |
 | `AI_GUEST_LIMIT_PER_HOUR` | Số câu hỏi / giờ / máy cho khách chưa đăng nhập (người đăng nhập không giới hạn) |
 | `AI_DATA_DIR` | Chỉ mục tìm kiếm (`index.json`, xóa được, tự tạo lại) + log hỏi đáp (`logs\`, tự xóa sau `AI_LOG_DAYS` ngày) |
+| `AI_EMBED_API`, `AI_EMBED_BASE_URL` | (tùy chọn) model embedding chạy ở phần mềm khác. Vd LM Studio không tải được `bge-m3` (mạng chặn Hugging Face) thì tải bằng Ollama (`ollama pull bge-m3`) và đặt `AI_EMBED_API=ollama`, `AI_EMBED_BASE_URL=http://localhost:11434`, `AI_EMBED_MODEL=bge-m3`. Để trống = dùng chung `AI_API` / `AI_BASE_URL` |
 | `AI_API_KEY` | (tùy chọn) chỉ khi LM Studio bật yêu cầu xác thực |
 | `AI_EXPORT_KEY` | (tùy chọn) bật `GET /api/ai/documents` cho công cụ AI khác đọc tài liệu dạng Markdown (gửi header `x-api-key`). Tự tạo chuỗi ngẫu nhiên dài, **không gửi qua chat** |
 

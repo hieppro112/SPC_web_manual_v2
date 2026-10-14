@@ -18,10 +18,11 @@ export type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: stri
 
 export class AiUnavailableError extends Error {}
 
-async function post(path: string, body: unknown, signal?: AbortSignal): Promise<Response> {
+// baseUrl: địa chỉ phần mềm AI. Model trả lời và model embedding có thể ở 2 chỗ khác nhau.
+async function post(path: string, body: unknown, signal?: AbortSignal, baseUrl = config.ai.baseUrl): Promise<Response> {
   let res: Response;
   try {
-    res = await fetch(`${config.ai.baseUrl}${path}`, {
+    res = await fetch(`${baseUrl}${path}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -33,7 +34,7 @@ async function post(path: string, body: unknown, signal?: AbortSignal): Promise<
     });
   } catch (err) {
     if (signal?.aborted) throw err;
-    throw new AiUnavailableError(`Không kết nối được AI tại ${config.ai.baseUrl}`);
+    throw new AiUnavailableError(`Không kết nối được AI tại ${baseUrl}`);
   }
   if (!res.ok) {
     const text = await res.text().catch(() => '');
@@ -74,11 +75,11 @@ export async function embed(texts: string[]): Promise<number[][]> {
   const out: number[][] = [];
   for (let i = 0; i < texts.length; i += 16) {
     const input = texts.slice(i, i + 16);
-    if (config.ai.api === 'ollama') {
-      const res = await post('/api/embed', { model: config.ai.embedModel, input, truncate: true });
+    if (config.ai.embedApi === 'ollama') {
+      const res = await post('/api/embed', { model: config.ai.embedModel, input, truncate: true }, undefined, config.ai.embedBaseUrl);
       out.push(...((await res.json()) as { embeddings: number[][] }).embeddings);
     } else {
-      const res = await post('/v1/embeddings', { model: config.ai.embedModel, input });
+      const res = await post('/v1/embeddings', { model: config.ai.embedModel, input }, undefined, config.ai.embedBaseUrl);
       const data = (await res.json()) as { data: { index: number; embedding: number[] }[] };
       out.push(...data.data.sort((a, b) => a.index - b.index).map((d) => d.embedding));
     }

@@ -145,7 +145,8 @@ setInterval(() => {
 
 // Trợ lý AI (nếu bật AI_BASE_URL): dựng chỉ mục tài liệu chạy nền + dọn log cũ.
 if (config.ai.baseUrl) {
-  console.log(`🤖 AI (${config.ai.api}): ${config.ai.baseUrl} — model ${config.ai.chatModel} / ${config.ai.embedModel}`);
+  console.log(`🤖 AI trả lời (${config.ai.api}): ${config.ai.baseUrl} — ${config.ai.chatModel}`);
+  console.log(`🤖 AI embedding (${config.ai.embedApi}): ${config.ai.embedBaseUrl} — ${config.ai.embedModel}`);
   startIndexing();
   startLogCleanup();
 }

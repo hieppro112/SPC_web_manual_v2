@@ -71,6 +71,10 @@ export const config = {
     apiKey: process.env.AI_API_KEY ?? '', // chỉ cần nếu LM Studio bật yêu cầu xác thực
     chatModel: process.env.AI_CHAT_MODEL ?? 'qwen3.5-9b', // model trả lời (tên y như trong LM Studio)
     embedModel: process.env.AI_EMBED_MODEL ?? 'bge-m3', // model "đánh dấu" để tìm đoạn liên quan
+    // Model embedding chạy ở phần mềm KHÁC (vd trả lời bằng LM Studio, embedding bằng
+    // Ollama vì LM Studio không tải được model). Để trống = dùng chung AI_API / AI_BASE_URL.
+    embedApi: (process.env.AI_EMBED_API || process.env.AI_API) === 'ollama' ? ('ollama' as const) : ('openai' as const),
+    embedBaseUrl: (process.env.AI_EMBED_BASE_URL || process.env.AI_BASE_URL || '').replace(/\/+$/, ''),
     // Độ dài ngữ cảnh (token). Ollama: app gửi kèm mỗi câu hỏi. LM Studio: phải đặt
     // Context Length của model >= số này trong LM Studio. App cắt tài liệu dài theo số này.
     numCtx: Number(process.env.AI_NUM_CTX ?? 16384),
