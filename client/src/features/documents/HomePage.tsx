@@ -12,7 +12,7 @@ import Button from '../../components/ui/Button.tsx';
 import EmptyState from '../../components/ui/EmptyState.tsx';
 import Spinner from '../../components/ui/Spinner.tsx';
 import SearchBox from '../../components/SearchBox.tsx';
-import type { DocStatus } from '../../lib/types.ts';
+import { isEditor, type DocStatus } from '../../lib/types.ts';
 import { cn, errorMessage } from '../../lib/utils.ts';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.ts';
 import { useCurrentUser } from '../auth/queries.ts';
@@ -26,7 +26,8 @@ const STATUS_FILTERS: (DocStatus | '')[] = ['', 'published', 'draft'];
 
 export default function HomePage() {
   const { t } = useTranslation();
-  const user = useCurrentUser();
+  // Lọc nháp / tạo tài liệu: chỉ người soạn (role "user" chỉ thấy bài đã xuất bản).
+  const editor = isEditor(useCurrentUser());
   const [params, setParams] = useSearchParams();
   const q = params.get('q') ?? '';
   const category = params.get('category') ?? '';
@@ -82,7 +83,7 @@ export default function HomePage() {
             <h1 className="text-2xl font-bold">{heading}</h1>
             {docs && <p className="mt-1 text-sm text-muted">{t('home.count', { count: docs.length })}</p>}
           </div>
-          {user && (
+          {editor && (
             <div className="flex rounded-lg border border-border p-0.5" role="group" aria-label={t('home.filterStatus')}>
               {STATUS_FILTERS.map((s) => (
                 <button
@@ -115,7 +116,7 @@ export default function HomePage() {
             icon={q ? FileSearch : FolderOpen}
             title={q ? t('home.emptySearch') : t('home.empty')}
             action={
-              user && !q ? (
+              editor && !q ? (
                 <Link to="/new">
                   <Button>
                     <FilePlus2 className="h-4 w-4" /> {t('nav.newDoc')}

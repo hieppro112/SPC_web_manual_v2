@@ -6,9 +6,14 @@
 //   /login                    đăng nhập / setup lần đầu
 //   /register                 tự đăng ký (chờ admin duyệt)
 //   /m/upload/:token          trang upload trên điện thoại (không có header)
+//   /quizzes                  bài kiểm tra của tôi (+ quản lý đề)  đã đăng nhập
+//   /quizzes/:id              làm bài                               đã đăng nhập
 //   /new                      tạo tài liệu                          editor
 //   /docs/:slug/edit          sửa tài liệu                          editor
 //   /docs/:slug/history       lịch sử phiên bản                     editor
+//   /quizzes/new              tạo đề bằng AI                        editor
+//   /quizzes/:id/edit         sửa đề                                editor
+//   /quizzes/:id/results      bảng điểm + xuất Excel                admin
 //   /admin/categories         quản lý thể loại                      admin
 //   /admin/users              quản lý tài khoản                     admin
 //
@@ -39,7 +44,15 @@ export const router = createBrowserRouter([
       { path: 'register', element: <RegisterPage /> },
       { path: 'docs/:slug', element: <DocPage /> },
       {
+        // Ai đăng nhập cũng vào được (kể cả role "user"): làm bài kiểm tra.
         element: <RequireAuth />,
+        children: [
+          { path: 'quizzes', lazy: () => import('../features/quizzes/QuizListPage.tsx').then((m) => ({ Component: m.default })) },
+          { path: 'quizzes/:id', lazy: () => import('../features/quizzes/QuizTakePage.tsx').then((m) => ({ Component: m.default })) },
+        ],
+      },
+      {
+        element: <RequireAuth allow="editor" />,
         children: [
           { path: 'new', lazy: () => import('../features/editor/EditorPage.tsx').then((m) => ({ Component: m.default })) },
           { path: 'docs/:slug/edit', lazy: () => import('../features/editor/EditorPage.tsx').then((m) => ({ Component: m.default })) },
@@ -47,18 +60,24 @@ export const router = createBrowserRouter([
             path: 'docs/:slug/history',
             lazy: () => import('../features/documents/HistoryPage.tsx').then((m) => ({ Component: m.default })),
           },
+          { path: 'quizzes/new', lazy: () => import('../features/quizzes/QuizCreatePage.tsx').then((m) => ({ Component: m.default })) },
+          { path: 'quizzes/:id/edit', lazy: () => import('../features/quizzes/QuizEditPage.tsx').then((m) => ({ Component: m.default })) },
+        ],
+      },
+      {
+        element: <RequireAuth allow="admin" />,
+        children: [
           {
-            element: <RequireAuth role="admin" />,
-            children: [
-              {
-                path: 'admin/categories',
-                lazy: () => import('../features/categories/CategoriesAdminPage.tsx').then((m) => ({ Component: m.default })),
-              },
-              {
-                path: 'admin/users',
-                lazy: () => import('../features/users/UsersAdminPage.tsx').then((m) => ({ Component: m.default })),
-              },
-            ],
+            path: 'admin/categories',
+            lazy: () => import('../features/categories/CategoriesAdminPage.tsx').then((m) => ({ Component: m.default })),
+          },
+          {
+            path: 'admin/users',
+            lazy: () => import('../features/users/UsersAdminPage.tsx').then((m) => ({ Component: m.default })),
+          },
+          {
+            path: 'quizzes/:id/results',
+            lazy: () => import('../features/quizzes/QuizResultsPage.tsx').then((m) => ({ Component: m.default })),
           },
         ],
       },

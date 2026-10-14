@@ -185,3 +185,9 @@ Luật đi kèm: chỉ MỘT file được import `recharts` (`ChartRenderer.tsx
 - **Tìm theo ý nghĩa bằng vector:** model *embedding* đổi mỗi đoạn chữ thành một dãy ~1000 số. Hai đoạn cùng ý thì hai dãy số "gần nhau" (độ giống cosine). Câu hỏi "cách thêm tool" vẫn tìm ra đoạn "Bước 3: Khai báo công cụ mới" dù không trùng chữ nào.
 - **Stream:** server gửi câu trả lời thành nhiều dòng JSON (NDJSON). Client đọc bằng `res.body.getReader()` trong `lib/http.ts → postStream`, mỗi mẩu chữ tới là nối vào tin nhắn, nên chữ hiện ra dần. 🔸 Flutter: giống `StreamBuilder` nghe `http.Client().send()` theo từng chunk.
 - **Dừng giữa chừng:** `AbortController`. Client hủy fetch, server thấy kết nối đóng (`res.on('close')`) nên hủy luôn request sang LM Studio, đỡ tốn GPU.
+
+### Bài kiểm tra: bắt AI trả JSON đúng khuôn + chấm điểm ở server
+
+- **Structured output:** gửi kèm một *JSON Schema* (`response_format: json_schema`). LM Studio/Ollama ép từng token AI viết ra phải khớp khuôn, nên kết quả luôn `JSON.parse` được. Server vẫn kiểm tra lại bằng zod (`services/quiz/types.ts`): bỏ câu trùng đáp án, sửa câu "nhiều đáp án" mà chỉ có 1 đáp án đúng thành "một đáp án".
+- **Không lộ đáp án:** API `/take` chỉ gửi câu hỏi + đáp án **đã xáo**, không có `correct`. Nộp bài thì server chấm. Nếu chấm ở trình duyệt, người rành máy chỉ cần mở DevTools (tab Network) là thấy đáp án.
+- **Đáp án có id riêng** (không dùng vị trí 0/1/2): xáo trộn thế nào cũng chấm đúng theo id. 🔸 Flutter: giống dùng `ValueKey(id)` thay vì index cho item trong list.

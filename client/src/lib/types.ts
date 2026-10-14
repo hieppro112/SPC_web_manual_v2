@@ -6,7 +6,8 @@
 
 import type { Block } from '../blocks/types.ts';
 
-export type Role = 'admin' | 'editor';
+// admin > editor (soạn tài liệu, tạo đề) > user (chỉ đọc + làm bài kiểm tra)
+export type Role = 'admin' | 'editor' | 'user';
 export type DocStatus = 'draft' | 'published';
 export type MediaKind = 'image' | 'video' | 'file';
 
@@ -20,6 +21,10 @@ export type User = {
   status: 'active' | 'pending';
   createdAt: string;
 };
+
+// Được soạn tài liệu / tạo đề không (editor, admin). Khách và role "user" -> false.
+// Chỉ để ẩn/hiện nút; server mới là nơi chặn thật.
+export const isEditor = (user: User | null | undefined): boolean => user?.role === 'admin' || user?.role === 'editor';
 
 export type Category = {
   id: string;

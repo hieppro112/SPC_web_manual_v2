@@ -11,7 +11,8 @@
 
 import { execute, query, queryOne, withTransaction, type Tx } from '../db/pool.ts';
 
-export const ROLES = ['admin', 'editor'] as const;
+// user = chỉ đọc + làm bài kiểm tra (cần migration 003)
+export const ROLES = ['admin', 'editor', 'user'] as const;
 export type Role = (typeof ROLES)[number];
 export type UserStatus = 'active' | 'pending';
 
@@ -145,6 +146,11 @@ export async function deleteUser(id: number): Promise<void> {
     await execute('UPDATE WebManualDocumentVersions SET SavedById = NULL WHERE SavedById = @id', { id }, tx);
     await execute('UPDATE WebManualMedia SET UploadedById = NULL WHERE UploadedById = @id', { id }, tx);
     await execute('DELETE FROM WebManualUploadSessions WHERE CreatedById = @id', { id }, tx);
+    // Bài kiểm tra: bộ đề giữ lại (bỏ tên người tạo), bài làm + giao bài của người này xóa luôn.
+    await execute('UPDATE WebManualQuizzes SET CreatedById = NULL WHERE CreatedById = @id', { id }, tx);
+    await execute('UPDATE WebManualQuizzes SET UpdatedById = NULL WHERE UpdatedById = @id', { id }, tx);
+    await execute('DELETE FROM WebManualQuizAssignees WHERE UserId = @id', { id }, tx);
+    await execute('DELETE FROM WebManualQuizAttempts WHERE UserId = @id', { id }, tx);
     await execute('DELETE FROM WebManualUsers WHERE Id = @id', { id }, tx);
   });
 }

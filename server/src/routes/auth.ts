@@ -92,8 +92,9 @@ authRouter.post('/register', async (req, res) => {
     throw new HttpError(409, 'Hệ thống chưa có admin. Hãy tạo tài khoản admin trước.');
   }
   const { password, ...data } = registerSchema.parse(req.body ?? {});
-  // Luôn là editor + pending, client gửi role/status gì cũng bị bỏ qua.
-  await createUser({ ...data, role: 'editor', status: 'pending', passwordHash: await bcrypt.hash(password, BCRYPT_ROUNDS) });
+  // Luôn là "user" (chỉ đọc + làm bài) + pending, client gửi role/status gì
+  // cũng bị bỏ qua. Admin nâng lên editor khi duyệt hoặc sau đó.
+  await createUser({ ...data, role: 'user', status: 'pending', passwordHash: await bcrypt.hash(password, BCRYPT_ROUNDS) });
   // KHÔNG đăng nhập luôn: phải đợi admin duyệt.
   res.status(201).json({ pending: true });
 });

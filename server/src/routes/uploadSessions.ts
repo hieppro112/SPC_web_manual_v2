@@ -12,7 +12,7 @@ import { randomBytes } from 'node:crypto';
 import { Router, type RequestHandler } from 'express';
 import { z } from 'zod';
 import { HttpError } from '../middleware/errorHandler.ts';
-import { currentUser, requireAuth } from '../middleware/auth.ts';
+import { currentUser, requireEditor } from '../middleware/auth.ts';
 import { claimSession, createUploadSession, findActiveSession } from '../repositories/media.ts';
 import { discardUpload, storeUpload, uploadSingle } from '../services/media.ts';
 
@@ -26,7 +26,7 @@ async function findOr404(token: unknown) {
   return session;
 }
 
-uploadSessionsRouter.post('/', requireAuth, async (req, res) => {
+uploadSessionsRouter.post('/', requireEditor, async (req, res) => {
   const { kind } = z.object({ kind: z.enum(['image', 'video']).default('image') }).parse(req.body ?? {});
   // 24 byte ngẫu nhiên = 48 ký tự hex: không thể đoán mò.
   const token = randomBytes(24).toString('hex');

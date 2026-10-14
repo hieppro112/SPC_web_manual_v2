@@ -19,6 +19,7 @@ import Markdown from '../../components/Markdown.tsx';
 import AutoTextarea from '../../components/ui/AutoTextarea.tsx';
 import Button from '../../components/ui/Button.tsx';
 import { ApiError } from '../../lib/http.ts';
+import { isEditor } from '../../lib/types.ts';
 import { cn, errorMessage, newId } from '../../lib/utils.ts';
 import { useCurrentUser } from '../auth/queries.ts';
 import { useDocument } from '../documents/queries.ts';
@@ -64,7 +65,8 @@ export default function AiChatWidget() {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
   }, [messages, open]);
 
-  const guestRemaining = user ? null : (remaining ?? status?.remaining ?? null);
+  // Khách và role "user" bị giới hạn số câu/giờ; editor/admin không.
+  const guestRemaining = isEditor(user) ? null : (remaining ?? status?.remaining ?? null);
 
   if (!status?.enabled) return null;
 
@@ -266,9 +268,11 @@ export default function AiChatWidget() {
               {guestRemaining !== null && (
                 <>
                   {t('ai.remaining', { count: guestRemaining })}{' '}
-                  <Link to="/login" className="text-accent hover:underline">
-                    {t('ai.loginForMore')}
-                  </Link>
+                  {!user && (
+                    <Link to="/login" className="text-accent hover:underline">
+                      {t('ai.loginForMore')}
+                    </Link>
+                  )}
                   {' · '}
                 </>
               )}

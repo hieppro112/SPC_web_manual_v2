@@ -8,8 +8,13 @@
 //
 //   loadUser    — chạy cho MỌI request: có token hợp lệ thì gắn user vào
 //                 res.locals.user, không có thì coi là khách (không lỗi)
-//   requireAuth — đặt trước route cần đăng nhập: khách -> 401
-//   requireAdmin— đặt trước route chỉ admin: không phải admin -> 403
+//   requireAuth  — đặt trước route cần đăng nhập: khách -> 401
+//   requireEditor— route soạn tài liệu / tạo đề: chỉ editor + admin (role "user" -> 403)
+//   requireAdmin — đặt trước route chỉ admin: không phải admin -> 403
+//
+// 3 role: admin (mọi quyền) > editor (soạn tài liệu, tạo đề) > user (chỉ
+// đọc bài đã xuất bản + làm bài kiểm tra). Với nhiều chỗ, "user" được đối
+// xử như khách: không thấy bài nháp, hỏi AI bị giới hạn.
 //
 // 🔸 Flutter: giống một Dio interceptor đọc token, nhưng ở phía server.
 
@@ -74,6 +79,15 @@ export const loadUser: RequestHandler = async (req, res, next) => {
 
 export const requireAuth: RequestHandler = (_req, res, next) => {
   if (!res.locals.user) throw new HttpError(401, 'Bạn cần đăng nhập');
+  next();
+};
+
+// Có quyền soạn (editor / admin)? Khách và role "user" -> false.
+export const isEditor = (user: User | undefined): boolean => user?.role === 'admin' || user?.role === 'editor';
+
+export const requireEditor: RequestHandler = (_req, res, next) => {
+  if (!res.locals.user) throw new HttpError(401, 'Bạn cần đăng nhập');
+  if (!isEditor(res.locals.user)) throw new HttpError(403, 'Tài khoản của bạn chỉ được đọc tài liệu và làm bài kiểm tra');
   next();
 };
 
