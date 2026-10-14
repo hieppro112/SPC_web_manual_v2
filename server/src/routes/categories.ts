@@ -9,7 +9,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { HttpError } from '../middleware/errorHandler.ts';
-import { requireAdmin } from '../middleware/auth.ts';
+import { isEditor, requireAdmin } from '../middleware/auth.ts';
 import {
   categoryExists,
   countChildCategories,
@@ -44,7 +44,8 @@ async function parseParent(value: unknown): Promise<number | null> {
 }
 
 categoriesRouter.get('/', async (_req, res) => {
-  res.json(await listCategoriesWithCount(!res.locals.user));
+  // Khách / role "user" chỉ đếm bài đã xuất bản (không lộ số bài nháp).
+  res.json(await listCategoriesWithCount(!isEditor(res.locals.user)));
 });
 
 categoriesRouter.post('/', requireAdmin, async (req, res) => {

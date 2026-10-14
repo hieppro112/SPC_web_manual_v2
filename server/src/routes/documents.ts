@@ -1,7 +1,7 @@
 // ============================================================
 // routes/documents.ts — Mọi API của tài liệu
 // ============================================================
-// Khách (chưa đăng nhập) chỉ ĐỌC được bài đã xuất bản.
+// Khách (chưa đăng nhập) và role "user" chỉ ĐỌC được bài đã xuất bản.
 // Editor/admin đọc được cả nháp và được ghi.
 //
 //   GET    /                       ?q=&category=&status=   danh sách
@@ -18,7 +18,7 @@ import { Router, type Response } from 'express';
 import { z } from 'zod';
 import { parseBlocks } from '../blocks/schemas.ts';
 import { HttpError } from '../middleware/errorHandler.ts';
-import { currentUser, requireAuth } from '../middleware/auth.ts';
+import { currentUser, isEditor, requireEditor } from '../middleware/auth.ts';
 import { categoryExists, listCategoryLinks } from '../repositories/categories.ts';
 import { descendantIds } from '../services/categoryTree.ts';
 import {
@@ -64,7 +64,7 @@ documentsRouter.use((req, res, next) => {
 // Khách mở link bài nháp -> 404 (giả như không tồn tại), không phải 403,
 // để người ngoài không biết là có bài đó.
 function assertReadable(doc: FullDocument | null, res: Response): asserts doc is FullDocument {
-  if (!doc || (!res.locals.user && doc.status !== 'published')) {
+  if (!doc || (!isEditor(res.locals.user) && doc.status !== 'published')) {
     throw new HttpError(404, 'Không tìm thấy tài liệu');
   }
 }
@@ -91,8 +91,8 @@ documentsRouter.get('/', async (req, res) => {
   const categoryIds = categoryId ? descendantIds(await listCategoryLinks(), categoryId) : undefined;
   res.json(
     await listDocuments({
-      // Khách: luôn chỉ bài đã xuất bản, bỏ qua ?status gửi lên.
-      status: !res.locals.user ? 'published' : isDocStatus(status) ? status : undefined,
+      // Khách / role "user": luôn chỉ bài đã xuất bản, bỏ qua ?status gửi lên.
+      status: !isEditor(res.locals.user) ? 'published' : isDocStatus(status) ? status : undefined,
       categoryIds,
       // Tìm kiếm: bỏ dấu câu hỏi rồi yêu cầu MỌI từ đều có trong SearchText.
       words: typeof q === 'string' ? removeDiacritics(q).split(/\s+/).filter(Boolean).slice(0, 8) : [],
@@ -113,7 +113,7 @@ documentsRouter.get('/:id', async (req, res) => {
   res.json(doc);
 });
 
-documentsRouter.post('/', requireAuth, async (req, res) => {
+documentsRouter.post('/', requireEditor, async (req, res) => {
   const body = req.body ?? {};
   const input: DocumentInput = {
     title: titleSchema.parse(body.title ?? ''),
@@ -124,7 +124,7 @@ documentsRouter.post('/', requireAuth, async (req, res) => {
   res.status(201).json(await createDocument(input, currentUser(res).id));
 });
 
-documentsRouter.put('/:id', requireAuth, async (req, res) => {
+documentsRouter.put('/:id', requireEditor, async (req, res) => {
   const doc = await findOr404(req.params.id);
   const body = req.body ?? {};
   // Field nào không gửi thì giữ nguyên giá trị hiện tại.
@@ -137,7 +137,7 @@ documentsRouter.put('/:id', requireAuth, async (req, res) => {
   res.json(await updateDocument(Number(doc.id), input, currentUser(res).id));
 });
 
-documentsRouter.delete('/:id', requireAuth, async (req, res) => {
+documentsRouter.delete('/:id', requireEditor, async (req, res) => {
   if (!(await deleteDocument(parseId(req.params.id)))) throw new HttpError(404, 'Không tìm thấy tài liệu');
   // 204 No Content: thành công, không có gì để trả về.
   res.status(204).end();
@@ -145,11 +145,11 @@ documentsRouter.delete('/:id', requireAuth, async (req, res) => {
 
 // ---------- Lịch sử phiên bản ----------
 
-documentsRouter.get('/:id/versions', requireAuth, async (req, res) => {
+documentsRouter.get('/:id/versions', requireEditor, async (req, res) => {
   res.json(await listVersions(parseId(req.params.id)));
 });
 
-documentsRouter.get('/:id/versions/:version', requireAuth, async (req, res) => {
+documentsRouter.get('/:id/versions/:version', requireEditor, async (req, res) => {
   const version = await findVersion(parseId(req.params.id), parseId(req.params.version, 'version'));
   if (!version) throw new HttpError(404, 'Không tìm thấy phiên bản');
   res.json(version);
@@ -159,7 +159,7 @@ documentsRouter.get('/:id/versions/:version', requireAuth, async (req, res) => {
 // không bao giờ bị xóa, nên khôi phục nhầm vẫn quay lại được.
 // Giữ nguyên trạng thái xuất bản hiện tại: khôi phục nội dung không nên
 // vô tình làm bài đang công khai biến thành nháp (hoặc ngược lại).
-documentsRouter.post('/:id/versions/:version/restore', requireAuth, async (req, res) => {
+documentsRouter.post('/:id/versions/:version/restore', requireEditor, async (req, res) => {
   const doc = await findOr404(req.params.id);
   const old = await findVersionForRestore(Number(doc.id), parseId(req.params.version, 'version'));
   if (!old) throw new HttpError(404, 'Không tìm thấy phiên bản');

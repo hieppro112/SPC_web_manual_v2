@@ -190,6 +190,24 @@ Test-NetConnection 192.168.122.15 -Port 5000
 
 Rồi mở **http://192.168.122.15:5000**. Điện thoại (Wi-Fi công ty) mở cùng địa chỉ để dùng được tính năng quét QR chụp ảnh.
 
+## Cập nhật lên bản có Bài kiểm tra (migration 003) — làm MỘT lần
+
+Bản này thêm role **user** (chỉ đọc + làm bài) và 3 bảng bài kiểm tra. Tài khoản app `kvh_write` không có quyền sửa cấu trúc, nên:
+
+1. **Trước khi** cập nhật code: mở SSMS bằng tài khoản quản trị → mở `server\sql\003_quiz.sql` → Execute. Kết quả cuối phải có: ràng buộc Role chứa `user`, 3 bảng `WebManualQuiz...`, quyền của `kvh_write` trên 3 bảng đó, 3 dòng đánh dấu `001`, `002`, `003`.
+2. Cập nhật code như thường lệ (`git pull`, `npm ci` + build client, **`npm ci --omit=dev` bên server** vì có thư viện mới `exceljs`), restart.
+
+Chưa chạy bước 1 mà đã chạy code mới thì app dừng ngay lúc khởi động và báo cần chạy script — không hỏng dữ liệu.
+
+Tùy chọn trong `server\.env`:
+
+| Biến | Mặc định | Ý nghĩa |
+| --- | --- | --- |
+| `QUIZ_GENERATE_PER_DAY` | `3` | Số lần tạo đề bằng AI / editor / ngày (admin không giới hạn) |
+| `QUIZ_RESULT_DAYS` | `30` | Kết quả làm bài tự xóa sau số ngày này (dữ liệu đánh giá cá nhân) |
+
+Tạo đề bằng AI cần bật trợ lý AI (bước 9). Không bật AI thì vẫn làm bài / sửa đề / xem điểm được, chỉ không có nút tạo đề tự động.
+
 ## Bước 9 (tùy chọn) — Trợ lý AI chạy local
 
 Nút 💬 ở góc màn hình: hỏi đáp trên toàn bộ tài liệu, hỏi về bài đang đọc, tóm tắt bài. App tự tìm đoạn tài liệu liên quan (RAG), phần mềm AI chỉ việc trả lời. Không bật thì nút 💬 tự ẩn, app chạy bình thường.

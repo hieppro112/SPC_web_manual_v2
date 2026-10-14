@@ -127,6 +127,70 @@ async function* rawChatStream(messages: ChatMessage[], signal: AbortSignal): Asy
   }
 }
 
+// ---------- Trả về JSON đúng khuôn (structured output) ----------
+
+// Ép model trả JSON theo `schema` (JSON Schema). LM Studio / Ollama dùng
+// "grammar" ép từng token phải khớp khuôn, nên JSON luôn parse được.
+// Vẫn gọi dạng stream để: (1) báo tiến độ qua onText, (2) không bị ngắt kết
+// nối khi model chạy lâu (request thường chờ quá ~5 phút là bị cắt).
+export async function chatJson<T>(
+  messages: ChatMessage[],
+  schema: object,
+  signal: AbortSignal,
+  onText?: (textSoFar: string) => void,
+): Promise<T> {
+  let text = '';
+  const push = (piece: string) => {
+    text += piece;
+    onText?.(text);
+  };
+
+  if (config.ai.api === 'ollama') {
+    const res = await post(
+      '/api/chat',
+      { model: config.ai.chatModel, messages, stream: true, think: false, format: schema, keep_alive: '30m', options: { num_ctx: config.ai.numCtx, temperature: 0.4 } },
+      signal,
+    );
+    for await (const line of lines(res)) {
+      const data = JSON.parse(line) as { message?: { content?: string }; error?: string };
+      if (data.error) throw new AiUnavailableError(`AI lỗi: ${data.error}`);
+      if (data.message?.content) push(data.message.content);
+    }
+  } else {
+    const res = await post(
+      '/v1/chat/completions',
+      {
+        model: config.ai.chatModel,
+        messages,
+        stream: true,
+        temperature: 0.4,
+        response_format: { type: 'json_schema', json_schema: { name: 'result', strict: true, schema } },
+      },
+      signal,
+    );
+    for await (const line of lines(res)) {
+      if (!line.startsWith('data:')) continue;
+      const payload = line.slice(5).trim();
+      if (payload === '[DONE]') break;
+      const data = JSON.parse(payload) as { choices?: { delta?: { content?: string | null } }[]; error?: { message?: string } };
+      if (data.error) throw new AiUnavailableError(`AI lỗi: ${data.error.message ?? 'không rõ'}`);
+      const piece = data.choices?.[0]?.delta?.content;
+      if (piece) push(piece);
+    }
+  }
+
+  // Phòng khi model vẫn chèn phần suy nghĩ hoặc ```json ... ``` quanh kết quả.
+  const cleaned = text
+    .replace(/<think>[\s\S]*?<\/think>/g, '')
+    .replace(/^\s*```(?:json)?|```\s*$/g, '')
+    .trim();
+  try {
+    return JSON.parse(cleaned) as T;
+  } catch {
+    throw new AiUnavailableError('AI trả về dữ liệu không đúng định dạng JSON');
+  }
+}
+
 // Hỏi đáp dạng stream: `yield` từng mẩu chữ ngay khi model sinh ra.
 // 🔸 Dart: giống hàm `async*` trả về Stream<String>.
 // Model nào vẫn in phần suy nghĩ lẫn trong câu trả lời (<think>...</think>) thì lọc bỏ.

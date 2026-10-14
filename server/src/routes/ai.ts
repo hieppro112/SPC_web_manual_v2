@@ -11,12 +11,14 @@
 //
 // mode: 'all' = hỏi trên toàn bộ tài liệu, 'doc' = hỏi về bài đang đọc,
 //       'summary' = tóm tắt bài đang đọc.
-// Khách chưa đăng nhập: tối đa config.ai.guestLimitPerHour câu / giờ / IP.
+// Khách và role "user": tối đa config.ai.guestLimitPerHour câu / giờ (khách theo IP,
+// "user" theo tài khoản). Editor / admin không giới hạn.
 
 import { timingSafeEqual } from 'node:crypto';
-import { Router } from 'express';
+import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
 import { config } from '../config.ts';
+import { isEditor } from '../middleware/auth.ts';
 import { HttpError } from '../middleware/errorHandler.ts';
 import { findDocumentById, findDocumentBySlug, listPublishedStamps } from '../repositories/documents.ts';
 import { writeChatLog } from '../services/ai/chatLog.ts';
@@ -37,12 +39,21 @@ function assertEnabled() {
   if (!config.ai.baseUrl) throw new HttpError(404, 'Trợ lý AI chưa được bật');
 }
 
+// Khách và role "user" bị giới hạn số câu/giờ; editor/admin không giới hạn.
+// Khách đếm theo IP, người đã đăng nhập đếm theo tài khoản.
+function quotaKey(req: Request, res: Response): string | null {
+  const user = res.locals.user;
+  if (isEditor(user)) return null;
+  return user ? `user:${user.id}` : `ip:${req.ip ?? ''}`;
+}
+
 aiRouter.get('/status', (req, res) => {
+  const key = quotaKey(req, res);
   res.json({
     enabled: !!config.ai.baseUrl,
     indexedDocs: indexedDocCount(),
     guestLimit: config.ai.guestLimitPerHour,
-    remaining: res.locals.user ? null : remainingFor(req.ip ?? ''),
+    remaining: key ? remainingFor(key) : null,
   });
 });
 
@@ -67,14 +78,10 @@ aiRouter.post('/chat', async (req, res) => {
 
   const user = res.locals.user;
   const ip = req.ip ?? '';
-  if (!user) {
-    const wait = takeGuestQuota(ip);
-    if (wait !== null) {
-      throw new HttpError(
-        429,
-        `Bạn đã hỏi ${config.ai.guestLimitPerHour} câu trong 1 giờ. Đăng nhập để hỏi không giới hạn, hoặc thử lại sau ${wait} phút.`,
-      );
-    }
+  const key = quotaKey(req, res);
+  if (key) {
+    const wait = takeGuestQuota(key);
+    if (wait !== null) throw new HttpError(429, `Bạn đã hỏi ${config.ai.guestLimitPerHour} câu trong 1 giờ. Thử lại sau ${wait} phút.`);
   }
 
   // ---------- Chuẩn bị ngữ cảnh cho AI ----------
@@ -126,7 +133,7 @@ aiRouter.post('/chat', async (req, res) => {
   });
   res.flushHeaders();
   const send = (data: object) => res.write(`${JSON.stringify(data)}\n`);
-  send({ type: 'meta', sources, remaining: user ? null : remainingFor(ip) });
+  send({ type: 'meta', sources, remaining: key ? remainingFor(key) : null });
 
   // Người dùng đóng khung chat / bấm Dừng -> ngắt luôn Ollama, đỡ tốn GPU.
   const controller = new AbortController();

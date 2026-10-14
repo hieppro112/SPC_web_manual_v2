@@ -8,6 +8,8 @@ Web lưu tài liệu hướng dẫn / quy trình nội bộ. Chạy trong mạng
 - Chia sẻ link + mã QR của tài liệu, link tới từng mục, in / xuất PDF
 - Tìm kiếm không dấu trên toàn bộ nội dung
 - Giao diện sáng / tối, tiếng Việt / English / 日本語
+- **Bài kiểm tra trắc nghiệm do AI ra đề** từ tài liệu: editor xem / sửa đề, "Ôn tập" (không lưu điểm) hoặc "Kiểm tra" (giao người, hạn chót, tối đa N lần, lưu điểm lần gần nhất); admin xem bảng điểm + xuất Excel
+- 3 quyền: **user** (đọc + làm bài) · **editor** (soạn tài liệu, tạo đề) · **admin** (quản trị, xem điểm)
 - **Trợ lý AI chạy local** (LM Studio / Ollama): hỏi đáp trên toàn bộ tài liệu kèm link nguồn, hỏi về bài đang đọc, tóm tắt — xem DEPLOY.md bước 9
 
 ## Cấu trúc

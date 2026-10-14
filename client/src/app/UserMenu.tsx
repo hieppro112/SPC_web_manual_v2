@@ -44,7 +44,7 @@ export default function UserMenu({ user }: { user: User }) {
             <div className="px-2.5 py-2">
               <p className="truncate text-sm font-medium">{user.displayName}</p>
               <p className="text-xs text-muted">
-                @{user.username} · {user.role === 'admin' ? t('users.admin') : t('users.editor')}
+                @{user.username} · {t(`users.${user.role}`)}
               </p>
             </div>
             <div className="my-1 border-t border-border" />

@@ -12,7 +12,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { ChevronRight, Clock, FileQuestionMark, Pencil, Printer, Share2, Trash } from 'lucide-react';
+import { ChevronRight, ClipboardCheck, Clock, FileQuestionMark, Pencil, Printer, Share2, Trash } from 'lucide-react';
 import Badge from '../../components/ui/Badge.tsx';
 import Button from '../../components/ui/Button.tsx';
 import EmptyState from '../../components/ui/EmptyState.tsx';
@@ -22,6 +22,8 @@ import { withDefaults } from '../../blocks/registry.ts';
 import { ApiError } from '../../lib/http.ts';
 import { cn, errorMessage, formatDateTime } from '../../lib/utils.ts';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.ts';
+import { isEditor } from '../../lib/types.ts';
+import { useAiStatus } from '../ai/queries.ts';
 import { useCurrentUser } from '../auth/queries.ts';
 import CategoryIcon from '../categories/CategoryIcon.tsx';
 import { useCategories } from '../categories/queries.ts';
@@ -36,7 +38,8 @@ export default function DocPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
-  const user = useCurrentUser();
+  const editor = isEditor(useCurrentUser());
+  const { data: aiStatus } = useAiStatus();
   const { data: doc, isPending, error } = useDocument(slug);
   const deleteDoc = useDeleteDocument();
   const [shareOpen, setShareOpen] = useState(false);
@@ -148,11 +151,11 @@ export default function DocPage() {
             <span>
               {t('doc.updatedBy', { date: formatDateTime(doc.updatedAt, i18n.language), name: doc.updatedBy?.displayName ?? '—' })}
             </span>
-            {user && <span>· {t('doc.version', { n: doc.version })}</span>}
+            {editor && <span>· {t('doc.version', { n: doc.version })}</span>}
           </div>
 
           <div className="no-print mt-4 flex flex-wrap gap-2">
-            {user && (
+            {editor && (
               <>
                 <Link to={`/docs/${doc.slug}/edit`}>
                   <Button size="sm">
@@ -172,7 +175,15 @@ export default function DocPage() {
             <Button size="sm" variant="secondary" onClick={() => window.print()}>
               <Printer className="h-4 w-4" /> {t('common.print')}
             </Button>
-            {user && (
+            {/* Tạo bài kiểm tra bằng AI từ chính tài liệu này (chỉ bài đã xuất bản). */}
+            {editor && aiStatus?.enabled && doc.status === 'published' && (
+              <Link to={`/quizzes/new?docs=${doc.id}`}>
+                <Button size="sm" variant="secondary">
+                  <ClipboardCheck className="h-4 w-4" /> {t('quiz.createFromDoc')}
+                </Button>
+              </Link>
+            )}
+            {editor && (
               <Button size="sm" variant="ghost" onClick={handleDelete} loading={deleteDoc.isPending} className="text-danger">
                 <Trash className="h-4 w-4" /> {t('common.delete')}
               </Button>

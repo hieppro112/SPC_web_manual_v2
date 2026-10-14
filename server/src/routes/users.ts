@@ -1,5 +1,5 @@
 // ============================================================
-// routes/users.ts — Admin quản lý tài khoản editor/admin
+// routes/users.ts — Admin quản lý tài khoản (admin / editor / user)
 // ============================================================
 // Cả router chỉ dành cho admin (requireAdmin gắn ở index.ts).
 //   GET    /api/users                 tất cả (cả tài khoản chờ duyệt)
@@ -39,7 +39,7 @@ const createSchema = z.object({
     .pipe(z.union([z.literal(''), z.email('Email không hợp lệ')]))
     .optional(),
   password: passwordSchema,
-  role: z.enum(ROLES).default('editor'),
+  role: z.enum(ROLES).default('user'),
 });
 
 const updateSchema = z.object({
@@ -93,7 +93,7 @@ usersRouter.post('/:id/approve', async (req, res) => {
   const user = await findOr404(req.params.id);
   if (user.status === 'active') throw new HttpError(409, 'Tài khoản này đã được duyệt');
 
-  const { role } = z.object({ role: z.enum(ROLES).default('editor') }).parse(req.body ?? {});
+  const { role } = z.object({ role: z.enum(ROLES).default('user') }).parse(req.body ?? {});
   const updated = await updateUser(user.id, { status: 'active', role });
   res.json(userToJson(updated!));
 });

@@ -96,6 +96,7 @@ export default function UsersAdminPage() {
                       <td className="px-4 py-2.5 font-mono text-xs">{u.username}</td>
                       <td className="px-4 py-2.5">
                         <Select value={u.role} onChange={(e) => changeRole(u, e.target.value as Role)} className="h-8 w-32">
+                          <option value="user">{t('users.user')}</option>
                           <option value="editor">{t('users.editor')}</option>
                           <option value="admin">{t('users.admin')}</option>
                         </Select>
@@ -132,7 +133,7 @@ function PendingRow({ user, locale }: { user: User; locale: string }) {
   const { t } = useTranslation();
   const approve = useApproveUser();
   const remove = useDeleteUser();
-  const [role, setRole] = useState<Role>('editor');
+  const [role, setRole] = useState<Role>('user');
 
   const onApprove = () =>
     approve.mutate(
@@ -156,6 +157,7 @@ function PendingRow({ user, locale }: { user: User; locale: string }) {
         </p>
       </div>
       <Select value={role} onChange={(e) => setRole(e.target.value as Role)} className="h-8 w-32" aria-label={t('users.role')}>
+        <option value="user">{t('users.user')}</option>
         <option value="editor">{t('users.editor')}</option>
         <option value="admin">{t('users.admin')}</option>
       </Select>
@@ -172,7 +174,7 @@ function PendingRow({ user, locale }: { user: User; locale: string }) {
 function NewUserForm() {
   const { t } = useTranslation();
   const create = useCreateUser();
-  const empty = { username: '', displayName: '', email: '', password: '', role: 'editor' as Role };
+  const empty = { username: '', displayName: '', email: '', password: '', role: 'user' as Role };
   const [form, setForm] = useState(empty);
 
   const onSubmit = (e: FormEvent) => {
@@ -215,6 +217,7 @@ function NewUserForm() {
           onChange={(e) => setForm({ ...form, password: e.target.value })}
         />
         <Select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as Role })}>
+          <option value="user">{t('users.user')}</option>
           <option value="editor">{t('users.editor')}</option>
           <option value="admin">{t('users.admin')}</option>
         </Select>

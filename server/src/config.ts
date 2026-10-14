@@ -87,6 +87,12 @@ export const config = {
     exportKey: process.env.AI_EXPORT_KEY ?? '',
   },
 
+  // Bài kiểm tra trắc nghiệm do AI ra đề.
+  quiz: {
+    generatePerDay: Number(process.env.QUIZ_GENERATE_PER_DAY ?? 3), // số lần tạo đề / editor / ngày (admin không giới hạn)
+    resultDays: Number(process.env.QUIZ_RESULT_DAYS ?? 30), // giữ kết quả làm bài bao nhiêu ngày rồi tự xóa
+  },
+
   // draw.io tự host cho khối "Sơ đồ" (cài bằng `npm run install-drawio`).
   drawioDir: path.resolve(process.env.DRAWIO_DIR ?? 'drawio'),
 

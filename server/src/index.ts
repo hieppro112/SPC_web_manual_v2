@@ -20,12 +20,14 @@ import { deleteExpiredSessions } from './repositories/media.ts';
 import { startLogCleanup } from './services/ai/chatLog.ts';
 import { startIndexing } from './services/ai/searchIndex.ts';
 import { errorHandler } from './middleware/errorHandler.ts';
-import { loadUser, requireAdmin, requireAuth } from './middleware/auth.ts';
+import { loadUser, requireAdmin, requireAuth, requireEditor } from './middleware/auth.ts';
 import { aiRouter } from './routes/ai.ts';
 import { authRouter } from './routes/auth.ts';
 import { categoriesRouter } from './routes/categories.ts';
 import { documentsRouter } from './routes/documents.ts';
 import { mediaRouter } from './routes/media.ts';
+import { quizzesRouter } from './routes/quizzes.ts';
+import { deleteOldAttempts } from './repositories/quizzes.ts';
 import { metaRouter } from './routes/meta.ts';
 import { uploadSessionsRouter } from './routes/uploadSessions.ts';
 import { usersRouter } from './routes/users.ts';
@@ -59,12 +61,15 @@ app.use('/api/meta', metaRouter);
 app.use('/api/categories', categoriesRouter);
 app.use('/api/documents', documentsRouter);
 // Gắn middleware kiểm tra quyền cho CẢ nhóm route ngay tại đây.
-app.use('/api/media', requireAuth, mediaRouter);
+// Upload ảnh/video/file chỉ dành cho người soạn tài liệu (role "user" không được).
+app.use('/api/media', requireEditor, mediaRouter);
 app.use('/api/users', requireAdmin, usersRouter);
 // Không gắn requireAuth cho cả nhóm: điện thoại upload bằng token, không đăng nhập.
 app.use('/api/upload-sessions', uploadSessionsRouter);
 // Khách cũng hỏi được (có giới hạn số câu) -> không gắn requireAuth.
 app.use('/api/ai', aiRouter);
+// Bài kiểm tra: phải đăng nhập; quyền chi tiết (editor/admin) nằm trong router.
+app.use('/api/quizzes', requireAuth, quizzesRouter);
 
 // Không khớp route nào ở trên -> 404 dạng JSON.
 app.use('/api', (_req, res) => {
@@ -142,6 +147,14 @@ try {
 setInterval(() => {
   deleteExpiredSessions().catch((err) => console.error('❌ Dọn phiên QR lỗi:', err.message));
 }, 15 * 60 * 1000).unref();
+
+// Kết quả bài kiểm tra là dữ liệu đánh giá cá nhân -> chỉ giữ QUIZ_RESULT_DAYS ngày.
+const cleanQuizResults = () =>
+  deleteOldAttempts(config.quiz.resultDays)
+    .then((n) => n && console.log(`🧹 Đã xóa ${n} bài làm cũ hơn ${config.quiz.resultDays} ngày`))
+    .catch((err) => console.error('❌ Dọn bài làm cũ lỗi:', err.message));
+void cleanQuizResults();
+setInterval(cleanQuizResults, 6 * 60 * 60 * 1000).unref();
 
 // Trợ lý AI (nếu bật AI_BASE_URL): dựng chỉ mục tài liệu chạy nền + dọn log cũ.
 if (config.ai.baseUrl) {
