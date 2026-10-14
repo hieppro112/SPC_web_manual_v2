@@ -8,6 +8,7 @@ Web lưu tài liệu hướng dẫn / quy trình nội bộ. Chạy trong mạng
 - Chia sẻ link + mã QR của tài liệu, link tới từng mục, in / xuất PDF
 - Tìm kiếm không dấu trên toàn bộ nội dung
 - Giao diện sáng / tối, tiếng Việt / English / 日本語
+- **Trợ lý AI chạy local** (LM Studio / Ollama): hỏi đáp trên toàn bộ tài liệu kèm link nguồn, hỏi về bài đang đọc, tóm tắt — xem DEPLOY.md bước 9
 
 ## Cấu trúc
 

@@ -63,6 +63,30 @@ export const config = {
   // cookie đăng nhập -> không đăng nhập được.
   cookieSecure: process.env.COOKIE_SECURE === 'true',
 
+  // Trợ lý AI chạy local (LM Studio / Ollama). AI_BASE_URL trống = tắt AI (ẩn nút chat).
+  ai: {
+    // 'openai' = API chuẩn OpenAI (LM Studio, cổng 1234); 'ollama' = API riêng của Ollama (cổng 11434)
+    api: process.env.AI_API === 'ollama' ? ('ollama' as const) : ('openai' as const),
+    baseUrl: (process.env.AI_BASE_URL ?? '').replace(/\/+$/, ''), // vd http://localhost:1234
+    apiKey: process.env.AI_API_KEY ?? '', // chỉ cần nếu LM Studio bật yêu cầu xác thực
+    chatModel: process.env.AI_CHAT_MODEL ?? 'qwen3.5-9b', // model trả lời (tên y như trong LM Studio)
+    embedModel: process.env.AI_EMBED_MODEL ?? 'bge-m3', // model "đánh dấu" để tìm đoạn liên quan
+    // Model embedding chạy ở phần mềm KHÁC (vd trả lời bằng LM Studio, embedding bằng
+    // Ollama vì LM Studio không tải được model). Để trống = dùng chung AI_API / AI_BASE_URL.
+    embedApi: (process.env.AI_EMBED_API || process.env.AI_API) === 'ollama' ? ('ollama' as const) : ('openai' as const),
+    embedBaseUrl: (process.env.AI_EMBED_BASE_URL || process.env.AI_BASE_URL || '').replace(/\/+$/, ''),
+    // Độ dài ngữ cảnh (token). Ollama: app gửi kèm mỗi câu hỏi. LM Studio: phải đặt
+    // Context Length của model >= số này trong LM Studio. App cắt tài liệu dài theo số này.
+    numCtx: Number(process.env.AI_NUM_CTX ?? 16384),
+    guestLimitPerHour: Number(process.env.AI_GUEST_LIMIT_PER_HOUR ?? 10), // khách chưa đăng nhập
+    syncMinutes: Number(process.env.AI_SYNC_MINUTES ?? 5), // quét lại tài liệu định kỳ
+    // Thư mục chứa chỉ mục tìm kiếm (index.json, xóa được, tự tạo lại) + log hỏi đáp.
+    dataDir: path.resolve(process.env.AI_DATA_DIR ?? 'ai-data'),
+    logDays: Number(process.env.AI_LOG_DAYS ?? 7), // giữ log hỏi đáp bao nhiêu ngày
+    // Khóa cho công cụ ngoài đọc tài liệu qua GET /api/ai/documents. Trống = tắt API này.
+    exportKey: process.env.AI_EXPORT_KEY ?? '',
+  },
+
   // draw.io tự host cho khối "Sơ đồ" (cài bằng `npm run install-drawio`).
   drawioDir: path.resolve(process.env.DRAWIO_DIR ?? 'drawio'),
 

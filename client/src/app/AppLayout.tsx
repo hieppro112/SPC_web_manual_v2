@@ -10,6 +10,7 @@ import { Toaster } from 'sonner';
 import { BookOpen, FilePlus2, LogIn, UserPlus } from 'lucide-react';
 import Button from '../components/ui/Button.tsx';
 import SearchBox from '../components/SearchBox.tsx';
+import AiChatWidget from '../features/ai/AiChatWidget.tsx';
 import { useCurrentUser } from '../features/auth/queries.ts';
 import { useTheme } from '../theme/useTheme.ts';
 import ThemeLanguageMenu from './ThemeLanguageMenu.tsx';
@@ -68,9 +69,12 @@ export default function AppLayout() {
 
       <Outlet />
 
+      {/* Trợ lý AI: nút 💬 nổi ở mọi trang (tự ẩn nếu server chưa bật AI). */}
+      <AiChatWidget />
       {/* Nhớ vị trí cuộn khi bấm Back (về lại đúng chỗ đang đọc trong danh sách). */}
       <ScrollRestoration />
-      <Toaster theme={resolved} position="bottom-right" richColors closeButton />
+      {/* offset bottom: chừa chỗ cho nút trợ lý AI ở góc phải dưới */}
+      <Toaster theme={resolved} position="bottom-right" offset={{ bottom: 80 }} richColors closeButton />
     </div>
   );
 }
