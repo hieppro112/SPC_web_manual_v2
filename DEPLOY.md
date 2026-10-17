@@ -108,6 +108,7 @@ Notepad mở ra → điền mật khẩu SQL vào sau `DB_PASSWORD=` → **Ctrl 
 | `DB_USER`, `DB_PASSWORD` | Tài khoản SQL đã tạo ở bước 1 |
 | `DB_INSTANCE` | (tùy chọn) tên instance, vd `SQLEXPRESS` — chỉ dùng khi không kết nối bằng cổng |
 | `DB_TRUST_SERVER_CERTIFICATE` | `true`: chấp nhận chứng chỉ tự ký của SQL Server nội bộ |
+| `DB_AUTO_MIGRATE` | (tùy chọn) `false` = app **không bao giờ tự tạo / sửa bảng**; thiếu thay đổi nào thì báo chạy file `server\sql\00X_...sql` rồi dừng. Bảng / cột đã được tạo tay thì app tự nhận ra (dòng `-- @applied-if:` đầu mỗi file migration) và chỉ ghi dấu đã chạy |
 | `PUBLIC_BASE_URL` | Địa chỉ in trong mã QR / link chia sẻ |
 | `ALLOWED_EMAIL_DOMAINS` | Đuôi email được tự đăng ký |
 

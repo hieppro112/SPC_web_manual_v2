@@ -1,3 +1,4 @@
+-- @applied-if: COL_LENGTH(N'WebManualCategories', N'ParentId') IS NOT NULL
 -- ============================================================
 -- 002_category_tree.sql — Thể loại dạng cây (cha / con)
 -- ============================================================

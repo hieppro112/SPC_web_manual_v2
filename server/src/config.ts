@@ -41,6 +41,9 @@ export const config = {
     // chứng chỉ tự ký -> phải "tin" chứng chỉ đó, nếu không sẽ bị từ chối.
     encrypt: process.env.DB_ENCRYPT !== 'false',
     trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE !== 'false',
+    // false = app KHÔNG tự tạo / sửa bảng lúc khởi động (tài khoản app chỉ có quyền
+    // đọc/ghi, cấu trúc do người quản trị tạo tay trong SSMS). Mặc định true.
+    autoMigrate: process.env.DB_AUTO_MIGRATE !== 'false',
   },
 
   // Thư mục lưu ảnh/video/file upload. Đường dẫn tương đối tính từ thư
