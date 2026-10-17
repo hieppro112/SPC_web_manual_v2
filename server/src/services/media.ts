@@ -63,7 +63,7 @@ function kindOf(mime: string): MediaKind {
 // multer giải mã tên file theo latin1, tên tiếng Việt thành "BÃ¡o cÃ¡o".
 // Đổi lại sang UTF-8. Nếu kết quả có ký tự lỗi (�) thì tên gốc vốn đã
 // đúng -> giữ nguyên.
-function fixFileName(name: string): string {
+export function fixFileName(name: string): string {
   const decoded = Buffer.from(name, 'latin1').toString('utf8');
   return decoded.includes('�') ? name : decoded;
 }
@@ -122,6 +122,32 @@ export async function storeUpload(file: Express.Multer.File, userId: number | nu
     height: height ?? null,
     uploadedById: userId,
   });
+}
+
+// Lưu ảnh từ bộ nhớ (vd ảnh lấy ra từ file PowerPoint) — cùng cách xử lý như
+// ảnh upload: xoay đúng chiều, thu nhỏ tối đa 1920px, đổi sang WebP.
+// Ảnh hỏng / định dạng lạ -> trả null (bỏ qua ảnh đó, không làm hỏng cả việc nhập).
+export async function storeImageBuffer(data: Uint8Array, originalName: string, userId: number | null) {
+  const filename = `${randomBytes(12).toString('hex')}.webp`;
+  try {
+    const info = await sharp(data)
+      .rotate()
+      .resize({ width: MAX_IMAGE_SIZE, height: MAX_IMAGE_SIZE, fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: 82 })
+      .toFile(path.join(config.uploadDir, SUBDIRS.image, filename));
+    return createMedia({
+      kind: 'image',
+      url: `/uploads/${SUBDIRS.image}/${filename}`,
+      originalName,
+      mime: 'image/webp',
+      size: info.size,
+      width: info.width,
+      height: info.height,
+      uploadedById: userId,
+    });
+  } catch {
+    return null;
+  }
 }
 
 // Lưu ảnh SVG do draw.io xuất ra. SVG là XML có thể chứa script, nên:

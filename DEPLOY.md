@@ -221,7 +221,11 @@ Editor bấm **Tạo bài kiểm tra → Gửi cho Claude** → yêu cầu vào 
 QUIZ_WORKER_TOKEN=<chuỗi ngẫu nhiên dài — tự tạo, KHÔNG gửi qua chat>
 ```
 
-Tạo chuỗi ngẫu nhiên (PowerShell): `[Convert]::ToBase64String((1..48 | ForEach-Object { Get-Random -Maximum 256 }))`
+Tạo chuỗi ngẫu nhiên an toàn (PowerShell, dùng bộ sinh số ngẫu nhiên mật mã):
+
+```powershell
+$b = New-Object byte[] 48; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); [Convert]::ToBase64String($b)
+```
 
 **3. Máy chạy Claude** (hiện là máy dev) — trong thư mục `server`:
 
@@ -236,6 +240,22 @@ Tạo chuỗi ngẫu nhiên (PowerShell): `[Convert]::ToBase64String((1..48 | Fo
 | `QUIZ_JOB_TIMEOUT_HOURS` | `48` | Quá giờ chưa xong → "Quá hạn", gợi ý dùng AI nội bộ |
 
 Máy chạy Claude tắt thì yêu cầu nằm chờ, máy bật lại là worker làm tiếp. Mỗi đề dùng lượt của tài khoản Claude đã đăng nhập; đặt `CLAUDE_MODEL=haiku` trong `quiz-worker.env` để tiết kiệm hạn mức.
+
+## Nhập bài từ PowerPoint (migration 005, dùng chung quiz-worker)
+
+Editor/admin bấm **Nhập PowerPoint** trên thanh trên cùng → chọn file `.pptx` (≤ 50 MB, ≤ 100 slide), thể loại, ngôn ngữ. Web đọc ngay chữ / bảng / ảnh / ghi chú của từng slide (ảnh được nén WebP vào thư viện media, file gốc lưu làm đính kèm), rồi đưa yêu cầu vào bảng `WebManualImportJobs`. **Cùng script quiz-worker** ở trên nhận việc này: chia file thành từng nhóm ~10 slide, mỗi nhóm một lần gọi Claude → web tạo **một bài NHÁP** trong thể loại đã chọn + chấm đỏ trên nút **Nhập PowerPoint**. File 70 slide mất khoảng 5–7 phút.
+
+**1. Database (một lần):** SSMS, tài khoản quản trị → chạy `server\sql\005_import_jobs.sql` (cần đã chạy 004). Phải thấy bảng `WebManualImportJobs`, quyền của `kvh_write`, dòng đánh dấu 005.
+
+**2. Máy chủ app:** `git pull` → trong `server` chạy `npm ci --omit=dev` (thêm thư viện `fflate` đọc file .pptx) → build client → restart web **và** restart quiz-worker (bản worker mới mới biết hỏi hàng đợi nhập bài).
+
+| Biến (`server\.env`) | Mặc định | Ý nghĩa |
+| --- | --- | --- |
+| `IMPORT_MAX_MB` | `50` | Dung lượng tối đa file .pptx |
+| `IMPORT_MAX_SLIDES` | `100` | Số slide tối đa (slide ẩn không tính) |
+| `IMPORT_LEASE_MINUTES` | `120` | Worker nhận việc mà quá thời gian này chưa xong → worker khác được nhận lại |
+
+Yêu cầu nhập cũng hết hạn sau `QUIZ_JOB_TIMEOUT_HOURS` nếu không máy nào xử lý. Giới hạn: SmartArt / hình vẽ chỉ giữ phần chữ; video, hiệu ứng không lấy; chữ lặp lại ở nhiều slide (chân trang, logo chữ) và ảnh lặp (logo) tự bỏ.
 
 ## Bước 9 (tùy chọn) — Trợ lý AI chạy local
 

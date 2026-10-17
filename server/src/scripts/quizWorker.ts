@@ -1,5 +1,5 @@
 // ============================================================
-// scripts/quizWorker.ts — "Người làm thuê" nhờ Claude tạo đề kiểm tra
+// scripts/quizWorker.ts — "Người làm thuê" nhờ Claude: tạo đề kiểm tra + nhập bài từ PowerPoint
 // ============================================================
 // Chạy trên máy có cài Claude Code và đã đăng nhập tài khoản Claude (gói Team):
 //
@@ -41,7 +41,11 @@ if (!fs.existsSync(CLAUDE_EXE)) {
   process.exit(1);
 }
 
-type Job = { id: string; questionCount: number; system: string; prompt: string; schema: object };
+// Một lần nhờ Claude: lời dặn + nội dung + khuôn JSON (server soạn sẵn).
+type ClaudeTask = { system: string; prompt: string; schema: object };
+type QuizJob = ClaudeTask & { id: string; questionCount: number };
+// Nhập PowerPoint: file dài được server chia thành nhiều phần (~10 slide), mỗi phần một lần gọi Claude.
+type ImportJob = { id: string; fileName: string; parts: ClaudeTask[] };
 
 async function api<T>(urlPath: string, body: unknown = {}): Promise<T> {
   const res = await fetch(`${API_URL}${urlPath}`, {
@@ -56,7 +60,7 @@ async function api<T>(urlPath: string, body: unknown = {}): Promise<T> {
 
 // Gọi Claude Code: -p (chạy một lần rồi thoát), không công cụ, ép JSON schema.
 // Chạy trong thư mục tạm để KHÔNG nạp CLAUDE.md / cấu hình của dự án nào.
-function runClaude(job: Job): Promise<unknown> {
+function runClaude(job: ClaudeTask): Promise<unknown> {
   const workDir = path.join(os.tmpdir(), 'kvh-quiz-worker');
   fs.mkdirSync(workDir, { recursive: true });
   const args = [
@@ -100,8 +104,8 @@ function runClaude(job: Job): Promise<unknown> {
   });
 }
 
-async function processJob(job: Job) {
-  log(`📝 Nhận yêu cầu #${job.id}: ${job.questionCount} câu — đang nhờ Claude viết đề...`);
+async function processQuizJob(job: QuizJob) {
+  log(`📝 Nhận yêu cầu tạo đề #${job.id}: ${job.questionCount} câu — đang nhờ Claude viết đề...`);
   try {
     const output = (await runClaude(job)) as { questions?: unknown[] };
     const result = await api<{ quizId: string; accepted: number; received: number }>(`/api/worker/quiz-jobs/${job.id}/complete`, {
@@ -115,18 +119,43 @@ async function processJob(job: Job) {
   }
 }
 
-// Vòng lặp: nhận hết việc đang chờ, rồi ngủ POLL_SECONDS giây.
-log(`🚀 quiz-worker chạy: web ${API_URL}, kiểm tra mỗi ${POLL_SECONDS}s, model ${CLAUDE_MODEL || '(mặc định của tài khoản)'}`);
-for (;;) {
+async function processImportJob(job: ImportJob) {
+  log(`📥 Nhận yêu cầu nhập PowerPoint #${job.id}: "${job.fileName}" — ${job.parts.length} phần`);
+  try {
+    const outputs: unknown[] = [];
+    for (const [i, part] of job.parts.entries()) {
+      log(`   Phần ${i + 1}/${job.parts.length}: đang nhờ Claude dựng bài...`);
+      // Một phần lỗi (Claude bận / mạng chập chờn) -> thử lại 1 lần trước khi bỏ cả yêu cầu.
+      outputs.push(await runClaude(part).catch(() => runClaude(part)));
+    }
+    const result = await api<{ slug: string; blocks: number }>(`/api/worker/import-jobs/${job.id}/complete`, { outputs });
+    log(`✅ Nhập PowerPoint #${job.id} xong -> bài nháp "${result.slug}" (${result.blocks} khối)`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    log(`❌ Nhập PowerPoint #${job.id} lỗi: ${message}`);
+    await api(`/api/worker/import-jobs/${job.id}/fail`, { error: message }).catch(() => {});
+  }
+}
+
+// Nhận hết việc đang chờ của một loại. Mỗi loại một try riêng: web chưa có
+// tính năng nhập PowerPoint (bản cũ) thì việc tạo đề vẫn chạy bình thường.
+async function drain<T>(name: string, claimPath: string, handle: (job: T) => Promise<void>) {
   try {
     for (;;) {
-      const { job } = await api<{ job: Job | null }>('/api/worker/quiz-jobs/claim');
-      if (!job) break;
-      await processJob(job);
+      const { job } = await api<{ job: T | null }>(claimPath);
+      if (!job) return;
+      await handle(job);
     }
   } catch (err) {
     // Web tắt / mất mạng: báo rồi thử lại lần sau, không thoát.
-    log(`⚠️ Không gọi được web: ${err instanceof Error ? err.message : String(err)}`);
+    log(`⚠️ ${name}: không gọi được web: ${err instanceof Error ? err.message : String(err)}`);
   }
+}
+
+// Vòng lặp: nhận hết việc đang chờ (tạo đề, rồi nhập PowerPoint), rồi ngủ POLL_SECONDS giây.
+log(`🚀 quiz-worker chạy: web ${API_URL}, kiểm tra mỗi ${POLL_SECONDS}s, model ${CLAUDE_MODEL || '(mặc định của tài khoản)'}`);
+for (;;) {
+  await drain<QuizJob>('Tạo đề', '/api/worker/quiz-jobs/claim', processQuizJob);
+  await drain<ImportJob>('Nhập PowerPoint', '/api/worker/import-jobs/claim', processImportJob);
   await new Promise((r) => setTimeout(r, POLL_SECONDS * 1000));
 }
