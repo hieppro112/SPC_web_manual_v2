@@ -151,6 +151,8 @@ export async function deleteUser(id: number): Promise<void> {
     await execute('UPDATE WebManualQuizzes SET UpdatedById = NULL WHERE UpdatedById = @id', { id }, tx);
     await execute('DELETE FROM WebManualQuizAssignees WHERE UserId = @id', { id }, tx);
     await execute('DELETE FROM WebManualQuizAttempts WHERE UserId = @id', { id }, tx);
+    // Yêu cầu "nhờ Claude tạo đề" giữ lại trong lịch sử, chỉ bỏ tên người gửi.
+    await execute('UPDATE WebManualQuizJobs SET RequestedById = NULL WHERE RequestedById = @id', { id }, tx);
     await execute('DELETE FROM WebManualUsers WHERE Id = @id', { id }, tx);
   });
 }

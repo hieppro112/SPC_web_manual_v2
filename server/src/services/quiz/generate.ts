@@ -67,51 +67,75 @@ export async function generateQuiz(
   signal: AbortSignal,
   onProgress: (done: number) => void,
 ): Promise<{ questions: QuizQuestion[]; sourceDocs: SourceDoc[] }> {
-  // ---------- 1. Tài liệu nguồn ----------
-  const docs = [];
-  for (const id of input.docIds) {
-    const doc = await findDocumentById(id);
-    if (!doc || doc.status !== 'published') throw new HttpError(400, 'Chỉ tạo đề từ tài liệu đã xuất bản');
-    docs.push(doc);
-  }
-  // URL hợp lệ -> tên tài liệu (để gắn nguồn cho từng câu).
-  const urlTitle = new Map<string, string>();
-  for (const doc of docs) for (const s of docSections(doc)) urlTitle.set(sectionUrl(doc.slug, s.anchor), doc.title);
-
-  // Chia đều độ dài cho các bài để vừa ngữ cảnh của model (~2 ký tự / token,
-  // chừa chỗ cho phần AI viết ra).
-  const budget = Math.max(4000, Math.floor(config.ai.numCtx * 1.3));
-  const perDoc = Math.floor(budget / docs.length);
-  const material = docs.map((d) => docMarkdown(d).slice(0, perDoc)).join('\n\n=====\n\n');
-
+  // Chia đều độ dài cho các bài để vừa ngữ cảnh của model AI nội bộ (~2 ký
+  // tự / token, chừa chỗ cho phần AI viết ra).
+  const maxChars = Math.max(4000, Math.floor(config.ai.numCtx * 1.3));
+  const prompt = await prepareQuizPrompt(input.docIds, input.count, input.lang, maxChars);
   const messages: ChatMessage[] = [
-    { role: 'system', content: systemPrompt(input.count, input.lang) },
-    { role: 'user', content: `DOCUMENTS:\n\n${material}\n\nWrite the ${input.count} questions now.` },
+    { role: 'system', content: prompt.system },
+    { role: 'user', content: prompt.user },
   ];
 
-  // ---------- 2. Gọi AI ----------
-  const result = await chatJson<{ questions?: AiQuestion[] }>(messages, AI_SCHEMA, signal, (text) => {
+  const result = await chatJson<{ questions?: unknown }>(messages, AI_SCHEMA, signal, (text) => {
     // Đếm số câu đã viết xong để báo tiến độ (mỗi câu có một "source").
     onProgress((text.match(/"source"\s*:/g) ?? []).length);
   });
 
-  // ---------- 3. Kiểm tra + chuẩn hóa từng câu ----------
-  const questions: QuizQuestion[] = [];
-  for (const raw of result.questions ?? []) {
-    const q = normalize(raw, input.lang, urlTitle);
-    if (q) questions.push(q);
-    if (questions.length >= input.count) break;
-  }
+  const questions = normalizeQuestions(result.questions, input.lang, prompt.urlTitle, input.count);
   if (!questions.length) throw new HttpError(502, 'AI không tạo được câu hỏi hợp lệ, hãy thử lại');
+  return { questions, sourceDocs: prompt.sourceDocs };
+}
 
-  return { questions, sourceDocs: docs.map((d) => ({ id: d.id, title: d.title, slug: d.slug })) };
+// ---------- Các bước dùng chung: AI nội bộ (ở trên) + Claude qua hàng đợi (routes/quizJobs.ts) ----------
+
+export type QuizPrompt = {
+  system: string; // lời dặn
+  user: string; // nội dung tài liệu + yêu cầu
+  schema: object; // khuôn JSON AI phải theo
+  urlTitle: Map<string, string>; // URL mục hợp lệ -> tên tài liệu (để gắn nguồn)
+  sourceDocs: SourceDoc[];
+};
+
+// Bước 1: tài liệu nguồn (CHỈ bài đã xuất bản) -> lời dặn + nội dung gửi AI.
+// maxChars: tổng độ dài tài liệu tối đa, chia đều cho các bài.
+export async function prepareQuizPrompt(docIds: number[], count: number, lang: QuizLang, maxChars: number): Promise<QuizPrompt> {
+  const docs = [];
+  for (const id of docIds) {
+    const doc = await findDocumentById(id);
+    if (!doc || doc.status !== 'published') throw new HttpError(400, 'Chỉ tạo đề từ tài liệu đã xuất bản');
+    docs.push(doc);
+  }
+  const urlTitle = new Map<string, string>();
+  for (const doc of docs) for (const s of docSections(doc)) urlTitle.set(sectionUrl(doc.slug, s.anchor), doc.title);
+
+  const perDoc = Math.floor(maxChars / docs.length);
+  const material = docs.map((d) => docMarkdown(d).slice(0, perDoc)).join('\n\n=====\n\n');
+  return {
+    system: systemPrompt(count, lang),
+    user: `DOCUMENTS:\n\n${material}\n\nWrite the ${count} questions now.`,
+    schema: AI_SCHEMA,
+    urlTitle,
+    sourceDocs: docs.map((d) => ({ id: d.id, title: d.title, slug: d.slug })),
+  };
+}
+
+// Bước 3: kiểm tra + chuẩn hóa từng câu AI trả về, giữ tối đa `count` câu hợp lệ.
+export function normalizeQuestions(raws: unknown, lang: QuizLang, urlTitle: Map<string, string>, count: number): QuizQuestion[] {
+  const questions: QuizQuestion[] = [];
+  for (const raw of Array.isArray(raws) ? raws : []) {
+    const q = raw && typeof raw === 'object' ? normalize(raw as AiQuestion, lang, urlTitle) : null;
+    if (q) questions.push(q);
+    if (questions.length >= count) break;
+  }
+  return questions;
 }
 
 // Sửa lỗi nhỏ của AI (trùng đáp án, chỉ số sai...), câu nào hỏng hẳn thì bỏ.
 function normalize(raw: AiQuestion, lang: QuizLang, urlTitle: Map<string, string>): QuizQuestion | null {
-  const texts = (raw.options ?? []).map((o) => String(o).trim()).filter(Boolean);
+  if (!Array.isArray(raw.options) || !Array.isArray(raw.correct)) return null;
+  const texts = raw.options.map((o) => String(o).trim()).filter(Boolean);
   if (new Set(texts).size !== texts.length) return null; // trùng đáp án
-  const correctIdx = [...new Set((raw.correct ?? []).filter((i) => Number.isInteger(i) && i >= 0 && i < texts.length))];
+  const correctIdx = [...new Set(raw.correct.filter((i) => Number.isInteger(i) && i >= 0 && i < texts.length))];
 
   let type = raw.type;
   if (type === 'truefalse') {

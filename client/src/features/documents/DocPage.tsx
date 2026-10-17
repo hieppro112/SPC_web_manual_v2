@@ -23,7 +23,6 @@ import { ApiError } from '../../lib/http.ts';
 import { cn, errorMessage, formatDateTime } from '../../lib/utils.ts';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.ts';
 import { isEditor } from '../../lib/types.ts';
-import { useAiStatus } from '../ai/queries.ts';
 import { useCurrentUser } from '../auth/queries.ts';
 import CategoryIcon from '../categories/CategoryIcon.tsx';
 import { useCategories } from '../categories/queries.ts';
@@ -39,7 +38,6 @@ export default function DocPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const editor = isEditor(useCurrentUser());
-  const { data: aiStatus } = useAiStatus();
   const { data: doc, isPending, error } = useDocument(slug);
   const deleteDoc = useDeleteDocument();
   const [shareOpen, setShareOpen] = useState(false);
@@ -175,8 +173,8 @@ export default function DocPage() {
             <Button size="sm" variant="secondary" onClick={() => window.print()}>
               <Printer className="h-4 w-4" /> {t('common.print')}
             </Button>
-            {/* Tạo bài kiểm tra bằng AI từ chính tài liệu này (chỉ bài đã xuất bản). */}
-            {editor && aiStatus?.enabled && doc.status === 'published' && (
+            {/* Tạo bài kiểm tra từ chính tài liệu này (Claude / AI nội bộ / tự soạn; chỉ bài đã xuất bản). */}
+            {editor && doc.status === 'published' && (
               <Link to={`/quizzes/new?docs=${doc.id}`}>
                 <Button size="sm" variant="secondary">
                   <ClipboardCheck className="h-4 w-4" /> {t('quiz.createFromDoc')}

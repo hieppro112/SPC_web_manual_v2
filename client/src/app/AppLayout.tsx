@@ -12,6 +12,7 @@ import Button from '../components/ui/Button.tsx';
 import SearchBox from '../components/SearchBox.tsx';
 import AiChatWidget from '../features/ai/AiChatWidget.tsx';
 import { useCurrentUser } from '../features/auth/queries.ts';
+import { useUnseenJobCount } from '../features/quizzes/queries.ts';
 import { isEditor } from '../lib/types.ts';
 import { useTheme } from '../theme/useTheme.ts';
 import ThemeLanguageMenu from './ThemeLanguageMenu.tsx';
@@ -23,6 +24,7 @@ export default function AppLayout() {
   const { resolved } = useTheme();
   const [params] = useSearchParams();
   const category = params.get('category');
+  const unseenJobs = useUnseenJobCount(isEditor(user)).data?.count ?? 0;
 
   return (
     <div className="min-h-screen">
@@ -39,11 +41,17 @@ export default function AppLayout() {
 
           <div className="ml-auto flex items-center gap-1.5 md:ml-0">
             {user && (
-              <Link to="/quizzes" title={t('nav.quizzes')}>
+              <Link to="/quizzes" title={t('nav.quizzes')} className="relative">
                 <Button size="sm" variant="ghost">
                   <ClipboardCheck className="h-4 w-4" />
                   <span className="hidden lg:inline">{t('nav.quizzes')}</span>
                 </Button>
+                {/* Chấm đỏ: số đề Claude đã tạo xong mà người này chưa mở */}
+                {unseenJobs > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-white">
+                    {unseenJobs}
+                  </span>
+                )}
               </Link>
             )}
             {isEditor(user) && (

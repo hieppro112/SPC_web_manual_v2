@@ -1,6 +1,8 @@
 node_modules
 dist
 .env
+# Cấu hình quiz-worker (có khóa máy) — chỉ commit bản .example
+quiz-worker.env
 *.log
 # File người dùng upload — dữ liệu thật, không phải mã nguồn
 server/uploads

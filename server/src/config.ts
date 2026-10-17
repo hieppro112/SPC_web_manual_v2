@@ -91,6 +91,13 @@ export const config = {
   quiz: {
     generatePerDay: Number(process.env.QUIZ_GENERATE_PER_DAY ?? 3), // số lần tạo đề / editor / ngày (admin không giới hạn)
     resultDays: Number(process.env.QUIZ_RESULT_DAYS ?? 30), // giữ kết quả làm bài bao nhiêu ngày rồi tự xóa
+    // Hàng đợi "Gửi cho Claude" (quiz-worker chạy trên máy có Claude).
+    // Khóa máy để worker gọi API; TRỐNG = tắt hẳn API worker. Chuỗi ngẫu nhiên dài, KHÔNG gửi qua chat.
+    workerToken: process.env.QUIZ_WORKER_TOKEN ?? '',
+    claudeJobsPerDay: Number(process.env.QUIZ_CLAUDE_JOBS_PER_DAY ?? 10), // yêu cầu / editor / ngày (admin không giới hạn)
+    jobTimeoutHours: Number(process.env.QUIZ_JOB_TIMEOUT_HOURS ?? 48), // quá giờ chưa xong -> "quá hạn"
+    jobLeaseMinutes: Number(process.env.QUIZ_JOB_LEASE_MINUTES ?? 30), // worker nhận việc quá lâu không xong -> cho nhận lại
+    claudeMaxChars: Number(process.env.QUIZ_CLAUDE_MAX_CHARS ?? 200_000), // độ dài tài liệu tối đa gửi Claude (ngữ cảnh lớn)
   },
 
   // draw.io tự host cho khối "Sơ đồ" (cài bằng `npm run install-drawio`).
