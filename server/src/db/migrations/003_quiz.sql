@@ -1,3 +1,4 @@
+-- @applied-if: OBJECT_ID(N'WebManualQuizAttempts', N'U') IS NOT NULL AND OBJECT_ID(N'WebManualQuizAssignees', N'U') IS NOT NULL
 -- ============================================================
 -- 003_quiz.sql — Role "user" + bài kiểm tra trắc nghiệm
 -- ============================================================
