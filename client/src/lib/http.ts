@@ -72,7 +72,8 @@ export async function postStream<T>(url: string, body: unknown, onLine: (line: T
 
 // Upload file kèm % tiến độ. fetch() chưa báo được tiến độ UPLOAD, nên
 // chỗ này dùng XMLHttpRequest — cần thiết khi tải video vài trăm MB.
-export function uploadFile<T>(url: string, file: File, onProgress?: (percent: number) => void): Promise<T> {
+// `fields`: các ô gửi kèm file trong cùng form (vd thể loại, ngôn ngữ khi nhập PowerPoint).
+export function uploadFile<T>(url: string, file: File, onProgress?: (percent: number) => void, fields: Record<string, string> = {}): Promise<T> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', `/api${url}`);
@@ -97,6 +98,8 @@ export function uploadFile<T>(url: string, file: File, onProgress?: (percent: nu
     };
     xhr.onerror = () => reject(new ApiError(0, 'Mất kết nối tới máy chủ'));
     const form = new FormData();
+    // Ô chữ gửi TRƯỚC file: server đọc được ngay cả khi file lớn đang tải lên.
+    for (const [key, value] of Object.entries(fields)) form.append(key, value);
     form.append('file', file);
     xhr.send(form);
   });

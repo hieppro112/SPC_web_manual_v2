@@ -7,11 +7,12 @@
 import { Link, Outlet, ScrollRestoration, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { Toaster } from 'sonner';
-import { BookOpen, ClipboardCheck, FilePlus2, LogIn, UserPlus } from 'lucide-react';
+import { BookOpen, ClipboardCheck, FilePlus2, FileUp, LogIn, UserPlus } from 'lucide-react';
 import Button from '../components/ui/Button.tsx';
 import SearchBox from '../components/SearchBox.tsx';
 import AiChatWidget from '../features/ai/AiChatWidget.tsx';
 import { useCurrentUser } from '../features/auth/queries.ts';
+import { useUnseenImportCount } from '../features/imports/queries.ts';
 import { useUnseenJobCount } from '../features/quizzes/queries.ts';
 import { isEditor } from '../lib/types.ts';
 import { useTheme } from '../theme/useTheme.ts';
@@ -25,6 +26,7 @@ export default function AppLayout() {
   const [params] = useSearchParams();
   const category = params.get('category');
   const unseenJobs = useUnseenJobCount(isEditor(user)).data?.count ?? 0;
+  const unseenImports = useUnseenImportCount(isEditor(user)).data?.count ?? 0;
 
   return (
     <div className="min-h-screen">
@@ -50,6 +52,20 @@ export default function AppLayout() {
                 {unseenJobs > 0 && (
                   <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-white">
                     {unseenJobs}
+                  </span>
+                )}
+              </Link>
+            )}
+            {isEditor(user) && (
+              <Link to="/import" title={t('nav.import')} className="relative">
+                <Button size="sm" variant="ghost">
+                  <FileUp className="h-4 w-4" />
+                  <span className="hidden xl:inline">{t('nav.import')}</span>
+                </Button>
+                {/* Chấm đỏ: số bài nhập từ PowerPoint đã xong mà chưa mở */}
+                {unseenImports > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-white">
+                    {unseenImports}
                   </span>
                 )}
               </Link>

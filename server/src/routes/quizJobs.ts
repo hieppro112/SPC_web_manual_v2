@@ -102,7 +102,7 @@ quizJobsRouter.post('/:id/cancel', async (req, res) => {
 export const workerRouter = Router();
 
 // Khóa máy: so sánh thời gian cố định (không lộ "đúng mấy ký tự đầu").
-const requireWorkerToken: RequestHandler = (req, _res, next) => {
+export const requireWorkerToken: RequestHandler = (req, _res, next) => {
   if (!config.quiz.workerToken) throw new HttpError(404, 'API không tồn tại');
   const given = Buffer.from(req.get('x-worker-token') ?? '');
   const want = Buffer.from(config.quiz.workerToken);

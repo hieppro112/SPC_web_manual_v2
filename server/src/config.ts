@@ -103,6 +103,13 @@ export const config = {
     claudeMaxChars: Number(process.env.QUIZ_CLAUDE_MAX_CHARS ?? 200_000), // độ dài tài liệu tối đa gửi Claude (ngữ cảnh lớn)
   },
 
+  // Nhập bài từ PowerPoint (qua hàng đợi, dùng chung worker + khóa máy với tạo đề).
+  pptxImport: {
+    maxMb: Number(process.env.IMPORT_MAX_MB ?? 50),
+    maxSlides: Number(process.env.IMPORT_MAX_SLIDES ?? 100),
+    leaseMinutes: Number(process.env.IMPORT_LEASE_MINUTES ?? 120), // file dài cần nhiều lần gọi Claude
+  },
+
   // draw.io tự host cho khối "Sơ đồ" (cài bằng `npm run install-drawio`).
   drawioDir: path.resolve(process.env.DRAWIO_DIR ?? 'drawio'),
 
