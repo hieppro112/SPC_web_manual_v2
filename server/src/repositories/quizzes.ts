@@ -145,7 +145,8 @@ async function replaceAssignees(quizId: number, userIds: number[], tx: Tx) {
   }
 }
 
-const params = (data: QuizRecord, userId: number) => ({
+// userId null: đề do Claude tạo cho yêu cầu mà người gửi đã bị xóa tài khoản.
+const params = (data: QuizRecord, userId: number | null) => ({
   title: data.title,
   kind: data.kind,
   status: data.status,
@@ -158,7 +159,7 @@ const params = (data: QuizRecord, userId: number) => ({
   userId,
 });
 
-export async function createQuiz(data: QuizRecord, userId: number): Promise<number> {
+export async function createQuiz(data: QuizRecord, userId: number | null): Promise<number> {
   return withTransaction(async (tx) => {
     const row = await queryOne<{ Id: number }>(
       `INSERT INTO WebManualQuizzes (Title, Kind, Status, Language, Questions, SourceDocs, PassPercent, MaxAttempts, DueAt, CreatedById, UpdatedById)

@@ -208,6 +208,34 @@ Tùy chọn trong `server\.env`:
 
 Tạo đề bằng AI cần bật trợ lý AI (bước 9). Không bật AI thì vẫn làm bài / sửa đề / xem điểm được, chỉ không có nút tạo đề tự động.
 
+## Tạo đề bằng Claude qua hàng đợi (migration 004 + quiz-worker)
+
+Editor bấm **Tạo bài kiểm tra → Gửi cho Claude** → yêu cầu vào bảng `WebManualQuizJobs`. Script **quiz-worker** chạy trên một máy có **Claude Code đã đăng nhập** (tài khoản Claude của công ty), cứ 5 phút hỏi hàng đợi; có việc thì gọi Claude (không công cụ, ép khuôn JSON) và gửi đề về → web lưu **đề nháp** + chấm đỏ báo editor.
+
+**1. Database (một lần):** SSMS, tài khoản quản trị → chạy `server\sql\004_quiz_jobs.sql` (cần đã chạy 003). Phải thấy bảng `WebManualQuizJobs`, quyền của `kvh_write`, 4 dòng đánh dấu 001–004.
+
+**2. Máy chủ app** — thêm vào `server\.env` rồi restart:
+
+```
+QUIZ_WORKER_TOKEN=<chuỗi ngẫu nhiên dài — tự tạo, KHÔNG gửi qua chat>
+```
+
+Tạo chuỗi ngẫu nhiên (PowerShell): `[Convert]::ToBase64String((1..48 | ForEach-Object { Get-Random -Maximum 256 }))`
+
+**3. Máy chạy Claude** (hiện là máy dev) — trong thư mục `server`:
+
+- Chép `quiz-worker.env.example` thành `quiz-worker.env`, điền `WORKER_API_URL` (địa chỉ web) và `QUIZ_WORKER_TOKEN` (**giống hệt** máy chủ).
+- Chạy thử: `npm run quiz-worker` → thấy `🚀 quiz-worker chạy...`.
+- Chạy nền bằng **Tool Manager**: File chạy `C:\Program Files\nodejs\node.exe`, Tham số `--env-file=quiz-worker.env src\scripts\quizWorker.ts`, Thư mục làm việc `...\doc_app_v2\server`, bật tự chạy + tự chạy lại.
+
+| Biến (`server\.env`) | Mặc định | Ý nghĩa |
+| --- | --- | --- |
+| `QUIZ_WORKER_TOKEN` | (trống = tắt) | Khóa máy cho worker |
+| `QUIZ_CLAUDE_JOBS_PER_DAY` | `10` | Yêu cầu gửi Claude / editor / ngày (admin không giới hạn) |
+| `QUIZ_JOB_TIMEOUT_HOURS` | `48` | Quá giờ chưa xong → "Quá hạn", gợi ý dùng AI nội bộ |
+
+Máy chạy Claude tắt thì yêu cầu nằm chờ, máy bật lại là worker làm tiếp. Mỗi đề dùng lượt của tài khoản Claude đã đăng nhập; đặt `CLAUDE_MODEL=haiku` trong `quiz-worker.env` để tiết kiệm hạn mức.
+
 ## Bước 9 (tùy chọn) — Trợ lý AI chạy local
 
 Nút 💬 ở góc màn hình: hỏi đáp trên toàn bộ tài liệu, hỏi về bài đang đọc, tóm tắt bài. App tự tìm đoạn tài liệu liên quan (RAG), phần mềm AI chỉ việc trả lời. Không bật thì nút 💬 tự ẩn, app chạy bình thường.

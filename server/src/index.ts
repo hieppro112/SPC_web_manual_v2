@@ -27,6 +27,7 @@ import { categoriesRouter } from './routes/categories.ts';
 import { documentsRouter } from './routes/documents.ts';
 import { mediaRouter } from './routes/media.ts';
 import { quizzesRouter } from './routes/quizzes.ts';
+import { quizJobsRouter, workerRouter } from './routes/quizJobs.ts';
 import { deleteOldAttempts } from './repositories/quizzes.ts';
 import { metaRouter } from './routes/meta.ts';
 import { uploadSessionsRouter } from './routes/uploadSessions.ts';
@@ -70,6 +71,9 @@ app.use('/api/upload-sessions', uploadSessionsRouter);
 app.use('/api/ai', aiRouter);
 // Bài kiểm tra: phải đăng nhập; quyền chi tiết (editor/admin) nằm trong router.
 app.use('/api/quizzes', requireAuth, quizzesRouter);
+// Hàng đợi "nhờ Claude tạo đề": editor gửi yêu cầu; worker (khóa máy, không cookie) nhận việc.
+app.use('/api/quiz-jobs', requireEditor, quizJobsRouter);
+app.use('/api/worker/quiz-jobs', workerRouter);
 
 // Không khớp route nào ở trên -> 404 dạng JSON.
 app.use('/api', (_req, res) => {

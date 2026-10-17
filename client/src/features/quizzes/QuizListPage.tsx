@@ -4,10 +4,10 @@
 //   Ai đăng nhập cũng thấy: "Bài kiểm tra của tôi" (được làm + điểm của mình)
 //   Editor / admin thấy thêm: "Quản lý bài kiểm tra" (mọi bộ đề, sửa / xóa / kết quả)
 
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { BarChart3, CalendarClock, ClipboardCheck, Pencil, Play, RotateCcw, Sparkles, Trash } from 'lucide-react';
+import { BarChart3, CalendarClock, ClipboardCheck, FolderOpen, LoaderCircle, Pencil, Play, RotateCcw, Send, Sparkles, Trash, X } from 'lucide-react';
 import Badge from '../../components/ui/Badge.tsx';
 import Button from '../../components/ui/Button.tsx';
 import EmptyState from '../../components/ui/EmptyState.tsx';
@@ -15,10 +15,103 @@ import Spinner from '../../components/ui/Spinner.tsx';
 import { isEditor } from '../../lib/types.ts';
 import { cn, errorMessage, formatDate, formatDateTime } from '../../lib/utils.ts';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.ts';
-import { useAiStatus } from '../ai/queries.ts';
 import { useCurrentUser } from '../auth/queries.ts';
-import type { ManagedQuiz, MyQuiz } from './api.ts';
-import { useDeleteQuiz, useManagedQuizzes, useMyQuizzes } from './queries.ts';
+import type { ManagedQuiz, MyQuiz, QuizJob, QuizJobStatus } from './api.ts';
+import { useCancelQuizJob, useDeleteQuiz, useManagedQuizzes, useMarkJobSeen, useMyQuizzes, useQuizJobs } from './queries.ts';
+
+// ---------- Yêu cầu "nhờ Claude tạo đề" ----------
+
+const JOB_TONES: Record<QuizJobStatus, string> = {
+  pending: 'bg-surface-2 text-muted',
+  processing: 'bg-accent-soft text-accent',
+  done: 'bg-success-soft text-success',
+  failed: 'bg-danger-soft text-danger',
+  expired: 'bg-warning-soft text-warning',
+  cancelled: 'bg-surface-2 text-muted',
+};
+
+function QuizJobsSection() {
+  const { t } = useTranslation();
+  const { data } = useQuizJobs(true);
+  // Chỉ hiện các yêu cầu gần đây còn đáng xem: chưa xong, hoặc xong/lỗi trong 7 ngày.
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const jobs = (data?.jobs ?? []).filter(
+    (j) => j.status === 'pending' || j.status === 'processing' || (j.status !== 'cancelled' && new Date(j.createdAt).getTime() > weekAgo),
+  );
+  if (!jobs.length) return null;
+
+  return (
+    <section>
+      <h2 className="mb-1 flex items-center gap-2 text-xl font-bold">
+        <Send className="h-5 w-5 text-accent" /> {t('quiz.jobs.title')}
+      </h2>
+      <p className="mb-4 text-sm text-muted">{t('quiz.jobs.subtitle', { hours: data?.timeoutHours ?? 48 })}</p>
+      <ul className="divide-y divide-border rounded-2xl border border-border">
+        {jobs.map((job) => (
+          <JobRow key={job.id} job={job} />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function JobRow({ job }: { job: QuizJob }) {
+  const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
+  const cancel = useCancelQuizJob();
+  const markSeen = useMarkJobSeen();
+  const docsParam = job.sourceDocs.map((d) => d.id).join(',');
+  const waiting = job.status === 'pending' || job.status === 'processing';
+
+  // Mở đề Claude vừa tạo: đánh dấu "đã xem" (tắt chấm đỏ) rồi sang trình sửa đề.
+  const openQuiz = () => {
+    if (!job.seenAt) markSeen.mutate(job.id);
+    navigate(`/quizzes/${job.quizId}/edit`);
+  };
+
+  return (
+    <li className={cn('flex flex-wrap items-center gap-3 px-4 py-3', job.status === 'done' && !job.seenAt && 'bg-success-soft/40')}>
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-medium">{job.sourceDocs.map((d) => d.title).join(', ')}</p>
+        <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
+          <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium', JOB_TONES[job.status])}>
+            {waiting && <LoaderCircle className="h-3 w-3 animate-spin" />}
+            {t(`quiz.jobs.status.${job.status}`)}
+          </span>
+          {t('quiz.questions', { count: job.questionCount })} · {formatDateTime(job.createdAt, i18n.language)}
+          {job.requestedBy && <> · {job.requestedBy}</>}
+        </p>
+        {job.status === 'failed' && job.error && <p className="mt-1 text-xs text-danger">{job.error}</p>}
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {job.status === 'done' && job.quizId && (
+          <Button size="sm" onClick={openQuiz}>
+            <FolderOpen className="h-4 w-4" /> {t('quiz.jobs.open')}
+          </Button>
+        )}
+        {/* Quá hạn / lỗi: gợi ý tạo ngay bằng AI nội bộ với đúng tài liệu đó */}
+        {(job.status === 'expired' || job.status === 'failed') && (
+          <Link to={`/quizzes/new?docs=${docsParam}&mode=local`}>
+            <Button size="sm" variant="secondary">
+              <Sparkles className="h-4 w-4" /> {t('quiz.jobs.useLocal')}
+            </Button>
+          </Link>
+        )}
+        {waiting && (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="text-danger"
+            loading={cancel.isPending}
+            onClick={() => cancel.mutate(job.id, { onError: (err) => toast.error(errorMessage(err)) })}
+          >
+            <X className="h-4 w-4" /> {t('common.cancel')}
+          </Button>
+        )}
+      </div>
+    </li>
+  );
+}
 
 export default function QuizListPage() {
   const { t } = useTranslation();
@@ -26,7 +119,6 @@ export default function QuizListPage() {
   const editor = isEditor(user);
   const mine = useMyQuizzes();
   const managed = useManagedQuizzes(editor);
-  const { data: aiStatus } = useAiStatus();
   useDocumentTitle(t('quiz.title'));
 
   return (
@@ -50,17 +142,17 @@ export default function QuizListPage() {
         )}
       </section>
 
+      {editor && <QuizJobsSection />}
+
       {editor && (
         <section>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-xl font-bold">{t('quiz.manage')}</h2>
-            {aiStatus?.enabled && (
-              <Link to="/quizzes/new">
-                <Button>
-                  <Sparkles className="h-4 w-4" /> {t('quiz.createWithAi')}
-                </Button>
-              </Link>
-            )}
+            <Link to="/quizzes/new">
+              <Button>
+                <Sparkles className="h-4 w-4" /> {t('quiz.createNew')}
+              </Button>
+            </Link>
           </div>
           {managed.isPending ? (
             <Spinner />

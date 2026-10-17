@@ -96,6 +96,30 @@ export type ResultsPayload = {
   rows: ResultRow[];
 };
 
+// Yêu cầu "nhờ Claude tạo đề" (hàng đợi, xem server/src/routes/quizJobs.ts)
+export type QuizJobStatus = 'pending' | 'processing' | 'done' | 'failed' | 'expired' | 'cancelled';
+export type QuizJob = {
+  id: string;
+  sourceDocs: SourceDoc[];
+  language: QuizLang;
+  questionCount: number;
+  status: QuizJobStatus;
+  requestedBy: string | null;
+  quizId: string | null;
+  error: string | null;
+  completedAt: string | null;
+  seenAt: string | null;
+  createdAt: string;
+};
+
+export const quizJobsApi = {
+  create: (body: { docIds: string[]; count: number; language: QuizLang }) => http.post<QuizJob>('/quiz-jobs', body),
+  list: () => http.get<{ timeoutHours: number; jobs: QuizJob[] }>('/quiz-jobs'),
+  unseenCount: () => http.get<{ count: number }>('/quiz-jobs/unseen-count'),
+  markSeen: (id: string) => http.post<void>(`/quiz-jobs/${id}/seen`),
+  cancel: (id: string) => http.post<void>(`/quiz-jobs/${id}/cancel`),
+};
+
 export const quizzesApi = {
   mine: () => http.get<MyQuiz[]>('/quizzes'),
   manage: () => http.get<ManagedQuiz[]>('/quizzes/manage'),

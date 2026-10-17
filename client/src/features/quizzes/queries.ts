@@ -1,6 +1,44 @@
 // features/quizzes/queries.ts
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { quizzesApi, type Answers, type QuizInput } from './api.ts';
+import { quizJobsApi, quizzesApi, type Answers, type QuizInput, type QuizLang } from './api.ts';
+
+// ---------- Hàng đợi "nhờ Claude tạo đề" ----------
+
+// Danh sách yêu cầu: hỏi lại mỗi 30 giây khi còn yêu cầu chưa xong
+// -> trạng thái tự đổi "Đang chờ" -> "Đã xong" mà không phải F5.
+export function useQuizJobs(enabled: boolean) {
+  return useQuery({
+    queryKey: ['quiz-jobs'],
+    queryFn: quizJobsApi.list,
+    enabled,
+    refetchInterval: (q) => (q.state.data?.jobs.some((j) => j.status === 'pending' || j.status === 'processing') ? 30_000 : false),
+  });
+}
+
+// Chấm đỏ trên thanh trên cùng: hỏi mỗi phút.
+export function useUnseenJobCount(enabled: boolean) {
+  return useQuery({ queryKey: ['quiz-jobs', 'unseen'], queryFn: quizJobsApi.unseenCount, enabled, refetchInterval: 60_000, retry: false });
+}
+
+export function useCreateQuizJob() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { docIds: string[]; count: number; language: QuizLang }) => quizJobsApi.create(body),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['quiz-jobs'] }),
+  });
+}
+
+export function useCancelQuizJob() {
+  const queryClient = useQueryClient();
+  return useMutation({ mutationFn: quizJobsApi.cancel, onSuccess: () => queryClient.invalidateQueries({ queryKey: ['quiz-jobs'] }) });
+}
+
+export function useMarkJobSeen() {
+  const queryClient = useQueryClient();
+  return useMutation({ mutationFn: quizJobsApi.markSeen, onSuccess: () => queryClient.invalidateQueries({ queryKey: ['quiz-jobs'] }) });
+}
+
+// ---------- Bộ đề ----------
 
 export function useMyQuizzes() {
   return useQuery({ queryKey: ['quizzes', 'mine'], queryFn: quizzesApi.mine });
