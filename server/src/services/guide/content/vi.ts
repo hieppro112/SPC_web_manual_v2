@@ -1,8 +1,8 @@
-// Nội dung hướng dẫn sử dụng — tiếng Việt (bản gốc; en.ts / ja.ts dịch theo).
+// Nội dung hướng dẫn sử dụng — bản gốc tiếng Việt.
+// Bản tiếng Anh / Nhật do tính năng dịch tự động tạo (services/translate); en.ts / ja.ts chỉ còn bài ôn tập.
 import type { GuideContent } from './types.ts';
 
 export const vi: GuideContent = {
-  categoryName: 'Tiếng Việt',
   docs: [
     {
       slug: 'guide-vi-01-bat-dau',
@@ -58,6 +58,9 @@ export const vi: GuideContent = {
         ['step', 'Tải mã QR (PNG)', 'In mã QR dán ở máy móc hoặc khu vực làm việc. Ai quét bằng điện thoại cũng mở được ngay tài liệu.'],
         ['step', 'In / PDF', 'Bấm "In / PDF" rồi chọn máy in, hoặc chọn "Lưu dưới dạng PDF". Bản in tự ẩn các nút bấm. Video được thay bằng mã QR để quét xem.'],
         ['tip', '🎯 **Thực hành:** mở bất kỳ tài liệu nào rồi bấm "Chia sẻ". Nhiệm vụ "Chia sẻ một tài liệu" sẽ tự được đánh dấu.'],
+        ['h2', 'Đọc bằng ngôn ngữ khác'],
+        ['p', 'Mỗi bài được **tự dịch** sang 2 ngôn ngữ còn lại (Tiếng Việt / English / 日本語). Khi mở bài, web tự hiện bản theo ngôn ngữ giao diện bạn đang chọn. Ngay dưới tiêu đề có nút chuyển ngôn ngữ, ngôn ngữ ghi **(gốc)** là bản người viết soạn.'],
+        ['info', 'Bản dịch do máy dịch, có thể chưa sát nghĩa. Bấm **Xem bản gốc** khi cần chắc chắn. Bài vừa được sửa thì phần mới tạm hiện chữ gốc, vài phút sau sẽ có bản dịch.'],
         ['h2', 'Hỏi trợ lý AI'],
         ['p', 'Bấm nút tròn 💬 ở góc phải dưới. Trợ lý **chỉ trả lời dựa trên tài liệu đã xuất bản** và kèm link nguồn 📄 để bạn bấm vào kiểm tra.'],
         ['table', [
@@ -109,6 +112,9 @@ export const vi: GuideContent = {
           ['Đã xuất bản', 'Mọi người, kể cả khách. Trợ lý AI cũng đọc được'],
         ]],
         ['p', 'Đổi trạng thái ở ô chọn cạnh nút Lưu rồi lưu lại. Bấm **Xem trước** để xem tài liệu giống người đọc trước khi xuất bản.'],
+        ['h2', 'Bản dịch tự động'],
+        ['p', 'Chỉ cần viết **một** bản bằng ngôn ngữ bạn quen. Mỗi lần lưu, bài được tự dịch sang 2 ngôn ngữ còn lại sau vài phút; sửa đoạn nào thì chỉ đoạn đó được dịch lại.\n- Thấy câu dịch chưa đúng: mở bản dịch rồi bấm **Sửa bản dịch**. Phần sửa tay được giữ cho tới khi đoạn đó ở bài gốc bị sửa.\n- Muốn dịch lại toàn bộ: bấm nút ↻ **Dịch lại từ đầu** cạnh nút Sửa bản dịch.'],
+        ['tip', 'Ghi tên nút trong ngoặc kép hoặc in đậm, ví dụ bấm **Lưu**: bản dịch sẽ dùng đúng tên nút trên giao diện tiếng Anh / tiếng Nhật.'],
         ['h2', 'Lịch sử phiên bản'],
         ['p', 'Mỗi lần lưu tạo một **phiên bản**. Ở trang đọc, bấm **Lịch sử** để xem lại bản cũ và **Khôi phục bản này** nếu lỡ sửa sai. Khôi phục cũng tạo một phiên bản mới, nên không mất gì.'],
         ['warn', 'Nút **Xóa** ở trang đọc xóa hẳn tài liệu **cùng toàn bộ lịch sử**, không khôi phục được.'],

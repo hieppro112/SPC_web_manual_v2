@@ -6,6 +6,7 @@
 //                                                        vì khuôn JSON schema cần biết trước tên field)
 // Bài dài được chia nhiều phần (mỗi phần một lần gọi Claude), giống nhập PowerPoint.
 
+import { glossaryFor } from './glossary.ts';
 import type { Lang, Texts } from './texts.ts';
 
 export type TranslateItem = { id: string; texts: Texts };
@@ -40,7 +41,13 @@ export const TRANSLATE_SCHEMA = {
   required: ['items'],
 };
 
-function systemPrompt(from: Lang, to: Lang): string {
+function systemPrompt(from: Lang, to: Lang, glossary: [string, string][]): string {
+  const terms = glossary.length
+    ? [
+        `- These are the website's own button / menu labels. When the text refers to one of them (usually in quotes or bold), use EXACTLY this ${LANG_NAME[to]} label:`,
+        ...glossary.map(([a, b]) => `  "${a}" => "${b}"`),
+      ]
+    : [];
   return [
     `You translate an internal IT documentation website (KVH, a Japanese–Vietnamese manufacturing company) from ${LANG_NAME[from]} to ${LANG_NAME[to]}.`,
     'Rules:',
@@ -52,6 +59,7 @@ function systemPrompt(from: Lang, to: Lang): string {
     `- Style: ${STYLE[to]}`,
     '- Some texts may already be in the target language or be names only: return them unchanged.',
     '- Return EVERY item id and EVERY key exactly as given, one translated text per key.',
+    ...terms,
   ].join('\n');
 }
 
@@ -74,7 +82,7 @@ export function buildParts(from: Lang, to: Lang, items: TranslateItem[], maxChar
 
   return groups.map((group) => ({
     lang: to,
-    system: systemPrompt(from, to),
+    system: systemPrompt(from, to, glossaryFor(group.flatMap((i) => Object.values(i.texts)).join('\n'), from, to)),
     prompt: `Translate every text below from ${LANG_NAME[from]} to ${LANG_NAME[to]}.\n\n${JSON.stringify({ items: group })}`,
     schema: TRANSLATE_SCHEMA,
   }));

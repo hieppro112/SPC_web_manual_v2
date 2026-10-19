@@ -22,14 +22,14 @@ export type GuideBlock =
 
 export type GuideDoc = { slug: string; title: string; blocks: GuideBlock[] };
 
-// correct: vị trí đáp án đúng (0, 1, 2); doc: slug bài để "Xem lại".
+// correct: vị trí đáp án đúng (0, 1, 2); doc: slug bài hướng dẫn (bản gốc tiếng Việt) để "Xem lại".
 export type GuideQuestion = { type: QuestionType; text: string; options: string[]; correct: number[]; doc: string };
 
-export type GuideContent = {
-  categoryName: string;
-  docs: GuideDoc[];
-  quiz: { title: string; questions: GuideQuestion[] };
-};
+// docTitles: tên bài theo ngôn ngữ của đề (hiện ở link "Xem lại"); không có thì dùng tên bài gốc.
+export type GuideQuiz = { title: string; docTitles?: Record<string, string>; questions: GuideQuestion[] };
+
+// Bài hướng dẫn chỉ viết MỘT bản (tiếng Việt); bản tiếng Anh / Nhật do tính năng dịch tự tạo.
+export type GuideContent = { docs: GuideDoc[]; quiz: GuideQuiz };
 
 const CALLOUT = { tip: 'success', info: 'info', warn: 'warning', danger: 'danger' } as const;
 

@@ -12,7 +12,6 @@ import { toast } from 'sonner';
 import { useCurrentUser } from '../auth/queries.ts';
 import { guideApi, type GuideProgress } from './api.ts';
 import type { TaskKey } from './tasks.ts';
-import type { QuizLang } from '../quizzes/api.ts';
 
 const progressKey = (userId: string | undefined) => ['guide', 'progress', userId] as const;
 
@@ -95,7 +94,7 @@ export function useGuideReport(enabled: boolean) {
 export function useSeedGuide() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (langs: QuizLang[]) => guideApi.seed(langs),
+    mutationFn: guideApi.seed,
     // Có bài + thể loại + đề mới -> làm mới các danh sách liên quan.
     onSuccess: () => {
       for (const key of ['guide', 'documents', 'categories', 'quizzes']) void queryClient.invalidateQueries({ queryKey: [key] });

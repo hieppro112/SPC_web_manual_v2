@@ -13,21 +13,20 @@ import { z } from 'zod';
 import { HttpError } from '../middleware/errorHandler.ts';
 import { currentUser, requireAdmin, requireAuth } from '../middleware/auth.ts';
 import { listDoneTasks, listGuideDocs, markTaskDone, progressReport, resetProgress } from '../repositories/guide.ts';
-import { GUIDE_LANGS, seedGuide } from '../services/guide/seed.ts';
+import { translatedTitles } from '../repositories/translations.ts';
+import { seedGuide } from '../services/guide/seed.ts';
+import { QUIZ_LANGS } from '../services/quiz/types.ts';
 import { tasksForRole } from '../services/guide/tasks.ts';
 
 export const guideRouter = Router();
 
+// Bài hướng dẫn chỉ có bản gốc tiếng Việt; người đọc tiếng khác thấy tiêu đề / mô tả
+// đã dịch (nếu bản dịch có rồi), mở bài thì trang đọc tự hiện bản dịch.
 guideRouter.get('/docs', async (req, res) => {
-  const lang = z.enum(GUIDE_LANGS).catch('vi').parse(req.query.lang);
-  let docs = await listGuideDocs(lang);
-  // Chưa có bản ngôn ngữ này -> dùng tạm bản tiếng Việt.
-  let shownLang = lang;
-  if (!docs.length && lang !== 'vi') {
-    docs = await listGuideDocs('vi');
-    shownLang = 'vi';
-  }
-  res.json({ lang: shownLang, docs });
+  const lang = z.enum(QUIZ_LANGS).catch('vi').parse(req.query.lang);
+  const docs = await listGuideDocs('vi');
+  const titles = lang === 'vi' ? new Map<string, { title: string; desc: string }>() : await translatedTitles(lang, docs.map((d) => Number(d.id)));
+  res.json({ lang, docs: docs.map((d) => ({ ...d, title: titles.get(d.id)?.title ?? d.title, desc: titles.get(d.id)?.desc || d.desc })) });
 });
 
 guideRouter.get('/progress', requireAuth, async (_req, res) => {
@@ -59,7 +58,6 @@ guideRouter.get('/report', requireAdmin, async (_req, res) => {
   });
 });
 
-guideRouter.post('/seed', requireAdmin, async (req, res) => {
-  const { langs } = z.object({ langs: z.array(z.enum(GUIDE_LANGS)).min(1).default([...GUIDE_LANGS]) }).parse(req.body ?? {});
-  res.json(await seedGuide([...new Set(langs)], currentUser(res).id));
+guideRouter.post('/seed', requireAdmin, async (_req, res) => {
+  res.json(await seedGuide(currentUser(res).id));
 });

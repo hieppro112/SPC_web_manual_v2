@@ -7,8 +7,12 @@
 import { config } from '../../config.ts';
 import { enqueueTranslation, sweepTranslations, translationsReady } from '../../repositories/translations.ts';
 
+// Bản hướng dẫn en/ja viết tay của phiên bản cũ (guide-en-..., guide-ja-...) không dịch nữa:
+// nay chỉ giữ bản gốc tiếng Việt (guide-vi-...) và để máy dịch như mọi bài khác.
+export const isLegacyGuideCopy = (slug: string) => /^guide-(en|ja)-/.test(slug);
+
 export function requestTranslation(doc: { id: string | number; version: number; slug: string }): void {
-  if (!config.translate.enabled || doc.slug.startsWith('guide-')) return;
+  if (!config.translate.enabled || isLegacyGuideCopy(doc.slug)) return;
   void translationsReady()
     .then((ready) => (ready ? enqueueTranslation(Number(doc.id), doc.version, 1) : undefined))
     .catch((err: Error) => console.error('❌ Dịch: không đưa được bài vào hàng đợi:', err.message));
