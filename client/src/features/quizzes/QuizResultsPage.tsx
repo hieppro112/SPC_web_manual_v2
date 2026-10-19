@@ -13,6 +13,7 @@ import EmptyState from '../../components/ui/EmptyState.tsx';
 import Spinner from '../../components/ui/Spinner.tsx';
 import { errorMessage, formatDateTime } from '../../lib/utils.ts';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.ts';
+import { useCompleteOnMount } from '../guide/queries.ts';
 import { quizzesApi } from './api.ts';
 import { useQuizResults } from './queries.ts';
 
@@ -21,6 +22,7 @@ export default function QuizResultsPage() {
   const { t, i18n } = useTranslation();
   const { data, isPending, error } = useQuizResults(id);
   useDocumentTitle(data?.quiz.title);
+  useCompleteOnMount('quizResults', !!data);
 
   if (isPending) return <Spinner className="py-24" />;
   if (error || !data) return <EmptyState icon={Users} title={t('common.error')} description={errorMessage(error)} />;

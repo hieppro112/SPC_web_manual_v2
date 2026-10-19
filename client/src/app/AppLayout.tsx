@@ -7,11 +7,12 @@
 import { Link, Outlet, ScrollRestoration, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { Toaster } from 'sonner';
-import { BookOpen, ClipboardCheck, FilePlus2, FileUp, LogIn, UserPlus } from 'lucide-react';
+import { BookOpen, CircleHelp, ClipboardCheck, FilePlus2, FileUp, LogIn, UserPlus } from 'lucide-react';
 import Button from '../components/ui/Button.tsx';
 import SearchBox from '../components/SearchBox.tsx';
 import AiChatWidget from '../features/ai/AiChatWidget.tsx';
 import { useCurrentUser } from '../features/auth/queries.ts';
+import TourProvider from '../features/guide/tour/TourProvider.tsx';
 import { useUnseenImportCount } from '../features/imports/queries.ts';
 import { useUnseenJobCount } from '../features/quizzes/queries.ts';
 import { isEditor } from '../lib/types.ts';
@@ -19,7 +20,16 @@ import { useTheme } from '../theme/useTheme.ts';
 import ThemeLanguageMenu from './ThemeLanguageMenu.tsx';
 import UserMenu from './UserMenu.tsx';
 
+// TourProvider bọc cả trang: tour / gợi ý "Chỉ cho tôi" gọi được từ mọi nơi.
 export default function AppLayout() {
+  return (
+    <TourProvider>
+      <LayoutShell />
+    </TourProvider>
+  );
+}
+
+function LayoutShell() {
   const { t } = useTranslation();
   const user = useCurrentUser();
   const { resolved } = useTheme();
@@ -42,8 +52,14 @@ export default function AppLayout() {
           <SearchBox className="mx-auto hidden w-full max-w-md md:block" />
 
           <div className="ml-auto flex items-center gap-1.5 md:ml-0">
+            <Link to="/guide" title={t('nav.guide')} data-tour="help">
+              <Button size="sm" variant="ghost">
+                <CircleHelp className="h-4 w-4" />
+                <span className="hidden xl:inline">{t('nav.guide')}</span>
+              </Button>
+            </Link>
             {user && (
-              <Link to="/quizzes" title={t('nav.quizzes')} className="relative">
+              <Link to="/quizzes" title={t('nav.quizzes')} className="relative" data-tour="quizzes">
                 <Button size="sm" variant="ghost">
                   <ClipboardCheck className="h-4 w-4" />
                   <span className="hidden lg:inline">{t('nav.quizzes')}</span>
@@ -57,7 +73,7 @@ export default function AppLayout() {
               </Link>
             )}
             {isEditor(user) && (
-              <Link to="/import" title={t('nav.import')} className="relative">
+              <Link to="/import" title={t('nav.import')} className="relative" data-tour="import">
                 <Button size="sm" variant="ghost">
                   <FileUp className="h-4 w-4" />
                   <span className="hidden xl:inline">{t('nav.import')}</span>
@@ -72,7 +88,7 @@ export default function AppLayout() {
             )}
             {isEditor(user) && (
               // Đang xem một thể loại -> tài liệu mới chọn sẵn thể loại đó.
-              <Link to={category ? `/new?category=${category}` : '/new'}>
+              <Link to={category ? `/new?category=${category}` : '/new'} data-tour="new-doc">
                 <Button size="sm">
                   <FilePlus2 className="h-4 w-4" />
                   <span className="hidden sm:inline">{t('nav.newDoc')}</span>

@@ -33,6 +33,8 @@ import CategoryOptions from '../categories/CategoryOptions.tsx';
 import { buildCategoryTree } from '../categories/tree.ts';
 import DocContent from '../documents/DocContent.tsx';
 import { useSaveDocument } from '../documents/queries.ts';
+import { useCompleteTask } from '../guide/queries.ts';
+import { tasksFromBlocks } from '../guide/tasks.ts';
 import BlockPicker from './BlockPicker.tsx';
 import SortableBlockCard from './SortableBlockCard.tsx';
 import { useUnsavedGuard } from './useUnsavedGuard.ts';
@@ -48,6 +50,7 @@ export default function EditorForm({ docId, initial, categories, backTo }: Props
   const { t } = useTranslation();
   const navigate = useNavigate();
   const saveDoc = useSaveDocument();
+  const complete = useCompleteTask();
   const titleRef = useRef<HTMLInputElement>(null);
 
   // "Lazy initializer": giá trị khởi tạo chỉ dùng MỘT lần lúc mở trình soạn.
@@ -135,6 +138,8 @@ export default function EditorForm({ docId, initial, categories, backTo }: Props
       const saved = await saveDoc.mutateAsync({ id: docId, data: draft });
       setSavedJson(JSON.stringify(draft));
       toast.success(t('editor.saved'));
+      // Nhiệm vụ thực hành: lưu bài, có Bước / ảnh / sơ đồ-biểu đồ.
+      for (const key of tasksFromBlocks(draft.blocks)) complete(key);
       if (!docId) {
         // Tài liệu mới: chuyển sang URL sửa của chính nó để lưu lần sau là "sửa".
         allowNextNavigation();
@@ -178,7 +183,7 @@ export default function EditorForm({ docId, initial, categories, backTo }: Props
             </span>
           </span>
 
-          <div className="flex rounded-lg border border-border p-0.5">
+          <div data-tour="editor-mode" className="flex rounded-lg border border-border p-0.5">
             {(['edit', 'preview'] as const).map((m) => (
               <button
                 key={m}
@@ -194,6 +199,7 @@ export default function EditorForm({ docId, initial, categories, backTo }: Props
 
           <Select
             aria-label={t('editor.status')}
+            data-tour="editor-status"
             value={draft.status}
             onChange={(e) => setDraft((d) => ({ ...d, status: e.target.value === 'published' ? 'published' : 'draft' }))}
             className="h-9 w-auto"
@@ -202,7 +208,7 @@ export default function EditorForm({ docId, initial, categories, backTo }: Props
             <option value="published">{t('status.published')}</option>
           </Select>
 
-          <Button onClick={save} loading={saveDoc.isPending} title={t('editor.shortcut')}>
+          <Button onClick={save} loading={saveDoc.isPending} title={t('editor.shortcut')} data-tour="editor-save">
             <Save className="h-4 w-4" /> {t('common.save')}
           </Button>
         </div>
@@ -218,13 +224,14 @@ export default function EditorForm({ docId, initial, categories, backTo }: Props
           <div className="space-y-5">
             <input
               ref={titleRef}
+              data-tour="editor-title"
               value={draft.title}
               onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
               placeholder={t('editor.titlePlaceholder')}
               className="w-full bg-transparent text-3xl font-bold placeholder:text-muted/60 focus:outline-none"
             />
 
-            <label className="flex flex-wrap items-center gap-3 text-sm">
+            <label data-tour="editor-category" className="flex flex-wrap items-center gap-3 text-sm">
               <span className="font-medium">{t('editor.category')}</span>
               <Select value={draft.category} onChange={(e) => setDraft((d) => ({ ...d, category: e.target.value }))} className="w-auto min-w-56">
                 <option value="">{t('editor.chooseCategory')}</option>
@@ -259,7 +266,7 @@ export default function EditorForm({ docId, initial, categories, backTo }: Props
               </SortableContext>
             </DndContext>
 
-            <section>
+            <section data-tour="add-block">
               <h2 className="mb-2 text-sm font-semibold text-muted">{t('editor.addBlock')}</h2>
               <BlockPicker onPick={(type) => insertAt(draft.blocks.length, type)} />
             </section>

@@ -46,6 +46,7 @@ export default function SearchBox({ className }: { className?: string }) {
   return (
     <form
       role="search"
+      data-tour="search"
       className={cn('relative', className)}
       onSubmit={(e) => {
         e.preventDefault();

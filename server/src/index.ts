@@ -29,6 +29,7 @@ import { mediaRouter } from './routes/media.ts';
 import { quizzesRouter } from './routes/quizzes.ts';
 import { quizJobsRouter, workerRouter } from './routes/quizJobs.ts';
 import { importJobsRouter, importWorkerRouter } from './routes/importJobs.ts';
+import { guideRouter } from './routes/guide.ts';
 import { deleteOldAttempts } from './repositories/quizzes.ts';
 import { metaRouter } from './routes/meta.ts';
 import { uploadSessionsRouter } from './routes/uploadSessions.ts';
@@ -78,6 +79,8 @@ app.use('/api/worker/quiz-jobs', workerRouter);
 // Nhập bài từ PowerPoint: cùng cách làm (editor gửi file, worker nhờ Claude dựng bài nháp).
 app.use('/api/import-jobs', requireEditor, importJobsRouter);
 app.use('/api/worker/import-jobs', importWorkerRouter);
+// Hướng dẫn sử dụng: bài hướng dẫn ai cũng xem; tiến độ / nạp mẫu kiểm tra quyền trong router.
+app.use('/api/guide', guideRouter);
 
 // Không khớp route nào ở trên -> 404 dạng JSON.
 app.use('/api', (_req, res) => {

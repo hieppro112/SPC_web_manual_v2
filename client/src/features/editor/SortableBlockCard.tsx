@@ -48,6 +48,8 @@ function SortableBlockCard({ block, index, total, stepNumber, onChange, onRemove
       // khối cao thấp khác nhau sẽ không bị méo khi kéo ngang qua nhau.
       style={{ transform: CSS.Translate.toString(transform), transition }}
       className={cn('group relative', isDragging && 'z-10 opacity-80')}
+      // Tour trình soạn thảo chỉ vào khối đầu tiên.
+      data-tour={index === 0 ? 'block-card' : undefined}
     >
       <div className={cn('rounded-xl border bg-bg', isDragging ? 'border-accent shadow-xl' : 'border-border')}>
         <div className="flex items-center gap-1 border-b border-border px-2 py-1">

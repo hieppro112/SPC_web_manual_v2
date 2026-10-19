@@ -20,6 +20,7 @@ import { cn, errorMessage, newId, removeDiacritics } from '../../lib/utils.ts';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.ts';
 import { useAiStatus } from '../ai/queries.ts';
 import { useDocuments } from '../documents/queries.ts';
+import { useCompleteTask } from '../guide/queries.ts';
 import { quizzesApi, type QuizInput, type QuizLang, type SourceDoc } from './api.ts';
 import { useCreateQuizJob } from './queries.ts';
 import QuizEditor from './QuizEditor.tsx';
@@ -52,6 +53,7 @@ export default function QuizCreatePage() {
   const { data: aiStatus } = useAiStatus();
   const { data: docs } = useDocuments({ status: 'published' });
   const createJob = useCreateQuizJob();
+  const complete = useCompleteTask();
 
   const modes: Mode[] = aiStatus?.enabled ? ['claude', 'local', 'manual'] : ['claude', 'manual'];
   const [mode, setMode] = useState<Mode>(() => (params.get('mode') === 'local' ? 'local' : params.get('mode') === 'manual' ? 'manual' : 'claude'));
@@ -81,6 +83,7 @@ export default function QuizCreatePage() {
       {
         onSuccess: () => {
           toast.success(t('quiz.jobs.sent'));
+          complete('createQuiz');
           navigate('/quizzes');
         },
         onError: (err) => setError(errorMessage(err)),

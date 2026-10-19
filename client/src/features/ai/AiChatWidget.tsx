@@ -23,6 +23,7 @@ import { isEditor } from '../../lib/types.ts';
 import { cn, errorMessage, newId } from '../../lib/utils.ts';
 import { useCurrentUser } from '../auth/queries.ts';
 import { useDocument } from '../documents/queries.ts';
+import { useCompleteTask } from '../guide/queries.ts';
 import { aiApi, type AiMode, type AiSource } from './api.ts';
 import { useAiStatus } from './queries.ts';
 
@@ -40,6 +41,7 @@ export default function AiChatWidget() {
   const navigate = useNavigate();
   const user = useCurrentUser();
   const { data: status } = useAiStatus();
+  const complete = useCompleteTask();
 
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -87,6 +89,7 @@ export default function AiChatWidget() {
       { id: answerId, role: 'assistant', content: '', pending: true },
     ]);
     setInput('');
+    complete('askAi');
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -287,6 +290,7 @@ export default function AiChatWidget() {
         type="button"
         onClick={() => setOpen((o) => !o)}
         title={t('ai.title')}
+        data-tour="ai-chat"
         aria-expanded={open}
         className="fixed right-4 bottom-4 z-50 flex h-12 w-12 items-center justify-center rounded-full bg-accent text-accent-fg shadow-lg transition hover:bg-accent-hover"
       >

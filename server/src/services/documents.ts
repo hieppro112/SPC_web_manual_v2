@@ -40,8 +40,9 @@ function withComputed(input: DocumentInput) {
   return { ...input, desc: buildDesc(input.blocks), searchText: buildSearchText(input.title, input.blocks) };
 }
 
-export async function createDocument(input: DocumentInput, userId: number) {
-  const slug = await uniqueSlug(input.title);
+// fixedSlug: slug định sẵn (bài hướng dẫn "guide-vi-01-..."), nơi gọi tự kiểm tra chưa trùng.
+export async function createDocument(input: DocumentInput, userId: number, fixedSlug?: string) {
+  const slug = fixedSlug ?? (await uniqueSlug(input.title));
   const record = withComputed(input);
   return withTransaction(async (tx) => {
     const id = await insertDocument({ ...record, slug, userId }, tx);

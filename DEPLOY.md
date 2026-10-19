@@ -257,6 +257,18 @@ Editor/admin bấm **Nhập PowerPoint** trên thanh trên cùng → chọn file
 
 Yêu cầu nhập cũng hết hạn sau `QUIZ_JOB_TIMEOUT_HOURS` nếu không máy nào xử lý. Giới hạn: SmartArt / hình vẽ chỉ giữ phần chữ; video, hiệu ứng không lấy; chữ lặp lại ở nhiều slide (chân trang, logo chữ) và ảnh lặp (logo) tự bỏ.
 
+## Hướng dẫn sử dụng & thực hành (migration 006)
+
+Nút **Hướng dẫn (?)** trên thanh trên cùng mở trang `/guide`: tour dẫn đường, nhiệm vụ thực hành tự chấm, bài hướng dẫn chi tiết (vi / en / ja). Lần đầu đăng nhập, tour giới thiệu tự chạy ở trang chủ.
+
+**1. Database (một lần):** SSMS, tài khoản quản trị → chạy `server\sql\006_guide_progress.sql`. Phải thấy bảng `WebManualGuideProgress`, quyền của `kvh_write`, dòng đánh dấu 006. Chưa có bảng thì tour và bài hướng dẫn vẫn dùng được, chỉ phần nhiệm vụ báo "Chưa tạo bảng tiến độ".
+
+**2. Máy chủ app:** `git pull` → build client → restart web (không có thư viện mới).
+
+**3. Nạp nội dung (admin, một lần):** đăng nhập admin → **Hướng dẫn** → mục **Nạp bài hướng dẫn mẫu** → chọn ngôn ngữ → bấm nút. Web tạo thể loại *Hướng dẫn sử dụng* (con: Tiếng Việt / English / 日本語), 7 bài hướng dẫn và 1 bài ôn tập cho mỗi ngôn ngữ. Bấm lại chỉ tạo phần còn thiếu; bài đã có (kể cả đã sửa) giữ nguyên. Muốn lấy lại bản gốc của một bài: xóa bài đó rồi bấm lại.
+
+Bài hướng dẫn nhận ra nhờ slug `guide-<ngôn ngữ>-...`, nên đổi tên hay chuyển thể loại vẫn hiện ở trang Hướng dẫn. Admin xem **Tiến độ của mọi người** ở cuối trang.
+
 ## Bước 9 (tùy chọn) — Trợ lý AI chạy local
 
 Nút 💬 ở góc màn hình: hỏi đáp trên toàn bộ tài liệu, hỏi về bài đang đọc, tóm tắt bài. App tự tìm đoạn tài liệu liên quan (RAG), phần mềm AI chỉ việc trả lời. Không bật thì nút 💬 tự ẩn, app chạy bình thường.

@@ -13,6 +13,7 @@ import Button from '../../components/ui/Button.tsx';
 import Select from '../../components/ui/Select.tsx';
 import type { Media } from '../../lib/types.ts';
 import { errorMessage } from '../../lib/utils.ts';
+import { useCompleteTask } from '../guide/queries.ts';
 import { publicBaseUrls } from './publicBase.ts';
 import { useNewUploadSession, useServerMeta, useUploadSessionStatus } from './queries.ts';
 
@@ -36,6 +37,7 @@ export default function QrUploadDialog({ open, onClose, kind, onReceived }: Prop
 
 function QrUploadBody({ kind, onReceived }: Pick<Props, 'kind' | 'onReceived'>) {
   const { t } = useTranslation();
+  const complete = useCompleteTask();
   const [nonce, setNonce] = useState(0);
   const session = useNewUploadSession(kind, nonce);
   const meta = useServerMeta();
@@ -58,8 +60,9 @@ function QrUploadBody({ kind, onReceived }: Pick<Props, 'kind' | 'onReceived'>) 
     if (received && !reported.current) {
       reported.current = true;
       onReceived(received);
+      complete('phoneUpload');
     }
-  }, [received, onReceived]);
+  }, [received, onReceived, complete]);
 
   if (session.isPending || meta.isPending) {
     return <LoaderCircle className="mx-auto my-16 h-6 w-6 animate-spin text-muted" />;

@@ -191,3 +191,13 @@ Luật đi kèm: chỉ MỘT file được import `recharts` (`ChartRenderer.tsx
 - **Structured output:** gửi kèm một *JSON Schema* (`response_format: json_schema`). LM Studio/Ollama ép từng token AI viết ra phải khớp khuôn, nên kết quả luôn `JSON.parse` được. Server vẫn kiểm tra lại bằng zod (`services/quiz/types.ts`): bỏ câu trùng đáp án, sửa câu "nhiều đáp án" mà chỉ có 1 đáp án đúng thành "một đáp án".
 - **Không lộ đáp án:** API `/take` chỉ gửi câu hỏi + đáp án **đã xáo**, không có `correct`. Nộp bài thì server chấm. Nếu chấm ở trình duyệt, người rành máy chỉ cần mở DevTools (tab Network) là thấy đáp án.
 - **Đáp án có id riêng** (không dùng vị trí 0/1/2): xáo trộn thế nào cũng chấm đúng theo id. 🔸 Flutter: giống dùng `ValueKey(id)` thay vì index cho item trong list.
+
+### Tour dẫn đường tự viết (client/src/features/guide/tour/)
+
+- **Đánh dấu chỗ cần chỉ bằng `data-tour="..."`** trên phần tử thật (ô tìm kiếm, nút Lưu...). Tour chỉ biết tên, không cần ref truyền qua nhiều tầng. Không tìm thấy (khác quyền, màn hình nhỏ) thì bỏ qua bước, nên một tour dùng chung cho mọi người.
+- **`createPortal(..., document.body)`**: vẽ lớp phủ ra ngoài cây DOM của trang, để nó nằm trên mọi thứ, không bị `overflow: hidden` của cha cắt. 🔸 Flutter: giống `OverlayEntry`.
+- **"Khoét lỗ" bằng `box-shadow: 0 0 0 9999px`**: một khung trong suốt đặt đúng chỗ phần tử, bóng đổ khổng lồ làm tối phần còn lại.
+- **Bám vị trí:** `getBoundingClientRect()` mỗi khung hình (`requestAnimationFrame`). Cuộn hay đổi cỡ cửa sổ thì khung vẫn đúng chỗ. 🔸 Flutter: `RenderBox.localToGlobal`.
+- **Context** (`tour/context.ts`): `TourProvider` bọc cả app, trang nào cũng gọi được `useTour().startTour('main')`. 🔸 Flutter: `InheritedWidget` / Provider.
+- **Tránh setState trong effect:** kết quả tìm phần tử lưu kèm "mã bước" (`found.key`). Sang bước mới thì `found.key !== stepKey` nên tự coi là chưa tìm, không cần effect "xóa state" (lint `set-state-in-effect`).
+- **Nhiệm vụ tự chấm:** trang nào có hành động đáng ghi nhận thì gọi `complete('share')`. Hook `useCompleteTask` tự bỏ qua nếu là khách hoặc đã xong, nên gọi thoải mái. Server chỉ nhận key có trong `services/guide/tasks.ts` và đúng quyền.

@@ -5,6 +5,7 @@
 // dangerouslySetInnerHTML, nên người soạn gõ <script> cũng chỉ hiện ra chữ,
 // không chạy được. Link "javascript:..." cũng bị nó tự loại bỏ.
 
+import { Link } from 'react-router';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { cn } from '../lib/utils.ts';
@@ -17,7 +18,9 @@ export default function Markdown({ text, className }: { text: string; className?
         remarkPlugins={[remarkGfm]}
         components={{
           // Link ra ngoài mở tab mới để người đọc không mất trang tài liệu.
+          // Link trong app (/guide, /docs/...) chuyển trang bằng React Router, không tải lại cả trang.
           a: ({ href, children }) => {
+            if (href?.startsWith('/') && !href.startsWith('//')) return <Link to={href}>{children}</Link>;
             const external = href?.startsWith('http');
             return (
               <a href={href} target={external ? '_blank' : undefined} rel={external ? 'noreferrer' : undefined}>

@@ -26,6 +26,7 @@ export default function UserMenu({ user }: { user: User }) {
           <button
             type="button"
             onClick={toggle}
+            data-tour="account"
             className="relative flex h-9 w-9 items-center justify-center rounded-full bg-accent-soft text-sm font-semibold text-accent"
             title={user.displayName}
           >

@@ -134,7 +134,7 @@ export default function QuizListPage() {
         ) : !mine.data.length ? (
           <EmptyState icon={ClipboardCheck} title={t('quiz.emptyMine')} />
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div data-tour="quiz-list" className="grid gap-4 sm:grid-cols-2">
             {mine.data.map((q) => (
               <MyQuizCard key={q.id} quiz={q} />
             ))}
@@ -148,7 +148,7 @@ export default function QuizListPage() {
         <section>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-xl font-bold">{t('quiz.manage')}</h2>
-            <Link to="/quizzes/new">
+            <Link to="/quizzes/new" data-tour="quiz-create">
               <Button>
                 <Sparkles className="h-4 w-4" /> {t('quiz.createNew')}
               </Button>
@@ -251,7 +251,7 @@ function ManagedRow({ quiz: q, isAdmin }: { quiz: ManagedQuiz; isAdmin: boolean 
             </Button>
           </Link>
           {isAdmin && q.kind === 'exam' && (
-            <Link to={`/quizzes/${q.id}/results`} title={t('quiz.results')}>
+            <Link to={`/quizzes/${q.id}/results`} title={t('quiz.results')} data-tour="quiz-results">
               <Button size="sm" variant="ghost">
                 <BarChart3 className="h-4 w-4" />
               </Button>

@@ -5,6 +5,7 @@
 // -> bấm F5, nút Back, gửi link cho đồng nghiệp đều giữ nguyên bộ lọc.
 // 🔸 Flutter: giống đưa tham số vào route của go_router thay vì giữ trong State.
 
+import { useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { ChevronRight, FilePlus2, FileSearch, FolderOpen } from 'lucide-react';
@@ -18,6 +19,7 @@ import { useDocumentTitle } from '../../lib/useDocumentTitle.ts';
 import { useCurrentUser } from '../auth/queries.ts';
 import CategoryNav from '../categories/CategoryNav.tsx';
 import { useCategories } from '../categories/queries.ts';
+import { useCompleteTask } from '../guide/queries.ts';
 import { categoryPath } from '../categories/tree.ts';
 import DocCard from './DocCard.tsx';
 import { useDocuments } from './queries.ts';
@@ -42,6 +44,15 @@ export default function HomePage() {
   const heading = q ? t('home.searchResults', { q }) : (categoryName ?? t('home.allDocs'));
   useDocumentTitle(categoryName);
 
+  // Nhiệm vụ thực hành: đã thử tìm kiếm / lọc theo thể loại.
+  const complete = useCompleteTask();
+  useEffect(() => {
+    if (q) complete('search');
+  }, [q, complete]);
+  useEffect(() => {
+    if (category) complete('category');
+  }, [category, complete]);
+
   const setStatus = (value: string) => {
     const next = new URLSearchParams(params);
     if (value) next.set('status', value);
@@ -53,13 +64,13 @@ export default function HomePage() {
     <div className="mx-auto max-w-page px-4 py-6 lg:px-8 md:grid md:grid-cols-[220px_1fr] md:gap-8 md:py-8">
       <aside className="mb-6 md:mb-0">
         {/* Điện thoại: thu gọn danh sách thể loại vào một mục bấm mở. */}
-        <details className="rounded-xl border border-border p-2 md:hidden">
+        <details data-tour="categories" className="rounded-xl border border-border p-2 md:hidden">
           <summary className="cursor-pointer px-2 py-1 text-sm font-medium">{categoryName ?? t('home.categories')}</summary>
           <div className="mt-2">
             <CategoryNav />
           </div>
         </details>
-        <div className="sticky top-20 hidden md:block">
+        <div data-tour="categories" className="sticky top-20 hidden md:block">
           <CategoryNav />
         </div>
       </aside>
@@ -126,7 +137,7 @@ export default function HomePage() {
             }
           />
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          <div data-tour="doc-list" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {docs.map((doc) => (
               <DocCard key={doc.id} doc={doc} />
             ))}

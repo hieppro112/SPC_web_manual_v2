@@ -12,6 +12,7 @@ import EmptyState from '../../components/ui/EmptyState.tsx';
 import Spinner from '../../components/ui/Spinner.tsx';
 import { errorMessage, formatDateTime } from '../../lib/utils.ts';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.ts';
+import { useCompleteTask } from '../guide/queries.ts';
 import { useSubmitQuiz, useTakeQuiz } from './queries.ts';
 import QuizRunner from './QuizRunner.tsx';
 
@@ -20,6 +21,7 @@ export default function QuizTakePage() {
   const { t, i18n } = useTranslation();
   const { data, isPending, error, refetch, dataUpdatedAt } = useTakeQuiz(id);
   const submit = useSubmitQuiz(id);
+  const complete = useCompleteTask();
   useDocumentTitle(data?.quiz.title);
 
   if (isPending) return <Spinner className="py-24" />;
@@ -62,7 +64,11 @@ export default function QuizTakePage() {
           // Xin đề mới (dataUpdatedAt đổi) -> QuizRunner làm lại từ đầu.
           key={dataUpdatedAt}
           questions={data.questions}
-          onSubmit={(answers) => submit.mutateAsync(answers)}
+          onSubmit={async (answers) => {
+            const result = await submit.mutateAsync(answers);
+            complete('takeQuiz');
+            return result;
+          }}
           // Còn lượt (hoặc bài ôn tập) thì cho làm lại; server xáo đề mới.
           onRetry={!records || left > 1 ? () => void refetch() : undefined}
         />

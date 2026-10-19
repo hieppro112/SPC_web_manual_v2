@@ -27,6 +27,7 @@ import { useCurrentUser } from '../auth/queries.ts';
 import CategoryIcon from '../categories/CategoryIcon.tsx';
 import { useCategories } from '../categories/queries.ts';
 import { categoryPath } from '../categories/tree.ts';
+import { useCompleteTask } from '../guide/queries.ts';
 import DocContent from './DocContent.tsx';
 import ShareDialog from './ShareDialog.tsx';
 import Toc from './Toc.tsx';
@@ -62,6 +63,15 @@ export default function DocPage() {
   const { meta, toc } = useMemo(() => computeBlockMeta(blocks, doc?.id), [blocks, doc?.id]);
 
   useDocumentTitle(doc?.title);
+
+  // Nhiệm vụ thực hành: đã đọc một tài liệu (bài hướng dẫn có slug "guide-...").
+  const complete = useCompleteTask();
+  const loadedSlug = doc?.slug;
+  useEffect(() => {
+    if (!loadedSlug) return;
+    complete('readDoc');
+    if (loadedSlug.startsWith('guide-')) complete('readGuide');
+  }, [loadedSlug, complete]);
 
   // Mở link có #muc-3: nội dung tải bất đồng bộ nên trình duyệt chưa tự
   // cuộn được lúc đầu -> cuộn tay sau khi nội dung đã vẽ.
@@ -160,14 +170,22 @@ export default function DocPage() {
                     <Pencil className="h-4 w-4" /> {t('common.edit')}
                   </Button>
                 </Link>
-                <Link to={`/docs/${doc.slug}/history`}>
+                <Link to={`/docs/${doc.slug}/history`} data-tour="doc-history">
                   <Button size="sm" variant="secondary">
                     <Clock className="h-4 w-4" /> {t('doc.history')}
                   </Button>
                 </Link>
               </>
             )}
-            <Button size="sm" variant="secondary" onClick={() => setShareOpen(true)}>
+            <Button
+              size="sm"
+              variant="secondary"
+              data-tour="share"
+              onClick={() => {
+                setShareOpen(true);
+                complete('share');
+              }}
+            >
               <Share2 className="h-4 w-4" /> {t('common.share')}
             </Button>
             <Button size="sm" variant="secondary" onClick={() => window.print()}>

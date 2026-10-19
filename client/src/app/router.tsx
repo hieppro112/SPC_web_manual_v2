@@ -6,6 +6,7 @@
 //   /login                    đăng nhập / setup lần đầu
 //   /register                 tự đăng ký (chờ admin duyệt)
 //   /m/upload/:token          trang upload trên điện thoại (không có header)
+//   /guide                    hướng dẫn & thực hành (tour, nhiệm vụ) ai cũng xem
 //   /quizzes                  bài kiểm tra của tôi (+ quản lý đề)  đã đăng nhập
 //   /quizzes/:id              làm bài                               đã đăng nhập
 //   /new                      tạo tài liệu                          editor
@@ -44,6 +45,7 @@ export const router = createBrowserRouter([
       { path: 'login', element: <LoginPage /> },
       { path: 'register', element: <RegisterPage /> },
       { path: 'docs/:slug', element: <DocPage /> },
+      { path: 'guide', lazy: () => import('../features/guide/GuidePage.tsx').then((m) => ({ Component: m.default })) },
       {
         // Ai đăng nhập cũng vào được (kể cả role "user"): làm bài kiểm tra.
         element: <RequireAuth />,

@@ -16,6 +16,7 @@ import { computeBlockMeta } from '../../blocks/meta.ts';
 import { withDefaults } from '../../blocks/registry.ts';
 import { cn, errorMessage, formatDateTime } from '../../lib/utils.ts';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.ts';
+import { useCompleteOnMount } from '../guide/queries.ts';
 import DocContent from './DocContent.tsx';
 import { useDocument, useRestoreVersion, useVersion, useVersions } from './queries.ts';
 
@@ -30,6 +31,7 @@ export default function HistoryPage() {
   const version = useVersion(doc.data?.id, selected);
   const restore = useRestoreVersion();
   useDocumentTitle(doc.data ? `${t('history.title')} — ${doc.data.title}` : undefined);
+  useCompleteOnMount('history');
 
   const blocks = useMemo(() => version.data?.blocks.map(withDefaults) ?? [], [version.data]);
   const { meta } = useMemo(() => computeBlockMeta(blocks), [blocks]);
