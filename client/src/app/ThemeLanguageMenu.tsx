@@ -4,6 +4,7 @@ import { Languages, Monitor, Moon, Sun } from 'lucide-react';
 import Button from '../components/ui/Button.tsx';
 import MenuItem from '../components/ui/MenuItem.tsx';
 import Popover from '../components/ui/Popover.tsx';
+import { useCompleteTask } from '../features/guide/queries.ts';
 import { LANGUAGES } from '../i18n/index.ts';
 import { useTheme, type ThemeChoice } from '../theme/useTheme.ts';
 
@@ -17,12 +18,13 @@ export default function ThemeLanguageMenu() {
   const { t, i18n } = useTranslation();
   const { choice, resolved, setTheme } = useTheme();
   const CurrentIcon = resolved === 'dark' ? Moon : Sun;
+  const complete = useCompleteTask();
 
   return (
     <Popover
       align="right"
       trigger={(toggle) => (
-        <Button variant="ghost" size="icon" onClick={toggle} title={`${t('nav.theme')} / ${t('nav.language')}`}>
+        <Button variant="ghost" size="icon" onClick={toggle} title={`${t('nav.theme')} / ${t('nav.language')}`} data-tour="settings">
           <CurrentIcon className="h-4 w-4" />
         </Button>
       )}
@@ -31,7 +33,15 @@ export default function ThemeLanguageMenu() {
         <div className="w-52">
           <p className="px-2.5 pt-1.5 pb-1 text-xs font-semibold text-muted">{t('nav.theme')}</p>
           {THEMES.map((theme) => (
-            <MenuItem key={theme.value} icon={theme.icon} selected={choice === theme.value} onClick={() => setTheme(theme.value)}>
+            <MenuItem
+              key={theme.value}
+              icon={theme.icon}
+              selected={choice === theme.value}
+              onClick={() => {
+                setTheme(theme.value);
+                complete('personalize');
+              }}
+            >
               {t(theme.key)}
             </MenuItem>
           ))}
@@ -45,6 +55,7 @@ export default function ThemeLanguageMenu() {
               selected={i18n.language === lang.code}
               onClick={() => {
                 void i18n.changeLanguage(lang.code);
+                complete('personalize');
                 close();
               }}
             >

@@ -7,7 +7,7 @@
 //   <Button variant="ghost" size="icon"><X /></Button>
 // Mọi prop của <button> thường (onClick, disabled, type...) đều dùng được.
 
-import type { ButtonHTMLAttributes } from 'react';
+import type { ComponentProps } from 'react';
 import { LoaderCircle } from 'lucide-react';
 import { cn } from '../../lib/utils.ts';
 
@@ -27,7 +27,8 @@ const SIZES: Record<Size, string> = {
   icon: 'h-9 w-9 justify-center',
 };
 
-type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
+// ComponentProps<'button'>: mọi prop của <button>, kể cả `ref` (React 19 truyền ref như prop thường).
+type Props = ComponentProps<'button'> & {
   variant?: Variant;
   size?: Size;
   loading?: boolean;

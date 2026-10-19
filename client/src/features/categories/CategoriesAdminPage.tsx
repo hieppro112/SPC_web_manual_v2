@@ -18,6 +18,7 @@ import Spinner from '../../components/ui/Spinner.tsx';
 import type { Category } from '../../lib/types.ts';
 import { errorMessage } from '../../lib/utils.ts';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.ts';
+import { useCompleteOnMount } from '../guide/queries.ts';
 import CategoryIcon from './CategoryIcon.tsx';
 import CategoryOptions from './CategoryOptions.tsx';
 import { CATEGORY_ICONS } from './icons.ts';
@@ -28,6 +29,7 @@ export default function CategoriesAdminPage() {
   const { t } = useTranslation();
   const { tree, data: categories, isPending } = useCategoryTree();
   useDocumentTitle(t('categories.title'));
+  useCompleteOnMount('adminCategories');
 
   return (
     <div className="mx-auto max-w-form px-4 py-8">

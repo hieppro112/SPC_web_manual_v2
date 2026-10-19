@@ -18,6 +18,7 @@ import Spinner from '../../components/ui/Spinner.tsx';
 import type { Role, User } from '../../lib/types.ts';
 import { errorMessage, formatDate, formatDateTime } from '../../lib/utils.ts';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.ts';
+import { useCompleteOnMount } from '../guide/queries.ts';
 import { useCurrentUser } from '../auth/queries.ts';
 import { useApproveUser, useCreateUser, useDeleteUser, useUpdateUser, useUsers } from './queries.ts';
 
@@ -29,6 +30,7 @@ export default function UsersAdminPage() {
   const remove = useDeleteUser();
   const [resetFor, setResetFor] = useState<User | null>(null);
   useDocumentTitle(t('users.title'));
+  useCompleteOnMount('adminUsers');
 
   const pendingUsers = users?.filter((u) => u.status === 'pending') ?? [];
   const activeUsers = users?.filter((u) => u.status !== 'pending') ?? [];

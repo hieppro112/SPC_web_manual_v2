@@ -22,6 +22,7 @@ import Input from '../../components/ui/Input.tsx';
 import Select from '../../components/ui/Select.tsx';
 import { cn, errorMessage, newId, removeDiacritics } from '../../lib/utils.ts';
 import { useUnsavedGuard } from '../editor/useUnsavedGuard.ts';
+import { useCompleteTask } from '../guide/queries.ts';
 import type { QuestionType, QuizInput, QuizLang, QuizQuestion } from './api.ts';
 import { useAssignableUsers, useSaveQuiz } from './queries.ts';
 import QuizRunner, { gradeLocally } from './QuizRunner.tsx';
@@ -64,6 +65,7 @@ export default function QuizEditor({ id, initial }: Props) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const save = useSaveQuiz();
+  const complete = useCompleteTask();
   const [draft, setDraft] = useState<QuizInput>(() => initial);
   const [savedJson, setSavedJson] = useState(() => (id ? JSON.stringify(initial) : ''));
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -101,6 +103,7 @@ export default function QuizEditor({ id, initial }: Props) {
       const saved = await save.mutateAsync({ id, data: draft });
       setSavedJson(JSON.stringify(draft));
       toast.success(t('quiz.saved'));
+      complete('createQuiz');
       if (!id) {
         // Đề mới: sang URL sửa của chính nó, lần lưu sau là "sửa".
         allowNextNavigation();
