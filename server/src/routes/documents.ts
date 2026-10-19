@@ -32,6 +32,7 @@ import {
   listVersions,
   type FullDocument,
 } from '../repositories/documents.ts';
+import { translatedTitles } from '../repositories/translations.ts';
 import { requestIndexSync } from '../services/ai/searchIndex.ts';
 import { createDocument, updateDocument, type DocumentInput } from '../services/documents.ts';
 import { parseId, tryParseId } from '../utils/ids.ts';
@@ -85,19 +86,20 @@ async function parseCategory(value: unknown): Promise<number> {
 }
 
 documentsRouter.get('/', async (req, res) => {
-  const { q, category, status } = req.query;
+  const { q, category, status, lang } = req.query;
   // Lọc theo thể loại = thể loại đó + toàn bộ thể loại con cháu.
   const categoryId = tryParseId(category);
   const categoryIds = categoryId ? descendantIds(await listCategoryLinks(), categoryId) : undefined;
-  res.json(
-    await listDocuments({
-      // Khách / role "user": luôn chỉ bài đã xuất bản, bỏ qua ?status gửi lên.
-      status: !isEditor(res.locals.user) ? 'published' : isDocStatus(status) ? status : undefined,
-      categoryIds,
-      // Tìm kiếm: bỏ dấu câu hỏi rồi yêu cầu MỌI từ đều có trong SearchText.
-      words: typeof q === 'string' ? removeDiacritics(q).split(/\s+/).filter(Boolean).slice(0, 8) : [],
-    }),
-  );
+  const docs = await listDocuments({
+    // Khách / role "user": luôn chỉ bài đã xuất bản, bỏ qua ?status gửi lên.
+    status: !isEditor(res.locals.user) ? 'published' : isDocStatus(status) ? status : undefined,
+    categoryIds,
+    // Tìm kiếm: bỏ dấu câu hỏi rồi yêu cầu MỌI từ đều có trong SearchText.
+    words: typeof q === 'string' ? removeDiacritics(q).split(/\s+/).filter(Boolean).slice(0, 8) : [],
+  });
+  // ?lang=ja: kèm tiêu đề + mô tả đã dịch (nếu có) để thẻ tài liệu hiện đúng ngôn ngữ người đọc.
+  const titles = typeof lang === 'string' && /^(vi|en|ja)$/.test(lang) ? await translatedTitles(lang, docs.map((d) => Number(d.id))) : new Map();
+  res.json(docs.map((d) => ({ ...d, translated: titles.get(d.id) ?? null })));
 });
 
 // '/slug/:slug' có HAI đoạn nên không xung đột với '/:id' (một đoạn).

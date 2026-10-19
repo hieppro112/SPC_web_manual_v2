@@ -8,14 +8,18 @@
 // invalidate ['documents'] = làm mới TẤT CẢ những thứ trên.
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { categoriesKey } from '../categories/queries.ts';
 import type { DocInput } from '../../lib/types.ts';
 import { documentsApi, type DocListParams } from './api.ts';
 
 export function useDocuments(params: DocListParams, enabled = true) {
+  // Kèm ngôn ngữ giao diện -> thẻ tài liệu có tiêu đề đã dịch. Đổi ngôn ngữ = key mới = tải lại.
+  const { i18n } = useTranslation();
+  const withLang = { ...params, lang: i18n.language };
   return useQuery({
-    queryKey: ['documents', 'list', params],
-    queryFn: () => documentsApi.list(params),
+    queryKey: ['documents', 'list', withLang],
+    queryFn: () => documentsApi.list(withLang),
     enabled,
     // Gõ tìm kiếm thì giữ kết quả cũ trên màn hình trong lúc chờ kết quả
     // mới, tránh danh sách nháy trắng sau mỗi phím.

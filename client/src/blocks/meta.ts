@@ -11,11 +11,14 @@ import type { Block, BlockMeta } from './types.ts';
 
 export type TocEntry = { anchor: string; label: string; depth: 1 | 2; stepNumber?: number };
 
-export function computeBlockMeta(blocks: Block[], docId?: string) {
+// anchorSource: đang hiện BẢN DỊCH -> lấy anchor của khối cùng id ở bài gốc,
+// để link "#chuan-bi" chia sẻ từ bài gốc vẫn nhảy đúng mục ở bản dịch.
+export function computeBlockMeta(blocks: Block[], docId?: string, anchorSource?: Block[]) {
   const meta = new Map<string, BlockMeta>();
   const toc: TocEntry[] = [];
   const usedAnchors = new Set<string>();
   let stepNumber = 0;
+  const sourceMeta = anchorSource ? computeBlockMeta(anchorSource, docId).meta : null;
 
   // Anchor đọc được ("chuan-bi") thay vì id khối ("k3j9x2"): link chia sẻ
   // tới một mục nhìn là hiểu. Trùng tên thì thêm -2, -3...
@@ -28,12 +31,12 @@ export function computeBlockMeta(blocks: Block[], docId?: string) {
 
   for (const block of blocks) {
     if (block.type === 'heading' && block.props.text?.trim()) {
-      const anchor = uniqueAnchor(slugify(block.props.text));
+      const anchor = sourceMeta?.get(block.id)?.anchor ?? uniqueAnchor(slugify(block.props.text));
       meta.set(block.id, { anchor, docId });
       toc.push({ anchor, label: block.props.text, depth: block.props.level === 3 ? 2 : 1 });
     } else if (block.type === 'step') {
       stepNumber++;
-      const anchor = uniqueAnchor(`buoc-${stepNumber}`);
+      const anchor = sourceMeta?.get(block.id)?.anchor ?? uniqueAnchor(`buoc-${stepNumber}`);
       meta.set(block.id, { anchor, stepNumber, docId });
       toc.push({ anchor, label: block.props.title || '', depth: 2, stepNumber });
     } else {

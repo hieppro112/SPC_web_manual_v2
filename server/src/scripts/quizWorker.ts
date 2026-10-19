@@ -26,6 +26,7 @@ const TOKEN = process.env.QUIZ_WORKER_TOKEN ?? '';
 const POLL_SECONDS = Number(process.env.POLL_SECONDS ?? 300);
 const CLAUDE_TIMEOUT_MS = Number(process.env.CLAUDE_TIMEOUT_MINUTES ?? 20) * 60_000;
 const CLAUDE_MODEL = process.env.CLAUDE_MODEL ?? ''; // trống = model mặc định của tài khoản
+const TRANSLATE_PER_ROUND = Math.max(1, Number(process.env.TRANSLATE_PER_ROUND ?? 5)); // số bài dịch mỗi vòng
 // claude.cmd của npm thực chất chạy file .exe này -> gọi thẳng, không cần shell.
 const CLAUDE_EXE =
   process.env.CLAUDE_EXE || path.join(process.env.APPDATA ?? '', 'npm', 'node_modules', '@anthropic-ai', 'claude-code', 'bin', 'claude.exe');
@@ -46,6 +47,8 @@ type ClaudeTask = { system: string; prompt: string; schema: object };
 type QuizJob = ClaudeTask & { id: string; questionCount: number };
 // Nhập PowerPoint: file dài được server chia thành nhiều phần (~10 slide), mỗi phần một lần gọi Claude.
 type ImportJob = { id: string; fileName: string; parts: ClaudeTask[] };
+// Dịch bài: mỗi phần là một ngôn ngữ đích (bài dài thì một ngôn ngữ nhiều phần).
+type TranslateJob = { id: string; title: string; version: number; sourceLang: string; parts: (ClaudeTask & { lang: string })[] };
 
 async function api<T>(urlPath: string, body: unknown = {}): Promise<T> {
   const res = await fetch(`${API_URL}${urlPath}`, {
@@ -137,11 +140,28 @@ async function processImportJob(job: ImportJob) {
   }
 }
 
-// Nhận hết việc đang chờ của một loại. Mỗi loại một try riêng: web chưa có
-// tính năng nhập PowerPoint (bản cũ) thì việc tạo đề vẫn chạy bình thường.
-async function drain<T>(name: string, claimPath: string, handle: (job: T) => Promise<void>) {
+async function processTranslateJob(job: TranslateJob) {
+  log(`🌐 Nhận việc dịch bài #${job.id} "${job.title}" (v${job.version}, ${job.sourceLang} -> ${[...new Set(job.parts.map((p) => p.lang))].join(', ')}, ${job.parts.length} phần)`);
   try {
-    for (;;) {
+    const results: { lang: string; output: unknown }[] = [];
+    for (const [i, part] of job.parts.entries()) {
+      log(`   Phần ${i + 1}/${job.parts.length} (${part.lang}): đang nhờ Claude dịch...`);
+      results.push({ lang: part.lang, output: await runClaude(part).catch(() => runClaude(part)) });
+    }
+    const { missing } = await api<{ missing: number }>(`/api/worker/translate-jobs/${job.id}/complete`, { version: job.version, results });
+    log(`✅ Dịch bài #${job.id} xong${missing ? ` (còn ${missing} mục Claude bỏ sót, sẽ dịch lại)` : ''}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    log(`❌ Dịch bài #${job.id} lỗi: ${message}`);
+    await api(`/api/worker/translate-jobs/${job.id}/fail`, { error: message }).catch(() => {});
+  }
+}
+
+// Nhận việc đang chờ của một loại (tối đa `max` việc mỗi vòng). Mỗi loại một try riêng:
+// web bản cũ chưa có tính năng nào thì các việc khác vẫn chạy bình thường.
+async function drain<T>(name: string, claimPath: string, handle: (job: T) => Promise<void>, max = Infinity) {
+  try {
+    for (let done = 0; done < max; done++) {
       const { job } = await api<{ job: T | null }>(claimPath);
       if (!job) return;
       await handle(job);
@@ -152,10 +172,22 @@ async function drain<T>(name: string, claimPath: string, handle: (job: T) => Pro
   }
 }
 
-// Vòng lặp: nhận hết việc đang chờ (tạo đề, rồi nhập PowerPoint), rồi ngủ POLL_SECONDS giây.
+// Vòng lặp: nhận hết việc tạo đề + nhập PowerPoint (người đang chờ), rồi dịch tối đa
+// TRANSLATE_PER_ROUND bài. Còn bài chờ dịch thì quay lại ngay (không ngủ), nhưng mỗi vòng
+// đều hỏi lại tạo đề / PowerPoint trước -> đợt dịch bù hàng trăm bài cũ không làm ai phải chờ.
 log(`🚀 quiz-worker chạy: web ${API_URL}, kiểm tra mỗi ${POLL_SECONDS}s, model ${CLAUDE_MODEL || '(mặc định của tài khoản)'}`);
 for (;;) {
   await drain<QuizJob>('Tạo đề', '/api/worker/quiz-jobs/claim', processQuizJob);
   await drain<ImportJob>('Nhập PowerPoint', '/api/worker/import-jobs/claim', processImportJob);
-  await new Promise((r) => setTimeout(r, POLL_SECONDS * 1000));
+  let translated = 0;
+  await drain<TranslateJob>(
+    'Dịch bài',
+    '/api/worker/translate-jobs/claim',
+    async (job) => {
+      translated++;
+      await processTranslateJob(job);
+    },
+    TRANSLATE_PER_ROUND,
+  );
+  if (translated < TRANSLATE_PER_ROUND) await new Promise((r) => setTimeout(r, POLL_SECONDS * 1000));
 }

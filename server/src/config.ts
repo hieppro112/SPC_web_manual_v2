@@ -110,6 +110,14 @@ export const config = {
     leaseMinutes: Number(process.env.IMPORT_LEASE_MINUTES ?? 120), // file dài cần nhiều lần gọi Claude
   },
 
+  // Dịch tự động bài viết sang 2 ngôn ngữ còn lại (qua hàng đợi, dùng chung worker).
+  translate: {
+    enabled: (process.env.TRANSLATE_ENABLED ?? 'true') !== 'false',
+    leaseMinutes: Number(process.env.TRANSLATE_LEASE_MINUTES ?? 60),
+    maxCharsPerPart: Number(process.env.TRANSLATE_MAX_CHARS ?? 20_000), // mỗi lần gọi Claude dịch tối đa bấy nhiêu ký tự
+    sweepHours: Number(process.env.TRANSLATE_SWEEP_HOURS ?? 6), // quét bài thiếu bản dịch (lần đầu = dịch bù bài cũ)
+  },
+
   // draw.io tự host cho khối "Sơ đồ" (cài bằng `npm run install-drawio`).
   drawioDir: path.resolve(process.env.DRAWIO_DIR ?? 'drawio'),
 

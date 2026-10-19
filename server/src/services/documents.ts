@@ -18,6 +18,7 @@ import {
 } from '../repositories/documents.ts';
 import { slugify } from '../utils/slugify.ts';
 import { buildDesc, buildSearchText } from './documentText.ts';
+import { requestTranslation } from './translate/queue.ts';
 
 export type DocumentInput = {
   title: string;
@@ -44,19 +45,24 @@ function withComputed(input: DocumentInput) {
 export async function createDocument(input: DocumentInput, userId: number, fixedSlug?: string) {
   const slug = fixedSlug ?? (await uniqueSlug(input.title));
   const record = withComputed(input);
-  return withTransaction(async (tx) => {
+  const doc = await withTransaction(async (tx) => {
     const id = await insertDocument({ ...record, slug, userId }, tx);
     await insertVersion({ ...input, documentId: id, version: 1, userId, restoredFrom: null }, tx);
     return (await findDocumentById(id, tx))!;
   });
+  // Lưu xong (ngoài transaction) mới đưa vào hàng đợi dịch sang 2 ngôn ngữ còn lại.
+  requestTranslation(doc);
+  return doc;
 }
 
 // Slug GIỮ NGUYÊN khi sửa tiêu đề -> link đã chia sẻ không bị gãy.
 export async function updateDocument(id: number, input: DocumentInput, userId: number, restoredFrom: number | null = null) {
   const record = withComputed(input);
-  return withTransaction(async (tx) => {
+  const doc = await withTransaction(async (tx) => {
     const version = await updateDocumentRow(id, { ...record, userId }, tx);
     await insertVersion({ ...input, documentId: id, version, userId, restoredFrom }, tx);
     return (await findDocumentById(id, tx))!;
   });
+  requestTranslation(doc);
+  return doc;
 }

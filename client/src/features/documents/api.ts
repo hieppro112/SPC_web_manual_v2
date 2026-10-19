@@ -2,7 +2,8 @@
 import { http, toQuery } from '../../lib/http.ts';
 import type { Doc, DocInput, DocStatus, DocSummary, DocVersion, DocVersionFull } from '../../lib/types.ts';
 
-export type DocListParams = { q?: string; category?: string; status?: DocStatus };
+// lang: ngôn ngữ người đọc -> server kèm tiêu đề / mô tả đã dịch (nếu có).
+export type DocListParams = { q?: string; category?: string; status?: DocStatus; lang?: string };
 
 export const documentsApi = {
   list: (params: DocListParams) => http.get<DocSummary[]>(`/documents${toQuery(params)}`),

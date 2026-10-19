@@ -1,6 +1,7 @@
 // DocCard — một tài liệu trong danh sách ở trang chủ.
 import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
+import { Languages } from 'lucide-react';
 import Badge from '../../components/ui/Badge.tsx';
 import type { DocSummary } from '../../lib/types.ts';
 import { formatDate } from '../../lib/utils.ts';
@@ -22,8 +23,12 @@ export default function DocCard({ doc }: { doc: DocSummary }) {
         )}
         {doc.status === 'draft' && <Badge tone="warning">{t('status.draft')}</Badge>}
       </div>
-      <h3 className="font-semibold group-hover:text-accent">{doc.title}</h3>
-      {doc.desc && <p className="mt-1 line-clamp-2 text-sm text-muted">{doc.desc}</p>}
+      {/* Có bản dịch sang ngôn ngữ người đọc -> hiện tiêu đề đã dịch, rê chuột thấy tiêu đề gốc. */}
+      <h3 className="font-semibold group-hover:text-accent" title={doc.translated ? doc.title : undefined}>
+        {doc.translated && <Languages className="mr-1 inline h-3.5 w-3.5 text-muted" />}
+        {doc.translated?.title ?? doc.title}
+      </h3>
+      {(doc.translated?.desc || doc.desc) && <p className="mt-1 line-clamp-2 text-sm text-muted">{doc.translated?.desc || doc.desc}</p>}
       <p className="mt-3 text-xs text-muted">{t('home.updated', { date: formatDate(doc.updatedAt, i18n.language) })}</p>
     </Link>
   );
