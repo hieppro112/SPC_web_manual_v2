@@ -7,7 +7,6 @@
 //   └ Admin: nạp bài mẫu + tiến độ của mọi người          ┘
 // Nhiệm vụ tự đánh dấu khi làm đúng việc ở trang khác (xem useCompleteTask).
 
-import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -18,14 +17,12 @@ import { isEditor } from '../../lib/types.ts';
 import { cn, errorMessage, formatDate, formatDateTime } from '../../lib/utils.ts';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.ts';
 import { useCurrentUser } from '../auth/queries.ts';
-import type { QuizLang } from '../quizzes/api.ts';
 import type { GuideDoc, GuideGroup } from './api.ts';
 import { useGuideDocs, useGuideProgress, useGuideReport, useResetGuide, useSeedGuide } from './queries.ts';
 import { TASK_META, type TaskKey } from './tasks.ts';
 import { useTour } from './tour/context.ts';
 
 const GROUPS: GuideGroup[] = ['basic', 'editor', 'admin'];
-const LANGS: QuizLang[] = ['vi', 'en', 'ja'];
 
 export default function GuidePage() {
   const { t, i18n } = useTranslation();
@@ -213,9 +210,6 @@ function Missions({ guideDocs }: { guideDocs: GuideDoc[] }) {
 function SeedPanel() {
   const { t } = useTranslation();
   const seed = useSeedGuide();
-  const [langs, setLangs] = useState<QuizLang[]>(LANGS);
-
-  const toggle = (lang: QuizLang) => setLangs((list) => (list.includes(lang) ? list.filter((l) => l !== lang) : [...list, lang]));
 
   return (
     <section className="space-y-3 rounded-2xl border border-border bg-surface p-4">
@@ -223,20 +217,12 @@ function SeedPanel() {
         <h2 className="font-semibold">{t('guide.seedTitle')}</h2>
         <p className="text-sm text-muted">{t('guide.seedHint')}</p>
       </div>
-      <div className="flex flex-wrap items-center gap-4">
-        {LANGS.map((lang) => (
-          <label key={lang} className="flex items-center gap-1.5 text-sm">
-            <input type="checkbox" checked={langs.includes(lang)} onChange={() => toggle(lang)} className="accent-accent" />
-            {t(`quiz.languages.${lang}`)}
-          </label>
-        ))}
+      <div className="flex justify-end">
         <Button
           size="sm"
-          className="ml-auto"
-          disabled={!langs.length}
           loading={seed.isPending}
           onClick={() =>
-            seed.mutate(langs, {
+            seed.mutate(undefined, {
               onSuccess: (r) => toast.success(t('guide.seedDone', { docs: r.createdDocs, quizzes: r.createdQuizzes, skipped: r.skippedDocs + r.skippedQuizzes })),
               onError: (err) => toast.error(errorMessage(err)),
             })

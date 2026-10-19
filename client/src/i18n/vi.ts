@@ -372,7 +372,7 @@ export const vi = {
     noDocsAdmin: 'Chưa có bài hướng dẫn nào. Dùng mục "Nạp bài hướng dẫn mẫu" bên dưới để tạo.',
     seedTitle: 'Nạp bài hướng dẫn mẫu',
     seedHint:
-      'Tạo thể loại "Hướng dẫn sử dụng", 7 bài hướng dẫn và 1 bài ôn tập cho mỗi ngôn ngữ được chọn. Chỉ tạo phần còn thiếu, bài đã có (kể cả đã sửa) được giữ nguyên.',
+      'Tạo thể loại "Hướng dẫn sử dụng", 7 bài hướng dẫn tiếng Việt (bản tiếng Anh, tiếng Nhật do máy dịch tự tạo) và 3 bài ôn tập (vi / en / ja). Chỉ tạo phần còn thiếu, bài đã có (kể cả đã sửa) được giữ nguyên.',
     seed: 'Nạp bài hướng dẫn mẫu',
     seedDone: 'Đã tạo {{docs}} bài hướng dẫn, {{quizzes}} bài ôn tập (bỏ qua {{skipped}} mục đã có).',
     reportTitle: 'Tiến độ của mọi người',

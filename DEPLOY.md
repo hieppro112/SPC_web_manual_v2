@@ -265,9 +265,11 @@ Nút **Hướng dẫn (?)** trên thanh trên cùng mở trang `/guide`: tour d�
 
 **2. Máy chủ app:** `git pull` → build client → restart web (không có thư viện mới).
 
-**3. Nạp nội dung (admin, một lần):** đăng nhập admin → **Hướng dẫn** → mục **Nạp bài hướng dẫn mẫu** → chọn ngôn ngữ → bấm nút. Web tạo thể loại *Hướng dẫn sử dụng* (con: Tiếng Việt / English / 日本語), 7 bài hướng dẫn và 1 bài ôn tập cho mỗi ngôn ngữ. Bấm lại chỉ tạo phần còn thiếu; bài đã có (kể cả đã sửa) giữ nguyên. Muốn lấy lại bản gốc của một bài: xóa bài đó rồi bấm lại.
+**3. Nạp nội dung (admin, một lần):** đăng nhập admin → **Hướng dẫn** → mục **Nạp bài hướng dẫn mẫu** → bấm nút. Web tạo thể loại *Hướng dẫn sử dụng*, **7 bài hướng dẫn tiếng Việt** và 3 bài ôn tập (vi / en / ja). Bản tiếng Anh / tiếng Nhật của bài hướng dẫn do tính năng dịch tự động tạo (mục 007 bên dưới). Bấm lại chỉ tạo phần còn thiếu; bài đã có (kể cả đã sửa) giữ nguyên. Muốn lấy lại bản gốc của một bài: xóa bài đó rồi bấm lại.
 
-Bài hướng dẫn nhận ra nhờ slug `guide-<ngôn ngữ>-...`, nên đổi tên hay chuyển thể loại vẫn hiện ở trang Hướng dẫn. Admin xem **Tiến độ của mọi người** ở cuối trang.
+> **Bản cũ có 21 bài (en / ja viết tay):** xóa tay 14 bài `guide-en-...`, `guide-ja-...` và thể loại con *English*, *日本語*. Có thể chuyển 7 bài tiếng Việt lên thẳng *Hướng dẫn sử dụng* rồi xóa thể loại *Tiếng Việt*. Xong bấm **Nạp bài hướng dẫn mẫu** một lần để sửa link "Xem lại" của bài ôn tập en / ja về bài gốc. Bản en / ja cũ không bị máy dịch (đỡ tốn lượt) trong lúc chờ xóa.
+
+Bài hướng dẫn nhận ra nhờ slug `guide-vi-...`, nên đổi tên hay chuyển thể loại vẫn hiện ở trang Hướng dẫn. Admin xem **Tiến độ của mọi người** ở cuối trang.
 
 ## Dịch tự động bài viết vi / en / ja (migration 007, dùng chung quiz-worker)
 
@@ -277,7 +279,8 @@ Mỗi lần lưu bài (cả bài nháp), web đưa bài vào hàng đợi dịch
 - Sửa một đoạn ở bài gốc: chỉ đoạn đó được dịch lại. Trong lúc chờ, đoạn đó tạm hiện chữ gốc.
 - Editor bấm **Sửa bản dịch** để chỉnh câu dịch sai. Phần sửa tay được giữ cho tới khi đoạn đó ở bài gốc bị sửa. Nút **Dịch lại từ đầu** bỏ hết phần sửa tay.
 - Tìm kiếm và trợ lý AI tìm được bằng chữ của bản dịch (người Nhật gõ tiếng Nhật vẫn ra bài tiếng Việt).
-- Bài trong *Hướng dẫn sử dụng* (slug `guide-...`) đã có sẵn 3 bản nên không dịch.
+- **Tên nút** được dịch đúng chữ trên giao diện: web lấy chữ giao diện 3 ngôn ngữ (`client/src/i18n`) làm bảng thuật ngữ, gửi kèm lời dặn những tên nút có trong đoạn cần dịch (tên nút ghi trong ngoặc kép hoặc **in đậm**).
+- Bài hướng dẫn en / ja viết tay của bản cũ (slug `guide-en-...`, `guide-ja-...`) không được dịch; hãy xóa chúng.
 
 **1. Database — chạy TRƯỚC khi restart web:** SSMS, tài khoản quản trị → chạy `server\sql\007_translations.sql` (cần đã chạy 006). Phải thấy 2 bảng `WebManualDocTranslations`, `WebManualTranslationJobs`, quyền của `kvh_write`, dòng đánh dấu 007.
 ⚠️ Thiếu bảng thì **web không khởi động** (báo "Database còn thiếu thay đổi 007..."). Máy dev dùng chung database nên cũng vậy.

@@ -31,6 +31,7 @@ import {
   translationsReady,
 } from '../repositories/translations.ts';
 import { requestIndexSync } from '../services/ai/searchIndex.ts';
+import { isLegacyGuideCopy } from '../services/translate/queue.ts';
 import { buildDesc, buildSearchText } from '../services/documentText.ts';
 import { applyTranslation, mergeForRead, planHasWork, planParts, planTranslation } from '../services/translate/engine.ts';
 import { LANGS, applyTexts, detectLang, extractTexts, type Texts } from '../services/translate/texts.ts';
@@ -47,7 +48,7 @@ async function readableDoc(id: unknown, res: Response): Promise<FullDocument> {
   return doc;
 }
 
-const isGuide = (doc: FullDocument) => doc.slug.startsWith('guide-');
+const isGuide = (doc: FullDocument) => isLegacyGuideCopy(doc.slug);
 
 translationsRouter.get('/:docId', async (req, res) => {
   const doc = await readableDoc(req.params.docId, res);
@@ -118,7 +119,7 @@ translationsRouter.put('/:docId/:lang', requireEditor, async (req, res) => {
 
 translationsRouter.post('/:docId/retranslate', requireEditor, async (req, res) => {
   const doc = await readableDoc(req.params.docId, res);
-  if (isGuide(doc)) throw new HttpError(400, 'Bài hướng dẫn sử dụng đã có sẵn 3 ngôn ngữ, không cần dịch');
+  if (isGuide(doc)) throw new HttpError(400, 'Đây là bản hướng dẫn en/ja cũ (viết tay), không dịch — hãy xóa bài này');
   if (!(await translationsReady())) throw new HttpError(503, 'Chưa tạo bảng bản dịch — admin chạy server/sql/007_translations.sql');
   await enqueueTranslation(Number(doc.id), doc.version, 1, true);
   res.status(204).end();

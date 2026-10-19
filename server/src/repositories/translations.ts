@@ -25,8 +25,8 @@ export async function translationsReady(): Promise<boolean> {
 // Dùng chỗ không đợi được (ghép câu SQL tìm kiếm): giá trị đã biết gần nhất.
 export const translationsReadyCached = () => ready;
 
-// Bài hướng dẫn sử dụng đã có sẵn 3 bản riêng -> không dịch.
-const NOT_GUIDE = `d.Slug NOT LIKE N'guide-%'`;
+// Bản hướng dẫn en/ja viết tay của phiên bản cũ -> không dịch (xem isLegacyGuideCopy).
+const NOT_GUIDE = `d.Slug NOT LIKE N'guide-en-%' AND d.Slug NOT LIKE N'guide-ja-%'`;
 
 // ---------- Bản dịch ----------
 

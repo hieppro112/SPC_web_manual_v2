@@ -27,5 +27,5 @@ export const guideApi = {
   complete: (key: TaskKey) => http.post<{ key: TaskKey; firstTime: boolean }>(`/guide/progress/${key}`),
   reset: () => http.delete('/guide/progress'),
   report: () => http.get<{ users: GuideReportRow[] }>('/guide/report'),
-  seed: (langs: QuizLang[]) => http.post<SeedResult>('/guide/seed', { langs }),
+  seed: () => http.post<SeedResult>('/guide/seed'),
 };

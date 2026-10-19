@@ -368,7 +368,7 @@ export const en: Messages = {
     noDocsAdmin: 'No guide documents yet. Use "Load sample guide" below to create them.',
     seedTitle: 'Load sample guide',
     seedHint:
-      'Creates the "Hướng dẫn sử dụng" category, 7 guide documents and 1 practice quiz for each selected language. Only missing items are created; existing ones (even edited) are kept.',
+      'Creates the "Hướng dẫn sử dụng" category, 7 guide documents in Vietnamese (English and Japanese versions are created by automatic translation) and 3 practice quizzes (vi / en / ja). Only missing items are created; existing ones (even edited) are kept.',
     seed: 'Load sample guide',
     seedDone: 'Created {{docs}} guide documents and {{quizzes}} practice quizzes ({{skipped}} existing items skipped).',
     reportTitle: "Everyone's progress",
