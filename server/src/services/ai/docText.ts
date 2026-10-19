@@ -76,8 +76,30 @@ function blockText(block: ParsedBlock): string {
   }
 }
 
-export function docSections(doc: DocLike): DocSection[] {
+// Anchor của từng khối tiêu đề / bước, tính y như trang đọc: { idKhối: "chuan-bi" }.
+function anchorMap(blocks: ParsedBlock[]): Map<string, string> {
+  const map = new Map<string, string>();
+  const used = new Set<string>();
+  const unique = (base: string) => {
+    let anchor = base || 'muc';
+    for (let i = 2; used.has(anchor); i++) anchor = `${base}-${i}`;
+    used.add(anchor);
+    return anchor;
+  };
+  let step = 0;
+  for (const block of blocks) {
+    const p = block.props as Record<string, unknown>;
+    if (block.type === 'heading' && str(p.text)) map.set(block.id, unique(anchorSlug(str(p.text))));
+    else if (block.type === 'step') map.set(block.id, unique(`buoc-${++step}`));
+  }
+  return map;
+}
+
+// anchorSource: khi đọc BẢN DỊCH, lấy anchor từ khối cùng id của bài gốc
+// (tiêu đề tiếng Nhật không ra được anchor "#chuan-bi" như trang đọc).
+export function docSections(doc: DocLike, anchorSource?: ParsedBlock[]): DocSection[] {
   const sections: DocSection[] = [{ anchor: null, heading: doc.title, text: '' }];
+  const fromSource = anchorSource ? anchorMap(anchorSource) : null;
   const used = new Set<string>();
   const uniqueAnchor = (base: string) => {
     let anchor = base || 'muc';
@@ -90,11 +112,15 @@ export function docSections(doc: DocLike): DocSection[] {
   for (const block of doc.blocks ?? []) {
     const p = block.props as Record<string, unknown>;
     if (block.type === 'heading' && str(p.text)) {
-      sections.push({ anchor: uniqueAnchor(anchorSlug(str(p.text))), heading: str(p.text), text: '' });
+      const anchor = fromSource?.get(block.id) ?? uniqueAnchor(anchorSlug(str(p.text)));
+      sections.push({ anchor, heading: str(p.text), text: '' });
     } else if (block.type === 'step') {
       step++;
       const title = str(p.title);
-      sections.push({ anchor: uniqueAnchor(`buoc-${step}`), heading: `Bước ${step}${title ? `: ${title}` : ''}`, text: str(p.text) });
+      const anchor = fromSource?.get(block.id) ?? uniqueAnchor(`buoc-${step}`);
+      // Bản dịch: không ghi chữ "Bước" tiếng Việt vào tiêu đề mục.
+      const heading = anchorSource ? `${step}. ${title}`.trim() : `Bước ${step}${title ? `: ${title}` : ''}`;
+      sections.push({ anchor, heading, text: str(p.text) });
     } else {
       const text = blockText(block);
       if (text) {

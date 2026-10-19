@@ -192,6 +192,14 @@ Luật đi kèm: chỉ MỘT file được import `recharts` (`ChartRenderer.tsx
 - **Không lộ đáp án:** API `/take` chỉ gửi câu hỏi + đáp án **đã xáo**, không có `correct`. Nộp bài thì server chấm. Nếu chấm ở trình duyệt, người rành máy chỉ cần mở DevTools (tab Network) là thấy đáp án.
 - **Đáp án có id riêng** (không dùng vị trí 0/1/2): xáo trộn thế nào cũng chấm đúng theo id. 🔸 Flutter: giống dùng `ValueKey(id)` thay vì index cho item trong list.
 
+### Dịch tự động theo từng khối (server/src/services/translate/)
+
+- **Không đụng bài gốc:** bản dịch lưu ở bảng riêng, cùng id khối với bài gốc. Nhờ vậy mục lục và link `#buoc-2` của bài gốc dùng được ở bản dịch (`computeBlockMeta(..., anchorSource)`).
+- **"Dấu vân tay" từng khối (`blockHash` = sha1 của type + props):** lúc dịch thì lưu dấu của khối gốc. Lần sau so dấu: khối nào khớp thì dùng lại bản dịch cũ (kể cả bản sửa tay), lệch thì mới gửi Claude. Sửa 1 đoạn chỉ tốn công dịch 1 đoạn. 🔸 Flutter: giống so `hashCode` để biết item nào cần rebuild.
+- **Ghép khi đọc (`mergeForRead`):** luôn theo cấu trúc HIỆN TẠI của bài gốc. Khối mới chưa kịp dịch thì tạm hiện chữ gốc, nên không bao giờ thiếu nội dung.
+- **Hàng đợi một dòng / bài (MERGE):** lưu nháp 10 lần chỉ cập nhật một dòng, worker dịch bản mới nhất. Worker dịch xong phiên bản v mà bài đã lên v+1 thì dòng việc tự quay về "chờ".
+- **Nhận ra ngôn ngữ bằng chữ viết** (`detectLang`): đếm kana/kanji và chữ có dấu tiếng Việt. Với 3 ngôn ngữ của web thì cách này đủ chắc, tức thì và không tốn lượt Claude.
+
 ### Tour dẫn đường tự viết (client/src/features/guide/tour/)
 
 - **Đánh dấu chỗ cần chỉ bằng `data-tour="..."`** trên phần tử thật (ô tìm kiếm, nút Lưu...). Tour chỉ biết tên, không cần ref truyền qua nhiều tầng. Không tìm thấy (khác quyền, màn hình nhỏ) thì bỏ qua bước, nên một tour dùng chung cho mọi người.

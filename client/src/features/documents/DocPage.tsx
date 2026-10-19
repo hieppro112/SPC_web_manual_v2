@@ -9,7 +9,7 @@
 // Màn hình nhỏ: hai cột bên ẩn, mục lục thu vào một mục bấm mở.
 
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { ChevronRight, ClipboardCheck, Clock, FileQuestionMark, Pencil, Printer, Share2, Trash } from 'lucide-react';
@@ -28,6 +28,9 @@ import CategoryIcon from '../categories/CategoryIcon.tsx';
 import { useCategories } from '../categories/queries.ts';
 import { categoryPath } from '../categories/tree.ts';
 import { useCompleteTask } from '../guide/queries.ts';
+import { LANGS, type Lang } from '../translations/api.ts';
+import { useDocTranslation } from '../translations/queries.ts';
+import TranslationBar from '../translations/TranslationBar.tsx';
 import DocContent from './DocContent.tsx';
 import ShareDialog from './ShareDialog.tsx';
 import Toc from './Toc.tsx';
@@ -60,9 +63,29 @@ export default function DocPage() {
   // (vd mỗi lần mở/đóng hộp thoại chia sẻ). 🔸 Flutter: giống cache một
   // giá trị tính toán trong State thay vì tính trong build().
   const blocks = useMemo(() => doc?.blocks.map(withDefaults) ?? [], [doc]);
-  const { meta, toc } = useMemo(() => computeBlockMeta(blocks, doc?.id), [blocks, doc?.id]);
 
-  useDocumentTitle(doc?.title);
+  // ---------- Bản dịch ----------
+  // Ngôn ngữ đọc: ?lang= trên URL (bấm chọn / link chia sẻ), không có thì theo ngôn ngữ giao diện.
+  const [params, setParams] = useSearchParams();
+  const langParam = params.get('lang');
+  const viewLang = (LANGS as string[]).includes(langParam ?? '') ? (langParam as Lang) : ((LANGS as string[]).includes(i18n.language) ? (i18n.language as Lang) : null);
+  const translation = useDocTranslation(doc?.id, viewLang);
+  const tr = translation.data;
+  const showTranslation = !!tr?.available && (tr.status === 'ready' || tr.status === 'partial') && !!tr.blocks;
+  const shownBlocks = useMemo(() => (showTranslation ? tr!.blocks!.map(withDefaults) : blocks), [showTranslation, tr, blocks]);
+  const shownTitle = showTranslation ? tr!.title! : doc?.title;
+  // Bản dịch cùng id khối với bài gốc -> lấy anchor của bài gốc (link "#chuan-bi" dùng chung).
+  const { meta, toc } = useMemo(
+    () => computeBlockMeta(shownBlocks, doc?.id, showTranslation ? blocks : undefined),
+    [shownBlocks, doc?.id, showTranslation, blocks],
+  );
+  const changeLang = (lang: Lang) => {
+    const next = new URLSearchParams(params);
+    next.set('lang', lang);
+    setParams(next, { replace: true });
+  };
+
+  useDocumentTitle(shownTitle);
 
   // Nhiệm vụ thực hành: đã đọc một tài liệu (bài hướng dẫn có slug "guide-...").
   const complete = useCompleteTask();
@@ -75,12 +98,14 @@ export default function DocPage() {
 
   // Mở link có #muc-3: nội dung tải bất đồng bộ nên trình duyệt chưa tự
   // cuộn được lúc đầu -> cuộn tay sau khi nội dung đã vẽ.
+  // (Chạy lại khi nội dung hiển thị đổi: bản dịch tải xong sau bài gốc.)
   useEffect(() => {
     if (!doc || !location.hash) return;
     document.getElementById(decodeURIComponent(location.hash.slice(1)))?.scrollIntoView();
-  }, [doc, location.hash]);
+  }, [doc, shownBlocks, location.hash]);
 
-  if (isPending) return <Spinner className="py-24" />;
+  // Đợi luôn bản dịch (nhanh) để không nháy bản gốc rồi mới đổi sang bản dịch.
+  if (isPending || (doc && viewLang && translation.isPending)) return <Spinner className="py-24" />;
   if (error || !doc) {
     const notFound = error instanceof ApiError && error.status === 404;
     return (
@@ -126,7 +151,7 @@ export default function DocPage() {
                 s.id === doc.id ? 'bg-accent-soft font-medium text-accent' : 'text-muted hover:bg-surface-2 hover:text-fg',
               )}
             >
-              {s.title}
+              {s.translated?.title ?? s.title}
             </Link>
           ))}
         </div>
@@ -148,7 +173,7 @@ export default function DocPage() {
         </nav>
 
         <header className="mb-6 border-b border-border pb-5">
-          <h1 className="text-3xl leading-tight font-bold">{doc.title}</h1>
+          <h1 className="text-3xl leading-tight font-bold">{shownTitle}</h1>
           <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted">
             {doc.category && (
               <Badge tone="accent">
@@ -211,6 +236,9 @@ export default function DocPage() {
           <p className="no-print mb-6 rounded-xl border border-warning/40 bg-warning-soft px-4 py-3 text-sm">{t('doc.draftBanner')}</p>
         )}
 
+        {/* Chọn ngôn ngữ đọc + trạng thái bản dịch (ẩn nếu server chưa bật dịch). */}
+        {tr?.available && <TranslationBar view={tr} docId={doc.id} slug={doc.slug} editor={editor} onChangeLang={changeLang} />}
+
         {/* Mục lục trên màn hình nhỏ */}
         {toc.length > 0 && (
           <details
@@ -225,7 +253,7 @@ export default function DocPage() {
           </details>
         )}
 
-        <DocContent blocks={blocks} meta={meta} />
+        <DocContent blocks={shownBlocks} meta={meta} />
       </article>
 
       {/* Cột phải: mục lục */}

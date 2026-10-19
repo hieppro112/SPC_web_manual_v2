@@ -48,6 +48,8 @@ export type DocSummary = {
   updatedBy: Pick<User, 'id' | 'displayName'> | null;
   createdAt: string;
   updatedAt: string;
+  // Chỉ có trong danh sách: tiêu đề + mô tả đã dịch sang ngôn ngữ người đọc (null = chưa có / là bài gốc)
+  translated?: { title: string; desc: string } | null;
 };
 
 export type Doc = DocSummary & { blocks: Block[] };

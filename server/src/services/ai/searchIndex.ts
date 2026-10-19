@@ -16,6 +16,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { config } from '../../config.ts';
 import { findDocumentById, listPublishedStamps } from '../../repositories/documents.ts';
+import { listTranslations, translationStamps, translationsReady } from '../../repositories/translations.ts';
+import { mergeForRead } from '../translate/engine.ts';
 import { docSections, sectionUrl, type DocLike } from './docText.ts';
 import { embed } from './llm.ts';
 
@@ -54,9 +56,10 @@ const dot = (a: number[], b: number[]) => a.reduce((sum, x, i) => sum + x * b[i]
 // Chia tài liệu thành các đoạn: mỗi mục (tiêu đề / bước) một đoạn; mục dài
 // thì cắt theo đoạn văn. Mỗi đoạn mở đầu bằng "Tên bài › Tên mục" để model
 // embedding hiểu ngữ cảnh.
-export function buildChunks(doc: DocLike & { id: string }): Omit<Chunk, 'vector'>[] {
+// anchorSource: dựng đoạn cho BẢN DỊCH -> link nguồn dùng anchor của bài gốc.
+export function buildChunks(doc: DocLike & { id: string }, anchorSource?: DocLike['blocks']): Omit<Chunk, 'vector'>[] {
   const chunks: Omit<Chunk, 'vector'>[] = [];
-  for (const s of docSections(doc)) {
+  for (const s of docSections(doc, anchorSource)) {
     if (!s.text.trim() && s.anchor === null) continue;
     const prefix = s.anchor === null ? doc.title : `${doc.title} › ${s.heading}`;
     const base = { docId: doc.id, slug: doc.slug, title: doc.title, section: s.anchor === null ? '' : s.heading, url: sectionUrl(doc.slug, s.anchor) };
@@ -79,8 +82,24 @@ let syncing: Promise<void> | null = null;
 let again = false;
 let lastError = '';
 
+// Đoạn của bài gốc + của từng bản dịch (người hỏi bằng tiếng Nhật khớp đoạn tiếng Nhật).
+async function docChunks(doc: NonNullable<Awaited<ReturnType<typeof findDocumentById>>>) {
+  const original = { id: doc.id, slug: doc.slug, title: doc.title, blocks: doc.blocks ?? [] };
+  const chunks = buildChunks(original);
+  if (await translationsReady()) {
+    for (const row of await listTranslations(Number(doc.id))) {
+      const merged = mergeForRead(original, row);
+      if (!merged.translatedIds.length) continue; // chưa dịch được gì -> trùng bài gốc
+      chunks.push(...buildChunks({ ...original, title: merged.title, blocks: merged.blocks }, original.blocks));
+    }
+  }
+  return chunks;
+}
+
 async function runSync() {
-  const published = await listPublishedStamps();
+  const [stamps, trStamps] = await Promise.all([listPublishedStamps(), translationStamps()]);
+  // Dấu thời gian = lúc sửa bài gốc + lúc cập nhật bản dịch -> đổi cái nào cũng lập chỉ mục lại.
+  const published = stamps.map((s) => ({ id: s.id, updatedAt: trStamps.has(s.id) ? `${s.updatedAt}|${trStamps.get(s.id)}` : s.updatedAt }));
   const alive = new Set(published.map((d) => d.id));
   let changed = 0;
 
@@ -96,7 +115,7 @@ async function runSync() {
     if (index.docs[stamp.id]?.updatedAt === stamp.updatedAt) continue;
     const doc = await findDocumentById(Number(stamp.id));
     if (!doc || doc.status !== 'published') continue;
-    const chunks = buildChunks(doc);
+    const chunks = await docChunks(doc);
     const vectors = chunks.length ? await embed(chunks.map((c) => c.text)) : [];
     index.docs[stamp.id] = { updatedAt: stamp.updatedAt, chunks: chunks.map((c, i) => ({ ...c, vector: normalize(vectors[i]) })) };
     changed++;

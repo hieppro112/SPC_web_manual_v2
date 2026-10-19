@@ -30,6 +30,8 @@ import { quizzesRouter } from './routes/quizzes.ts';
 import { quizJobsRouter, workerRouter } from './routes/quizJobs.ts';
 import { importJobsRouter, importWorkerRouter } from './routes/importJobs.ts';
 import { guideRouter } from './routes/guide.ts';
+import { translateWorkerRouter, translationsRouter } from './routes/translations.ts';
+import { startTranslationSweep } from './services/translate/queue.ts';
 import { deleteOldAttempts } from './repositories/quizzes.ts';
 import { metaRouter } from './routes/meta.ts';
 import { uploadSessionsRouter } from './routes/uploadSessions.ts';
@@ -81,6 +83,9 @@ app.use('/api/import-jobs', requireEditor, importJobsRouter);
 app.use('/api/worker/import-jobs', importWorkerRouter);
 // Hướng dẫn sử dụng: bài hướng dẫn ai cũng xem; tiến độ / nạp mẫu kiểm tra quyền trong router.
 app.use('/api/guide', guideRouter);
+// Bản dịch tự động: ai đọc được bài thì đọc được bản dịch; worker dịch dùng chung khóa máy.
+app.use('/api/translations', translationsRouter);
+app.use('/api/worker/translate-jobs', translateWorkerRouter);
 
 // Không khớp route nào ở trên -> 404 dạng JSON.
 app.use('/api', (_req, res) => {
@@ -166,6 +171,9 @@ const cleanQuizResults = () =>
     .catch((err) => console.error('❌ Dọn bài làm cũ lỗi:', err.message));
 void cleanQuizResults();
 setInterval(cleanQuizResults, 6 * 60 * 60 * 1000).unref();
+
+// Dịch tự động: đưa bài thiếu bản dịch vào hàng đợi (lần đầu = dịch bù bài cũ), lặp lại định kỳ.
+startTranslationSweep();
 
 // Trợ lý AI (nếu bật AI_BASE_URL): dựng chỉ mục tài liệu chạy nền + dọn log cũ.
 if (config.ai.baseUrl) {

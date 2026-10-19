@@ -9,6 +9,7 @@
 
 import { escapeLike, execute, query, queryOne, type Tx } from '../db/pool.ts';
 import type { ParsedBlock } from '../blocks/schemas.ts';
+import { translationsReadyCached } from './translations.ts';
 
 export const DOC_STATUSES = ['draft', 'published'] as const;
 export type DocStatus = (typeof DOC_STATUSES)[number];
@@ -82,10 +83,21 @@ export async function listDocuments(filter: DocListFilter) {
   }
   // Tìm kiếm: MỌI từ phải có trong SearchText (đã bỏ dấu). Mỗi từ là một
   // tham số riêng @w0, @w1... — không bao giờ ghép chữ người dùng gõ vào SQL.
-  (filter.words ?? []).forEach((word, i) => {
-    where.push(`d.SearchText LIKE @w${i}`);
+  // Có bản dịch (migration 007) thì tìm cả trong chữ của bản dịch: người Nhật
+  // gõ tiếng Nhật vẫn ra bài viết bằng tiếng Việt.
+  const words = filter.words ?? [];
+  words.forEach((word, i) => {
     params[`w${i}`] = `%${escapeLike(word)}%`;
   });
+  if (words.length) {
+    const own = words.map((_, i) => `d.SearchText LIKE @w${i}`).join(' AND ');
+    if (translationsReadyCached()) {
+      const translated = words.map((_, i) => `t.SearchText LIKE @w${i}`).join(' AND ');
+      where.push(`((${own}) OR EXISTS (SELECT 1 FROM WebManualDocTranslations t WHERE t.DocumentId = d.Id AND ${translated}))`);
+    } else {
+      where.push(own);
+    }
+  }
 
   const rows = await query<DocRow>(
     `${DOC_SELECT} ${DOC_FROM}

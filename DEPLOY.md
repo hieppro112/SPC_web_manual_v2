@@ -269,6 +269,31 @@ Nút **Hướng dẫn (?)** trên thanh trên cùng mở trang `/guide`: tour d�
 
 Bài hướng dẫn nhận ra nhờ slug `guide-<ngôn ngữ>-...`, nên đổi tên hay chuyển thể loại vẫn hiện ở trang Hướng dẫn. Admin xem **Tiến độ của mọi người** ở cuối trang.
 
+## Dịch tự động bài viết vi / en / ja (migration 007, dùng chung quiz-worker)
+
+Mỗi lần lưu bài (cả bài nháp), web đưa bài vào hàng đợi dịch. **quiz-worker** nhờ Claude dịch sang **2 ngôn ngữ còn lại** (ngôn ngữ gốc tự nhận ra theo chữ viết). Bài gốc không bị đụng tới, bản dịch lưu ở bảng riêng.
+
+- Người đọc mở bài: tự hiện bản theo **ngôn ngữ giao diện** đang chọn, có nút chuyển **Tiếng Việt | English | 日本語** và nút **Xem bản gốc**.
+- Sửa một đoạn ở bài gốc: chỉ đoạn đó được dịch lại. Trong lúc chờ, đoạn đó tạm hiện chữ gốc.
+- Editor bấm **Sửa bản dịch** để chỉnh câu dịch sai. Phần sửa tay được giữ cho tới khi đoạn đó ở bài gốc bị sửa. Nút **Dịch lại từ đầu** bỏ hết phần sửa tay.
+- Tìm kiếm và trợ lý AI tìm được bằng chữ của bản dịch (người Nhật gõ tiếng Nhật vẫn ra bài tiếng Việt).
+- Bài trong *Hướng dẫn sử dụng* (slug `guide-...`) đã có sẵn 3 bản nên không dịch.
+
+**1. Database — chạy TRƯỚC khi restart web:** SSMS, tài khoản quản trị → chạy `server\sql\007_translations.sql` (cần đã chạy 006). Phải thấy 2 bảng `WebManualDocTranslations`, `WebManualTranslationJobs`, quyền của `kvh_write`, dòng đánh dấu 007.
+⚠️ Thiếu bảng thì **web không khởi động** (báo "Database còn thiếu thay đổi 007..."). Máy dev dùng chung database nên cũng vậy.
+
+**2. Máy chủ app:** Stop WEB_MANUAL và QUIZ_WORKER → `git pull` → build client → Start lại cả hai (không có thư viện mới, không cần `npm ci`).
+
+**3. Dịch bù bài cũ:** lúc khởi động, web tự đưa **mọi bài chưa có bản dịch** vào hàng đợi (ưu tiên thấp). Worker dịch dần, mỗi vòng 5 bài (`TRANSLATE_PER_ROUND` trong `quiz-worker.env`), rồi quay lại xem yêu cầu tạo đề / nhập PowerPoint trước, nên không ai phải chờ. Mỗi bài khoảng 2 lần gọi Claude (Haiku: ~30 giây / lần).
+⚠️ Đợt dịch bù dùng khá nhiều hạn mức gói Team. Nên đặt `CLAUDE_MODEL=haiku` trong `quiz-worker.env`.
+
+| Biến (`server\.env`) | Mặc định | Ý nghĩa |
+| --- | --- | --- |
+| `TRANSLATE_ENABLED` | `true` | `false` = tắt hẳn dịch tự động (không thêm việc, ẩn nút chọn ngôn ngữ) |
+| `TRANSLATE_MAX_CHARS` | `20000` | Mỗi lần gọi Claude dịch tối đa bấy nhiêu ký tự (bài dài chia nhiều phần) |
+| `TRANSLATE_SWEEP_HOURS` | `6` | Bao lâu quét lại bài thiếu bản dịch (việc lỗi quá 24 giờ được thử lại) |
+| `TRANSLATE_LEASE_MINUTES` | `60` | Worker nhận việc quá lâu không xong → cho nhận lại |
+
 ## Bước 9 (tùy chọn) — Trợ lý AI chạy local
 
 Nút 💬 ở góc màn hình: hỏi đáp trên toàn bộ tài liệu, hỏi về bài đang đọc, tóm tắt bài. App tự tìm đoạn tài liệu liên quan (RAG), phần mềm AI chỉ việc trả lời. Không bật thì nút 💬 tự ẩn, app chạy bình thường.

@@ -12,6 +12,7 @@
 //   /new                      tạo tài liệu                          editor
 //   /docs/:slug/edit          sửa tài liệu                          editor
 //   /docs/:slug/history       lịch sử phiên bản                     editor
+//   /docs/:slug/translate/:lang  sửa tay bản dịch (vi/en/ja)         editor
 //   /import                   nhập bài từ PowerPoint (qua Claude)   editor
 //   /quizzes/new              tạo đề bằng AI                        editor
 //   /quizzes/:id/edit         sửa đề                                editor
@@ -62,6 +63,10 @@ export const router = createBrowserRouter([
           {
             path: 'docs/:slug/history',
             lazy: () => import('../features/documents/HistoryPage.tsx').then((m) => ({ Component: m.default })),
+          },
+          {
+            path: 'docs/:slug/translate/:lang',
+            lazy: () => import('../features/translations/TranslationEditPage.tsx').then((m) => ({ Component: m.default })),
           },
           { path: 'import', lazy: () => import('../features/imports/ImportPage.tsx').then((m) => ({ Component: m.default })) },
           { path: 'quizzes/new', lazy: () => import('../features/quizzes/QuizCreatePage.tsx').then((m) => ({ Component: m.default })) },
