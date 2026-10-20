@@ -58,7 +58,23 @@ export default function QuizTakePage() {
       </header>
 
       {blocked ? (
-        <EmptyState icon={Lock} title={t(`quiz.blocked.${blocked}`)} />
+        <EmptyState
+          icon={Lock}
+          title={t(`quiz.blocked.${blocked}`)}
+          description={blocked === 'must_read' ? t('quiz.mustReadHint') : undefined}
+          action={
+            // Chưa đọc đủ thời gian: link tới (các) bài nguồn cần đọc.
+            data.mustRead?.length ? (
+              <div className="flex flex-col items-center gap-1.5">
+                {data.mustRead.map((d) => (
+                  <Link key={d.id} to={`/docs/${d.slug}`} className="text-accent hover:underline">
+                    📄 {d.title}
+                  </Link>
+                ))}
+              </div>
+            ) : undefined
+          }
+        />
       ) : (
         <QuizRunner
           // Xin đề mới (dataUpdatedAt đổi) -> QuizRunner làm lại từ đầu.

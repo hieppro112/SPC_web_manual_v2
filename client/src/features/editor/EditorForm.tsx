@@ -241,6 +241,25 @@ export default function EditorForm({ docId, initial, categories, backTo }: Props
               {categories.length === 0 && <span className="text-warning">{t('editor.noCategory')}</span>}
             </label>
 
+            {/* Thời gian đọc tối thiểu (phút): người dùng phải đọc đủ + cuộn tới cuối mới được làm bài kiểm tra của bài này. */}
+            <label className="flex flex-wrap items-center gap-3 text-sm">
+              <span className="font-medium">{t('reading.editorLabel')}</span>
+              <input
+                type="number"
+                min={0}
+                max={600}
+                step={0.5}
+                value={draft.readingSeconds ? Number((draft.readingSeconds / 60).toFixed(2)) : ''}
+                onChange={(e) => {
+                  const minutes = parseFloat(e.target.value);
+                  setDraft((d) => ({ ...d, readingSeconds: minutes > 0 ? Math.min(36_000, Math.round(minutes * 60)) : null }));
+                }}
+                placeholder="—"
+                className="h-9 w-24 rounded-lg border border-border bg-surface px-2"
+              />
+              <span className="text-muted">{t('reading.editorHint')}</span>
+            </label>
+
             {draft.blocks.length === 0 && (
               <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted">{t('editor.emptyBlocks')}</p>
             )}

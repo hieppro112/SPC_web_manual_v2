@@ -52,7 +52,8 @@ export type DocSummary = {
   translated?: { title: string; desc: string } | null;
 };
 
-export type Doc = DocSummary & { blocks: Block[] };
+// readingSeconds: thời gian đọc tối thiểu (giây), null = không bắt buộc.
+export type Doc = DocSummary & { blocks: Block[]; readingSeconds?: number | null };
 
 // Dữ liệu gửi lên khi tạo/sửa.
 export type DocInput = {
@@ -60,6 +61,7 @@ export type DocInput = {
   category: string;
   status: DocStatus;
   blocks: Block[];
+  readingSeconds?: number | null;
 };
 
 export type DocVersion = {

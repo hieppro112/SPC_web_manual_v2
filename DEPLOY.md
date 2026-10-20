@@ -297,6 +297,22 @@ Mỗi lần lưu bài (cả bài nháp), web đưa bài vào hàng đợi dịch
 | `TRANSLATE_SWEEP_HOURS` | `6` | Bao lâu quét lại bài thiếu bản dịch (việc lỗi quá 24 giờ được thử lại) |
 | `TRANSLATE_LEASE_MINUTES` | `60` | Worker nhận việc quá lâu không xong → cho nhận lại |
 
+## Thời gian đọc tối thiểu + bài kiểm tra theo từng bài (migration 008)
+
+- Trang đọc bài có nút **Bài kiểm tra**: mở danh sách đề **có bài này làm tài liệu nguồn** (`/quizzes?doc=<id>`). Khách bấm vào thì được mời đăng nhập.
+- Editor đặt **Thời gian đọc tối thiểu (phút)** trong trình soạn (để trống = không bắt buộc). Tài khoản quyền **Người dùng** mở bài sẽ thấy đồng hồ ở góc trái dưới:
+  - Chạy khi tab đang mở **và** vừa cuộn trang trong 20 giây. Bài ngắn không cuộn được thì chỉ cần mở trang.
+  - Đứng khi 20 giây không cuộn hoặc chuyển tab.
+  - Xong khi đủ thời gian **và** đã cuộn tới cuối bài. Lúc đó đồng hồ thành nút **Làm bài kiểm tra**.
+- Chưa đọc xong thì **không làm được** bài ôn tập / kiểm tra tạo từ bài đó. Server chặn cả xem đề lẫn nộp bài. Đề tạo từ nhiều bài: đọc xong **một** bài có quy định là đủ.
+- Tiến độ lưu theo **phiên bản bài**: bài được sửa và lưu thì mọi người đọc lại từ đầu.
+- Server chỉ cộng tối đa bằng thời gian thật đã trôi qua, nên sửa đồng hồ ở trình duyệt cũng không "tua" được.
+- Admin: menu tài khoản → **Báo cáo đọc tài liệu**: ai đã đọc xong / đang đọc / chưa đọc, xuất Excel.
+
+**1. Database — chạy TRƯỚC khi restart web:** SSMS, tài khoản quản trị → chạy `server\sql\008_reading.sql`. Phải thấy 2 bảng `WebManualReadingRules`, `WebManualReadingProgress`, quyền của `kvh_write`, dòng đánh dấu 008. Thiếu bảng thì web không khởi động.
+
+**2. Máy chủ app:** Stop WEB_MANUAL → `git pull` → build client → Start (không có thư viện mới).
+
 ## Bước 9 (tùy chọn) — Trợ lý AI chạy local
 
 Nút 💬 ở góc màn hình: hỏi đáp trên toàn bộ tài liệu, hỏi về bài đang đọc, tóm tắt bài. App tự tìm đoạn tài liệu liên quan (RAG), phần mềm AI chỉ việc trả lời. Không bật thì nút 💬 tự ẩn, app chạy bình thường.

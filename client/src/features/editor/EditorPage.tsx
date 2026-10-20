@@ -39,6 +39,7 @@ export default function EditorPage() {
         category: params.get('category') ?? '',
         status: 'draft',
         blocks: [createBlock('paragraph', newId())],
+        readingSeconds: null,
       };
     }
     if (!doc.data) return null;
@@ -47,6 +48,7 @@ export default function EditorPage() {
       category: doc.data.category?.id ?? '',
       status: doc.data.status,
       blocks: doc.data.blocks.map(withDefaults),
+      readingSeconds: doc.data.readingSeconds ?? null,
     };
     // Chỉ tính khi tài liệu tải xong lần đầu / đổi tài liệu; KHÔNG tính lại
     // khi cache được làm mới sau khi lưu (sẽ không ảnh hưởng vì EditorForm

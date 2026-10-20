@@ -28,6 +28,10 @@ import CategoryIcon from '../categories/CategoryIcon.tsx';
 import { useCategories } from '../categories/queries.ts';
 import { categoryPath } from '../categories/tree.ts';
 import { useCompleteTask } from '../guide/queries.ts';
+import { READING_END_ID } from '../reading/api.ts';
+import QuizEntryButton from '../reading/QuizEntryButton.tsx';
+import { useReadingStatus } from '../reading/queries.ts';
+import ReadingTracker from '../reading/ReadingTracker.tsx';
 import { LANGS, type Lang } from '../translations/api.ts';
 import { useDocTranslation } from '../translations/queries.ts';
 import TranslationBar from '../translations/TranslationBar.tsx';
@@ -41,7 +45,8 @@ export default function DocPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
-  const editor = isEditor(useCurrentUser());
+  const user = useCurrentUser();
+  const editor = isEditor(user);
   const { data: doc, isPending, error } = useDocument(slug);
   const deleteDoc = useDeleteDocument();
   const [shareOpen, setShareOpen] = useState(false);
@@ -86,6 +91,10 @@ export default function DocPage() {
   };
 
   useDocumentTitle(shownTitle);
+
+  // Thời gian đọc tối thiểu: người bị đếm giờ chưa đọc xong -> nút "Bài kiểm tra" bị khóa.
+  const { data: reading } = useReadingStatus(doc?.id);
+  const quizLocked = !!reading?.tracked && !reading.progress?.completedAt;
 
   // Nhiệm vụ thực hành: đã đọc một tài liệu (bài hướng dẫn có slug "guide-...").
   const complete = useCompleteTask();
@@ -216,6 +225,8 @@ export default function DocPage() {
             <Button size="sm" variant="secondary" onClick={() => window.print()}>
               <Printer className="h-4 w-4" /> {t('common.print')}
             </Button>
+            {/* Bài kiểm tra / ôn tập CỦA BÀI NÀY (khóa tới khi đọc đủ thời gian). */}
+            <QuizEntryButton docId={doc.id} loggedIn={!!user} locked={quizLocked} />
             {/* Tạo bài kiểm tra từ chính tài liệu này (Claude / AI nội bộ / tự soạn; chỉ bài đã xuất bản). */}
             {editor && doc.status === 'published' && (
               <Link to={`/quizzes/new?docs=${doc.id}`}>
@@ -254,7 +265,12 @@ export default function DocPage() {
         )}
 
         <DocContent blocks={shownBlocks} meta={meta} />
+        {/* Mốc "cuối bài": đồng hồ đọc chỉ tính xong khi người đọc cuộn tới đây. */}
+        <div id={READING_END_ID} aria-hidden className="h-px" />
       </article>
+
+      {/* key theo phiên bản: bài vừa được sửa -> đồng hồ làm lại từ đầu. */}
+      {reading?.tracked && <ReadingTracker key={`${doc.id}:${reading.version}`} docId={doc.id} status={reading} />}
 
       {/* Cột phải: mục lục */}
       <aside className="no-print hidden lg:block">

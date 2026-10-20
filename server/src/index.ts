@@ -31,6 +31,7 @@ import { quizJobsRouter, workerRouter } from './routes/quizJobs.ts';
 import { importJobsRouter, importWorkerRouter } from './routes/importJobs.ts';
 import { guideRouter } from './routes/guide.ts';
 import { translateWorkerRouter, translationsRouter } from './routes/translations.ts';
+import { readingRouter } from './routes/reading.ts';
 import { startTranslationSweep } from './services/translate/queue.ts';
 import { deleteOldAttempts } from './repositories/quizzes.ts';
 import { metaRouter } from './routes/meta.ts';
@@ -86,6 +87,8 @@ app.use('/api/guide', guideRouter);
 // Bản dịch tự động: ai đọc được bài thì đọc được bản dịch; worker dịch dùng chung khóa máy.
 app.use('/api/translations', translationsRouter);
 app.use('/api/worker/translate-jobs', translateWorkerRouter);
+// Thời gian đọc tối thiểu: ai đọc được bài thì xem quy định; đếm giờ / báo cáo kiểm tra quyền trong router.
+app.use('/api/reading', readingRouter);
 
 // Không khớp route nào ở trên -> 404 dạng JSON.
 app.use('/api', (_req, res) => {
