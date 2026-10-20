@@ -4,10 +4,26 @@
 //   Ai đăng nhập cũng thấy: "Bài kiểm tra của tôi" (được làm + điểm của mình)
 //   Editor / admin thấy thêm: "Quản lý bài kiểm tra" (mọi bộ đề, sửa / xóa / kết quả)
 
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { BarChart3, CalendarClock, ClipboardCheck, FolderOpen, LoaderCircle, Pencil, Play, RotateCcw, Send, Sparkles, Trash, X } from 'lucide-react';
+import {
+  BarChart3,
+  CalendarClock,
+  ClipboardCheck,
+  FileText,
+  FolderOpen,
+  LoaderCircle,
+  Lock,
+  Pencil,
+  Play,
+  RotateCcw,
+  Send,
+  Sparkles,
+  Trash,
+  X,
+} from 'lucide-react';
 import Badge from '../../components/ui/Badge.tsx';
 import Button from '../../components/ui/Button.tsx';
 import EmptyState from '../../components/ui/EmptyState.tsx';
@@ -16,6 +32,7 @@ import { isEditor } from '../../lib/types.ts';
 import { cn, errorMessage, formatDate, formatDateTime } from '../../lib/utils.ts';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.ts';
 import { useCurrentUser } from '../auth/queries.ts';
+import { documentsApi } from '../documents/api.ts';
 import type { ManagedQuiz, MyQuiz, QuizJob, QuizJobStatus } from './api.ts';
 import { useCancelQuizJob, useDeleteQuiz, useManagedQuizzes, useMarkJobSeen, useMyQuizzes, useQuizJobs } from './queries.ts';
 
@@ -121,21 +138,65 @@ export default function QuizListPage() {
   const managed = useManagedQuizzes(editor);
   useDocumentTitle(t('quiz.title'));
 
+  // ?doc=<id>: mở từ nút "Bài kiểm tra" của một bài viết -> chỉ hiện đề có bài đó làm tài liệu nguồn.
+  const [params] = useSearchParams();
+  const docFilter = params.get('doc');
+  const filterDoc = useQuery({
+    queryKey: ['documents', 'id', docFilter],
+    queryFn: () => documentsApi.getById(docFilter!),
+    enabled: !!docFilter,
+    retry: false,
+  });
+  const ofDoc = <T extends { sourceDocs: { id: string }[] }>(list: T[] | undefined) =>
+    docFilter ? (list ?? []).filter((q) => q.sourceDocs.some((d) => d.id === docFilter)) : (list ?? []);
+  const myList = ofDoc(mine.data);
+  const managedList = ofDoc(managed.data);
+
   return (
     <div className="mx-auto max-w-form space-y-10 px-4 py-8">
       <section>
         <h1 className="mb-4 flex items-center gap-2 text-2xl font-bold">
           <ClipboardCheck className="h-6 w-6 text-accent" /> {t('quiz.myQuizzes')}
         </h1>
+        {docFilter && (
+          <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-sm">
+            <FileText className="h-4 w-4 text-accent" />
+            <span className="min-w-0 flex-1">
+              {t('quiz.filterByDoc')}{' '}
+              {filterDoc.data ? (
+                <Link to={`/docs/${filterDoc.data.slug}`} className="font-medium text-accent hover:underline">
+                  {filterDoc.data.title}
+                </Link>
+              ) : (
+                '…'
+              )}
+            </span>
+            <Link to="/quizzes" className="text-muted hover:text-fg">
+              {t('quiz.showAll')}
+            </Link>
+          </div>
+        )}
         {mine.isPending ? (
           <Spinner />
         ) : mine.error ? (
           <EmptyState icon={ClipboardCheck} title={t('common.error')} description={errorMessage(mine.error)} />
-        ) : !mine.data.length ? (
-          <EmptyState icon={ClipboardCheck} title={t('quiz.emptyMine')} />
+        ) : !myList.length ? (
+          <EmptyState
+            icon={ClipboardCheck}
+            title={docFilter ? t('quiz.emptyForDoc') : t('quiz.emptyMine')}
+            action={
+              docFilter && editor && filterDoc.data?.status === 'published' ? (
+                <Link to={`/quizzes/new?docs=${docFilter}`}>
+                  <Button size="sm">
+                    <Sparkles className="h-4 w-4" /> {t('quiz.createFromDoc')}
+                  </Button>
+                </Link>
+              ) : undefined
+            }
+          />
         ) : (
           <div data-tour="quiz-list" className="grid gap-4 sm:grid-cols-2">
-            {mine.data.map((q) => (
+            {myList.map((q) => (
               <MyQuizCard key={q.id} quiz={q} />
             ))}
           </div>
@@ -156,13 +217,13 @@ export default function QuizListPage() {
           </div>
           {managed.isPending ? (
             <Spinner />
-          ) : !managed.data?.length ? (
-            <EmptyState icon={Sparkles} title={t('quiz.emptyManage')} />
+          ) : !managedList.length ? (
+            <EmptyState icon={Sparkles} title={docFilter ? t('quiz.emptyForDoc') : t('quiz.emptyManage')} />
           ) : (
             <div className="overflow-x-auto rounded-2xl border border-border">
               <table className="w-full text-sm">
                 <tbody className="divide-y divide-border">
-                  {managed.data.map((q) => (
+                  {managedList.map((q) => (
                     <ManagedRow key={q.id} quiz={q} isAdmin={user?.role === 'admin'} />
                   ))}
                 </tbody>
@@ -203,6 +264,18 @@ function MyQuizCard({ quiz: q }: { quiz: MyQuiz }) {
       <div className="mt-auto pt-3">
         {exam && (expired || outOfAttempts) ? (
           <p className="text-sm text-muted">{expired ? t('quiz.blocked.expired') : t('quiz.blocked.no_attempts_left')}</p>
+        ) : q.mustRead ? (
+          // Chưa đọc đủ thời gian bài nguồn -> khóa, chỉ link tới bài cần đọc.
+          <div className="space-y-1 text-sm">
+            <p className="flex items-center gap-1.5 text-warning">
+              <Lock className="h-4 w-4" /> {t('quiz.blocked.must_read')}
+            </p>
+            {q.mustRead.map((d) => (
+              <Link key={d.id} to={`/docs/${d.slug}`} className="block truncate text-accent hover:underline">
+                📄 {d.title}
+              </Link>
+            ))}
+          </div>
         ) : (
           <Link to={`/quizzes/${q.id}`}>
             <Button size="sm">

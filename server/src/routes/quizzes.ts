@@ -27,6 +27,7 @@
 import { randomInt } from 'node:crypto';
 import { Router, type Response } from 'express';
 import ExcelJS from 'exceljs';
+import { mustReadFor, mustReadForMany, type MustRead } from '../services/reading.ts';
 import { z } from 'zod';
 import { config } from '../config.ts';
 import { HttpError } from '../middleware/errorHandler.ts';
@@ -69,7 +70,9 @@ type Access = {
   records: boolean;
   attemptsUsed: number;
   // Lý do không được nộp nữa ('' = được nộp).
-  blocked: '' | 'expired' | 'no_attempts_left';
+  blocked: '' | 'expired' | 'no_attempts_left' | 'must_read';
+  // Bài nguồn phải đọc đủ thời gian trước (quyền "Người dùng"); null = không cần.
+  mustRead: MustRead | null;
 };
 
 async function checkAccess(quiz: FullQuiz, user: User): Promise<Access> {
@@ -81,14 +84,17 @@ async function checkAccess(quiz: FullQuiz, user: User): Promise<Access> {
       throw new HttpError(404, 'Không tìm thấy bài kiểm tra');
     }
   }
+  // Áp dụng cho cả bài ôn tập lẫn bài kiểm tra.
+  const mustRead = await mustReadFor(user, quiz);
   const records = quiz.kind === 'exam' && quiz.status === 'published';
-  if (!records) return { records, attemptsUsed: 0, blocked: '' };
+  if (!records) return { records, attemptsUsed: 0, blocked: mustRead ? 'must_read' : '', mustRead };
 
   const attemptsUsed = await countAttempts(Number(quiz.id), user.id);
   let blocked: Access['blocked'] = '';
   if (quiz.dueAt && new Date(quiz.dueAt).getTime() < Date.now()) blocked = 'expired';
   else if (attemptsUsed >= quiz.maxAttempts) blocked = 'no_attempts_left';
-  return { records, attemptsUsed, blocked };
+  else if (mustRead) blocked = 'must_read';
+  return { records, attemptsUsed, blocked, mustRead };
 }
 
 // Xáo trộn mảng (Fisher–Yates) — mỗi lần làm bài thứ tự câu + đáp án khác nhau.
@@ -104,7 +110,11 @@ function shuffle<T>(items: T[]): T[] {
 // ---------- Người làm bài ----------
 
 quizzesRouter.get('/', async (_req, res) => {
-  res.json(await listQuizzesForUser(currentUser(res).id));
+  const user = currentUser(res);
+  const quizzes = await listQuizzesForUser(user.id);
+  // Đề nào còn khóa vì chưa đọc đủ bài nguồn -> kèm danh sách bài cần đọc.
+  const mustRead = await mustReadForMany(user, quizzes);
+  res.json(quizzes.map((q) => ({ ...q, mustRead: mustRead.get(q.id) ?? null })));
 });
 
 quizzesRouter.get('/manage', requireEditor, async (_req, res) => {
@@ -133,9 +143,11 @@ quizzesRouter.get('/:id/take', async (req, res) => {
     records: access.records,
     attemptsUsed: access.attemptsUsed,
     blocked: access.blocked,
+    mustRead: access.mustRead,
     // Câu Đúng/Sai giữ thứ tự "Đúng" trước "Sai" cho dễ đọc; câu khác xáo đáp án.
     // KHÔNG gửi `correct` và `source` (source gợi ý chỗ có đáp án).
-    questions: shuffle(quiz.questions).map((q) => ({
+    // Chưa đọc đủ bài nguồn -> không gửi câu hỏi (khỏi xem trước đề).
+    questions: (access.blocked === 'must_read' ? [] : shuffle(quiz.questions)).map((q) => ({
       id: q.id,
       type: q.type,
       text: q.text,
@@ -154,6 +166,7 @@ quizzesRouter.post('/:id/submit', async (req, res) => {
   const access = await checkAccess(quiz, user);
   if (access.blocked === 'expired') throw new HttpError(403, 'Bài kiểm tra đã hết hạn');
   if (access.blocked === 'no_attempts_left') throw new HttpError(403, `Bạn đã làm đủ ${quiz.maxAttempts} lần`);
+  if (access.blocked === 'must_read') throw new HttpError(403, 'Bạn cần đọc đủ thời gian tài liệu nguồn trước khi làm bài');
 
   const { answers } = submitSchema.parse(req.body ?? {});
   const results = quiz.questions.map((q) => {

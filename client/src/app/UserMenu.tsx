@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { FolderCog, KeyRound, LogOut, Users } from 'lucide-react';
+import { BookOpenCheck, FolderCog, KeyRound, LogOut, Users } from 'lucide-react';
 import MenuItem from '../components/ui/MenuItem.tsx';
 import Popover from '../components/ui/Popover.tsx';
 import ChangePasswordDialog from '../features/auth/ChangePasswordDialog.tsx';
@@ -73,6 +73,15 @@ export default function UserMenu({ user }: { user: User }) {
                       <span className="rounded-full bg-danger px-1.5 text-[10px] font-bold text-white">{pendingCount}</span>
                     )}
                   </span>
+                </MenuItem>
+                <MenuItem
+                  icon={BookOpenCheck}
+                  onClick={() => {
+                    close();
+                    navigate('/admin/reading');
+                  }}
+                >
+                  {t('nav.readingReport')}
                 </MenuItem>
               </>
             )}

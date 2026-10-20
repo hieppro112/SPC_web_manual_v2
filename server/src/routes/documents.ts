@@ -32,6 +32,7 @@ import {
   listVersions,
   type FullDocument,
 } from '../repositories/documents.ts';
+import { getRule, setRule } from '../repositories/reading.ts';
 import { translatedTitles } from '../repositories/translations.ts';
 import { requestIndexSync } from '../services/ai/searchIndex.ts';
 import { createDocument, updateDocument, type DocumentInput } from '../services/documents.ts';
@@ -102,18 +103,29 @@ documentsRouter.get('/', async (req, res) => {
   res.json(docs.map((d) => ({ ...d, translated: titles.get(d.id) ?? null })));
 });
 
+// Kèm thời gian đọc tối thiểu (giây, null = không bắt buộc) — bảng riêng của migration 008.
+const withReading = async (doc: FullDocument) => ({ ...doc, readingSeconds: await getRule(Number(doc.id)) });
+
 // '/slug/:slug' có HAI đoạn nên không xung đột với '/:id' (một đoạn).
 documentsRouter.get('/slug/:slug', async (req, res) => {
   const doc = await findDocumentBySlug(String(req.params.slug));
   assertReadable(doc, res);
-  res.json(doc);
+  res.json(await withReading(doc));
 });
 
 documentsRouter.get('/:id', async (req, res) => {
   const doc = await findDocumentById(parseId(req.params.id));
   assertReadable(doc, res);
-  res.json(doc);
+  res.json(await withReading(doc));
 });
+
+// Thời gian đọc gửi kèm khi lưu: số giây (0 / null = bỏ bắt buộc); không gửi = giữ nguyên.
+const readingSchema = z.number().int().min(0).max(36_000).nullable().optional();
+async function saveReading(doc: FullDocument, value: unknown, userId: number) {
+  const seconds = readingSchema.parse(value);
+  if (seconds !== undefined) await setRule(Number(doc.id), seconds, userId);
+  return withReading(doc);
+}
 
 documentsRouter.post('/', requireEditor, async (req, res) => {
   const body = req.body ?? {};
@@ -123,7 +135,8 @@ documentsRouter.post('/', requireEditor, async (req, res) => {
     status: body.status === undefined ? 'draft' : (statusSchema.parse(body.status) as DocumentInput['status']),
     blocks: parseBlocks(body.blocks ?? []),
   };
-  res.status(201).json(await createDocument(input, currentUser(res).id));
+  const doc = await createDocument(input, currentUser(res).id);
+  res.status(201).json(await saveReading(doc, body.readingSeconds, currentUser(res).id));
 });
 
 documentsRouter.put('/:id', requireEditor, async (req, res) => {
@@ -136,7 +149,8 @@ documentsRouter.put('/:id', requireEditor, async (req, res) => {
     status: body.status !== undefined ? (statusSchema.parse(body.status) as DocumentInput['status']) : doc.status,
     blocks: body.blocks !== undefined ? parseBlocks(body.blocks) : doc.blocks!,
   };
-  res.json(await updateDocument(Number(doc.id), input, currentUser(res).id));
+  const saved = await updateDocument(Number(doc.id), input, currentUser(res).id);
+  res.json(await saveReading(saved, body.readingSeconds, currentUser(res).id));
 });
 
 documentsRouter.delete('/:id', requireEditor, async (req, res) => {

@@ -31,6 +31,8 @@ type QuizBase = {
 export type MyQuiz = QuizBase & {
   assigned: boolean;
   my: { attempts: number; percentage: number | null; passed: boolean | null; submittedAt: string | null };
+  // Còn khóa: phải đọc đủ thời gian MỘT trong các bài này trước (null = được làm).
+  mustRead: SourceDoc[] | null;
 };
 export type ManagedQuiz = QuizBase & { assigneeCount: number; attemptCount: number };
 export type FullQuiz = QuizBase & { questions: QuizQuestion[]; assigneeIds: string[] };
@@ -54,7 +56,8 @@ export type TakePayload = {
   quiz: Pick<QuizBase, 'id' | 'title' | 'kind' | 'status' | 'language' | 'passPercent' | 'maxAttempts' | 'dueAt' | 'sourceDocs'>;
   records: boolean; // lần nộp này có lưu điểm không
   attemptsUsed: number;
-  blocked: '' | 'expired' | 'no_attempts_left';
+  blocked: '' | 'expired' | 'no_attempts_left' | 'must_read';
+  mustRead: SourceDoc[] | null;
   questions: TakeQuestion[];
 };
 

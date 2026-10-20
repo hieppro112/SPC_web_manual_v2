@@ -10,6 +10,7 @@ export const documentsApi = {
   // encodeURIComponent: slug chỉ có a-z0-9- nhưng vẫn mã hóa cho chắc
   // khi người dùng gõ link tay có ký tự lạ.
   getBySlug: (slug: string) => http.get<Doc>(`/documents/slug/${encodeURIComponent(slug)}`),
+  getById: (id: string) => http.get<Doc>(`/documents/${encodeURIComponent(id)}`),
   create: (data: DocInput) => http.post<Doc>('/documents', data),
   update: (id: string, data: DocInput) => http.put<Doc>(`/documents/${id}`, data),
   remove: (id: string) => http.delete(`/documents/${id}`),

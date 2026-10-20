@@ -19,6 +19,7 @@
 //   /quizzes/:id/results      bảng điểm + xuất Excel                admin
 //   /admin/categories         quản lý thể loại                      admin
 //   /admin/users              quản lý tài khoản                     admin
+//   /admin/reading            báo cáo ai đã đọc tài liệu + Excel    admin
 //
 // `lazy`: trang chỉ editor/admin dùng (trình soạn, kéo thả...) được tách
 // thành file JS riêng, chỉ tải khi mở trang đó. Người chỉ đọc tài liệu
@@ -83,6 +84,10 @@ export const router = createBrowserRouter([
           {
             path: 'admin/users',
             lazy: () => import('../features/users/UsersAdminPage.tsx').then((m) => ({ Component: m.default })),
+          },
+          {
+            path: 'admin/reading',
+            lazy: () => import('../features/reading/ReadingReportPage.tsx').then((m) => ({ Component: m.default })),
           },
           {
             path: 'quizzes/:id/results',

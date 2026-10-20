@@ -192,6 +192,14 @@ Luật đi kèm: chỉ MỘT file được import `recharts` (`ChartRenderer.tsx
 - **Không lộ đáp án:** API `/take` chỉ gửi câu hỏi + đáp án **đã xáo**, không có `correct`. Nộp bài thì server chấm. Nếu chấm ở trình duyệt, người rành máy chỉ cần mở DevTools (tab Network) là thấy đáp án.
 - **Đáp án có id riêng** (không dùng vị trí 0/1/2): xáo trộn thế nào cũng chấm đúng theo id. 🔸 Flutter: giống dùng `ValueKey(id)` thay vì index cho item trong list.
 
+### Đồng hồ đọc tài liệu (client/src/features/reading/ReadingTracker.tsx)
+
+- **"Đang đọc" = tab đang hiện (`document.visibilityState`) + có sự kiện `scroll` trong 20 giây.** Bài không cuộn được (cao không quá màn hình) thì chỉ cần tab đang hiện.
+- **Đã tới cuối bài:** đặt một `<div id="reading-end">` sau nội dung, dùng `IntersectionObserver` báo khi nó lọt vào màn hình. 🔸 Flutter: giống `VisibilityDetector`.
+- **Không tin trình duyệt:** trình duyệt chỉ báo "vừa đọc thêm N giây" mỗi 15 giây. Server chỉ cộng tối đa bằng số giây thật đã trôi qua từ nhịp trước (`DATEDIFF(SECOND, LastBeatAt, ...)`). Gửi nhịp lúc đóng tab dùng `fetch(..., { keepalive: true })`.
+- **Chặn ở server:** ẩn nút chưa đủ an toàn. API `/take` không trả câu hỏi và `/submit` trả 403 khi chưa đọc xong (`services/reading.ts`).
+- **`key` theo phiên bản bài:** `<ReadingTracker key={id + ':' + version}>`. Bài lên phiên bản mới thì React tạo component mới, đồng hồ về 0, khỏi phải tự reset state.
+
 ### Dịch tự động theo từng khối (server/src/services/translate/)
 
 - **Không đụng bài gốc:** bản dịch lưu ở bảng riêng, cùng id khối với bài gốc. Nhờ vậy mục lục và link `#buoc-2` của bài gốc dùng được ở bản dịch (`computeBlockMeta(..., anchorSource)`).
