@@ -62,6 +62,14 @@ export const config = {
     .map((d) => d.trim().toLowerCase().replace(/^@/, ''))
     .filter(Boolean),
 
+  // Email đăng ký phải có trong danh sách nhân viên công ty (một VIEW do IT tạo).
+  // view trống = tắt kiểm tra (chỉ kiểm tra đuôi email như trên).
+  companyEmails: {
+    view: process.env.COMPANY_EMAIL_VIEW ?? '', // vd dbo.WebManualCompanyEmails
+    emailColumn: process.env.COMPANY_EMAIL_COLUMN || 'Email',
+    activeColumn: process.env.COMPANY_EMAIL_ACTIVE_COLUMN ?? '', // tùy chọn: chỉ nhận dòng có cột này = 1
+  },
+
   // Chỉ bật khi chạy HTTPS. Bật trên HTTP thì trình duyệt không gửi
   // cookie đăng nhập -> không đăng nhập được.
   cookieSecure: process.env.COOKIE_SECURE === 'true',
