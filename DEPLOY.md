@@ -111,36 +111,6 @@ Notepad mở ra → điền mật khẩu SQL vào sau `DB_PASSWORD=` → **Ctrl 
 | `DB_AUTO_MIGRATE` | (tùy chọn) `false` = app **không bao giờ tự tạo / sửa bảng**; thiếu thay đổi nào thì báo chạy file `server\sql\00X_...sql` rồi dừng. Bảng / cột đã được tạo tay thì app tự nhận ra (dòng `-- @applied-if:` đầu mỗi file migration) và chỉ ghi dấu đã chạy |
 | `PUBLIC_BASE_URL` | Địa chỉ in trong mã QR / link chia sẻ |
 | `ALLOWED_EMAIL_DOMAINS` | Đuôi email được tự đăng ký |
-| `COMPANY_EMAIL_VIEW`, `COMPANY_EMAIL_COLUMN`, `COMPANY_EMAIL_ACTIVE_COLUMN` | (tùy chọn) email đăng ký phải có trong view danh sách nhân viên — xem mục "Kiểm tra email nhân viên khi đăng ký" |
-
-### Kiểm tra email nhân viên khi đăng ký (tùy chọn)
-
-Người tự đăng ký phải nhập email **có trong danh sách nhân viên công ty**, sau đó admin vẫn duyệt như cũ. Web chỉ đọc một **VIEW** do IT tạo, không đọc thẳng bảng nhân sự.
-
-**1. Tạo view (SSMS, tài khoản quản trị, database KVH)** — sửa phần `<...>` cho đúng bảng nhân viên:
-
-```sql
-CREATE VIEW dbo.WebManualCompanyEmails AS
-SELECT LOWER(LTRIM(RTRIM(<cột email>))) AS Email
-FROM <bảng nhân viên>
-WHERE <cột email> IS NOT NULL
-  AND <điều kiện đang làm việc>;      -- vd NgayNghiViec IS NULL
-GO
-GRANT SELECT ON dbo.WebManualCompanyEmails TO kvh_write;
-GO
-```
-
-Chỉ đưa vào view **cột email** (và cột trạng thái nếu muốn lọc ở web). Không đưa họ tên, lương… vì web không cần. Bảng nhân viên nằm ở **database khác** KVH thì `kvh_write` cần quyền đọc bên database đó (hoặc bật cross-database ownership chaining). Hỏi DBA trước khi làm.
-
-**2. `server\.env`:**
-
-```
-COMPANY_EMAIL_VIEW=dbo.WebManualCompanyEmails
-COMPANY_EMAIL_COLUMN=Email
-# COMPANY_EMAIL_ACTIVE_COLUMN=DangLamViec   (tùy chọn: chỉ nhận dòng có cột này = 1)
-```
-
-Restart web. Email không có trong view → báo *"Email không có trong danh sách nhân viên công ty, vui lòng liên hệ IT"*. Sai tên view / cột hoặc thiếu quyền → báo *"Chưa kiểm tra được danh sách email công ty"* (chi tiết lỗi ghi trong log web). Tài khoản đã đăng ký trước đây và tài khoản admin tự tạo không bị kiểm tra.
 
 ## Bước 4 — Build
 

@@ -15,7 +15,6 @@ import { z } from 'zod';
 import { config } from '../config.ts';
 import { HttpError } from '../middleware/errorHandler.ts';
 import { clearAuthCookie, currentUser, requireAuth, setAuthCookie } from '../middleware/auth.ts';
-import { isCompanyEmail } from '../repositories/companyEmails.ts';
 import { countUsers, createUser, findUserForLogin, getPasswordHash, updateUser, userToJson } from '../repositories/users.ts';
 
 export const authRouter = Router();
@@ -93,10 +92,6 @@ authRouter.post('/register', async (req, res) => {
     throw new HttpError(409, 'Hệ thống chưa có admin. Hãy tạo tài khoản admin trước.');
   }
   const { password, ...data } = registerSchema.parse(req.body ?? {});
-  // Email phải có trong danh sách nhân viên công ty (nếu IT đã cấu hình view).
-  if ((await isCompanyEmail(data.email)) === false) {
-    throw new HttpError(400, 'Email không có trong danh sách nhân viên công ty, vui lòng liên hệ IT');
-  }
   // Luôn là "user" (chỉ đọc + làm bài) + pending, client gửi role/status gì
   // cũng bị bỏ qua. Admin nâng lên editor khi duyệt hoặc sau đó.
   await createUser({ ...data, role: 'user', status: 'pending', passwordHash: await bcrypt.hash(password, BCRYPT_ROUNDS) });

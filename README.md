@@ -74,9 +74,6 @@ Production chỉ cần **một tiến trình** — server phục vụ luôn giao
 | --- | --- | --- |
 | `PUBLIC_BASE_URL` | `http://192.168.1.20:5000` | Địa chỉ điện thoại / đồng nghiệp mở được (dùng trong mã QR, link chia sẻ). Để trống thì tự đoán theo IP LAN |
 | `ALLOWED_EMAIL_DOMAINS` | `spclt.com.vn` | Đuôi email được tự đăng ký (nhiều đuôi: cách nhau dấu phẩy). Để trống = mọi email |
-| `COMPANY_EMAIL_VIEW` | `dbo.WebManualCompanyEmails` | View danh sách email nhân viên: email đăng ký phải có trong view. Để trống = không kiểm tra |
-| `COMPANY_EMAIL_COLUMN` | `Email` | Cột email trong view |
-| `COMPANY_EMAIL_ACTIVE_COLUMN` | `DangLamViec` | (tùy chọn) chỉ nhận dòng có cột này = 1 |
 | `MAX_UPLOAD_MB` | `500` | Giới hạn mỗi file (video) |
 | `UPLOAD_DIR` | `uploads` | Nơi lưu ảnh/video/file |
 | `COOKIE_SECURE` | `false` | Chỉ `true` khi chạy HTTPS |
