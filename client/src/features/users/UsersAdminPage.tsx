@@ -81,6 +81,7 @@ export default function UsersAdminPage() {
                 <thead className="bg-surface-2 text-left">
                   <tr>
                     <th className="px-4 py-2.5 font-semibold">{t('users.displayName')}</th>
+                    <th className="px-4 py-2.5 font-semibold">{t('users.employeeCode')}</th>
                     <th className="px-4 py-2.5 font-semibold">{t('users.username')}</th>
                     <th className="px-4 py-2.5 font-semibold">{t('users.role')}</th>
                     <th className="px-4 py-2.5" />
@@ -95,6 +96,16 @@ export default function UsersAdminPage() {
                         </p>
                         <p className="text-xs text-muted">{u.email || formatDate(u.createdAt, i18n.language)}</p>
                       </td>
+
+                      
+                      <td className="px-4 py-2.5">
+                        <p className="font-medium">
+                          {u.employeeCode} {u.id === me?.id && <span className="text-muted">({t('users.you')})</span>}
+                        </p>
+                       
+                      </td>
+
+
                       <td className="px-4 py-2.5 font-mono text-xs">{u.username}</td>
                       <td className="px-4 py-2.5">
                         <Select value={u.role} onChange={(e) => changeRole(u, e.target.value as Role)} className="h-8 w-32">
@@ -152,7 +163,7 @@ function PendingRow({ user, locale }: { user: User; locale: string }) {
     <li className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-bg p-3">
       <div className="min-w-0 flex-1">
         <p className="font-medium">
-          {user.displayName} <span className="font-mono text-xs text-muted">@{user.username}</span>
+          {user.displayName} <span className="font-mono text-xs text-muted"> - {user.employeeCode}</span>
         </p>
         <p className="truncate text-xs text-muted">
           {user.email} · {t('users.registeredAt', { date: formatDateTime(user.createdAt, locale) })}

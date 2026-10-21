@@ -20,6 +20,7 @@ export type User = {
   // pending = tự đăng ký, chờ admin duyệt
   status: 'active' | 'pending';
   createdAt: string;
+  employeeCode: string | null;
 };
 
 // Được soạn tài liệu / tạo đề không (editor, admin). Khách và role "user" -> false.

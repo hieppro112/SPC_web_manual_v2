@@ -2,7 +2,7 @@
 import { http } from '../../lib/http.ts';
 import type { User } from '../../lib/types.ts';
 
-export type RegisterInput = { username: string; displayName: string; email: string; password: string };
+export type RegisterInput = { username: string; displayName: string; email: string; password: string, employeeCode: string };
 
 export const authApi = {
   me: () => http.get<{ user: User | null }>('/auth/me').then((r) => r.user),

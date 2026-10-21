@@ -16,7 +16,7 @@ import { useDocumentTitle } from '../../lib/useDocumentTitle.ts';
 import AuthCard from './AuthCard.tsx';
 import { useCurrentUser, useRegister, useSetupStatus } from './queries.ts';
 
-const EMPTY = { username: '', displayName: '', email: '', password: '', confirm: '' };
+const EMPTY = { username: '', displayName: '', email: '', password: '', confirm: '' , employeeCode: ''};
 
 export default function RegisterPage() {
   const { t } = useTranslation();
@@ -83,6 +83,11 @@ export default function RegisterPage() {
         <label className="block space-y-1.5">
           <span className="text-sm font-medium">{t('auth.fullName')}</span>
           <Input autoComplete="name" autoFocus required {...field('displayName')} />
+        </label>
+         {/* Mã nhân viên (EmployeeCode) chỉ chấp nhận số, tối đa 5 ký tự. bắt buộc. */}
+        <label className="block space-y-1.5">
+          <span className="text-sm font-medium">{t('auth.EmployeeCode')}</span>
+          <Input autoComplete="name" autoFocus required {...field('employeeCode')} />
         </label>
         <label className="block space-y-1.5">
           <span className="text-sm font-medium">{t('auth.email')}</span>
