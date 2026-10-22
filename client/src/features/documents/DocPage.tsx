@@ -117,16 +117,25 @@ export default function DocPage() {
   if (isPending || (doc && viewLang && translation.isPending)) return <Spinner className="py-24" />;
   if (error || !doc) {
     const notFound = error instanceof ApiError && error.status === 404;
+    // 401: bài của một bộ phận, khách (vd quét mã QR dán ở máy) phải đăng nhập mới đọc được.
+    const needLogin = error instanceof ApiError && error.status === 401;
+    const back = `${location.pathname}${location.search}${location.hash}`;
     return (
       <div className="mx-auto max-w-xl px-4 py-16">
         <EmptyState
           icon={FileQuestionMark}
-          title={notFound ? t('doc.notFound') : t('common.error')}
-          description={notFound ? t('doc.notFoundDesc') : errorMessage(error)}
+          title={needLogin ? t('doc.loginRequired') : notFound ? t('doc.notFound') : t('common.error')}
+          description={needLogin ? t('doc.loginRequiredDesc') : notFound ? t('doc.notFoundDesc') : errorMessage(error)}
           action={
-            <Link to="/">
-              <Button variant="secondary">{t('notFound.home')}</Button>
-            </Link>
+            needLogin ? (
+              <Link to={`/login?next=${encodeURIComponent(back)}`}>
+                <Button>{t('nav.login')}</Button>
+              </Link>
+            ) : (
+              <Link to="/">
+                <Button variant="secondary">{t('notFound.home')}</Button>
+              </Link>
+            )
           }
         />
       </div>

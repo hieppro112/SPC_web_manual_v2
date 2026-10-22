@@ -30,6 +30,7 @@ import {
   translationJobState,
   translationsReady,
 } from '../repositories/translations.ts';
+import { assertDocVisible } from '../services/access.ts';
 import { requestIndexSync } from '../services/ai/searchIndex.ts';
 import { isLegacyGuideCopy } from '../services/translate/queue.ts';
 import { buildDesc, buildSearchText } from '../services/documentText.ts';
@@ -45,6 +46,7 @@ const langSchema = z.enum(LANGS);
 async function readableDoc(id: unknown, res: Response): Promise<FullDocument> {
   const doc = await findDocumentById(parseId(id));
   if (!doc || (!isEditor(res.locals.user) && doc.status !== 'published')) throw new HttpError(404, 'Không tìm thấy tài liệu');
+  await assertDocVisible(doc, res); // bài của bộ phận khác -> như không tồn tại
   return doc;
 }
 

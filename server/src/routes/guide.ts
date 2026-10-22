@@ -14,6 +14,7 @@ import { HttpError } from '../middleware/errorHandler.ts';
 import { currentUser, requireAdmin, requireAuth } from '../middleware/auth.ts';
 import { listDoneTasks, listGuideDocs, markTaskDone, progressReport, resetProgress } from '../repositories/guide.ts';
 import { translatedTitles } from '../repositories/translations.ts';
+import { requestScope, visibleDocIds } from '../services/access.ts';
 import { seedGuide } from '../services/guide/seed.ts';
 import { QUIZ_LANGS } from '../services/quiz/types.ts';
 import { tasksForRole } from '../services/guide/tasks.ts';
@@ -24,7 +25,10 @@ export const guideRouter = Router();
 // đã dịch (nếu bản dịch có rồi), mở bài thì trang đọc tự hiện bản dịch.
 guideRouter.get('/docs', async (req, res) => {
   const lang = z.enum(QUIZ_LANGS).catch('vi').parse(req.query.lang);
-  const docs = await listGuideDocs('vi');
+  // Lọc theo bộ phận như mọi tài liệu khác (thể loại "Hướng dẫn sử dụng" nên tick "Dùng chung").
+  const all = await listGuideDocs('vi');
+  const visible = await visibleDocIds(await requestScope(res), all.map((d) => Number(d.id)));
+  const docs = all.filter((d) => visible.has(Number(d.id)));
   const titles = lang === 'vi' ? new Map<string, { title: string; desc: string }>() : await translatedTitles(lang, docs.map((d) => Number(d.id)));
   res.json({ lang, docs: docs.map((d) => ({ ...d, title: titles.get(d.id)?.title ?? d.title, desc: titles.get(d.id)?.desc || d.desc })) });
 });

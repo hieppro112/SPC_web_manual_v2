@@ -313,6 +313,32 @@ Mỗi lần lưu bài (cả bài nháp), web đưa bài vào hàng đợi dịch
 
 **2. Máy chủ app:** Stop WEB_MANUAL → `git pull` → build client → Start (không có thư viện mới).
 
+## Phân quyền xem theo bộ phận (migration 009)
+
+Chỉ bật khi đã cấu hình view nhân viên `COMPANY_EMPLOYEE_VIEW` trong `server\.env`. View có cột `Code` (mã nhân viên) và `Section` (bộ phận). Khi bật:
+
+| Ai | Xem / đăng bài được ở đâu |
+| --- | --- |
+| Admin | Mọi thể loại |
+| Tài khoản **chưa có mã nhân viên** (tài khoản cũ) | Mọi thể loại, như trước đây |
+| Tài khoản có mã, bộ phận "PE IT" | Thể loại **cấp cao nhất tên đúng "PE IT"** + mọi thể loại con cháu, cộng các thể loại **dùng chung** + con cháu |
+| Khách (chưa đăng nhập, gồm người quét QR) | Chỉ thể loại dùng chung. Mở bài khác thì được mời đăng nhập rồi quay lại đúng bài |
+
+- **Dùng chung** = tick ô "Dùng chung" trong Quản lý thể loại, hoặc thể loại tên **Community**.
+- Thể loại không trùng tên bộ phận nào và không dùng chung thì chỉ admin (và tài khoản cũ) thấy.
+- Biên tập chỉ đăng / sửa / xóa bài, tạo đề, nhập PowerPoint **trong phạm vi của mình**.
+- Lọc ở mọi nơi: trang chủ, cây thể loại, tìm kiếm, "cùng thể loại", đọc bài, bản dịch, thời gian đọc, trợ lý AI, bài kiểm tra (đề chỉ hiện khi **mọi** tài liệu nguồn đều xem được), trang Hướng dẫn.
+- Bộ phận được tra từ view lúc đăng ký và **mỗi lần đăng nhập**. Chuyển bộ phận thì quyền đổi theo ở lần đăng nhập sau. Mã không còn trong view thì chỉ còn xem được thể loại dùng chung. View lỗi thì giữ bộ phận cũ, vẫn cho đăng nhập.
+- Admin "gán bộ phận" cho tài khoản cũ: **Quản lý tài khoản** → bấm vào ô mã nhân viên → nhập mã → web tra ngay bộ phận. Xóa mã thì tài khoản lại xem được tất cả.
+
+**1. Database — chạy TRƯỚC khi restart web:** SSMS, tài khoản quản trị → `server\sql\009_departments.sql` (thêm `Users.Department`, `Categories.IsShared`; `Users.EmployeeCode` nếu chưa có). Thiếu cột thì web không khởi động.
+
+**2. Thể loại:** mỗi bộ phận một thể loại **cấp cao nhất** đặt **đúng tên** bộ phận trong view (vd `PE IT`). Tick **Dùng chung** cho *Community* (tên này tự được coi là dùng chung) và *Hướng dẫn sử dụng*. Nếu không tick, nhân viên các bộ phận sẽ không thấy bài hướng dẫn.
+
+**3. Máy chủ app:** Stop WEB_MANUAL → `git pull` → build client → Start.
+
+**Giới hạn:** file ảnh / video / file đính kèm (`/uploads/...`) vẫn mở được bằng link trực tiếp (không kiểm tra bộ phận); chỉ trang tài liệu chứa chúng bị ẩn. Thư viện media của biên tập vẫn thấy ảnh của mọi bộ phận.
+
 ## Bước 9 (tùy chọn) — Trợ lý AI chạy local
 
 Nút 💬 ở góc màn hình: hỏi đáp trên toàn bộ tài liệu, hỏi về bài đang đọc, tóm tắt bài. App tự tìm đoạn tài liệu liên quan (RAG), phần mềm AI chỉ việc trả lời. Không bật thì nút 💬 tự ẩn, app chạy bình thường.

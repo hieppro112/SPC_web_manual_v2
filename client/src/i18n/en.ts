@@ -83,6 +83,8 @@ export const en: Messages = {
     history: 'History',
     notFound: 'Document not found',
     notFoundDesc: 'The document does not exist, was deleted, or is not published yet.',
+    loginRequired: 'Sign in to view this document',
+    loginRequiredDesc: 'This document is for staff of a department. After signing in you will come back to this page.',
     copyLink: 'Copy link to this section',
   },
   share: {
@@ -282,6 +284,8 @@ export const en: Messages = {
     deleted: 'Category deleted',
     parent: 'Parent category',
     noParent: '— Top level —',
+    shared: 'Shared',
+    sharedHint: 'Every department (and signed-out guests) can see this category and its sub-categories. A category named "Community" is always shared.',
   },
   users: {
     title: 'Manage accounts',
@@ -304,6 +308,10 @@ export const en: Messages = {
     email: 'Email',
     emailOptional: 'Email (optional)',
     employeeCode: 'Employee code',
+    editEmployeeCode: 'Enter / edit employee code',
+    employeeCodeHint: 'Employee code of “{{name}}”. After saving, the department is looked up in company data and the account only sees that department’s categories + shared ones. Empty = sees everything.',
+    noDepartment: 'Department not found',
+    seesAll: 'No code: sees everything',
     pendingTitle: 'Waiting for approval',
     pendingHint: 'Self sign-ups. Pick a role and Approve, or Reject to delete the request.',
     approve: 'Approve',

@@ -4,7 +4,7 @@
 // Cả router chỉ dành cho admin (requireAdmin gắn ở index.ts).
 //   GET    /api/users                 tất cả (cả tài khoản chờ duyệt)
 //   POST   /api/users                 { username, displayName, email?, password, role }
-//   PUT    /api/users/:id             { displayName?, role?, password? }  (password = đặt lại)
+//   PUT    /api/users/:id             { displayName?, role?, password?, employeeCode? }  (password = đặt lại)
 //   POST   /api/users/:id/approve     { role } — duyệt tài khoản tự đăng ký
 //   DELETE /api/users/:id             xóa (cũng dùng để TỪ CHỐI tài khoản chờ duyệt)
 
@@ -24,6 +24,7 @@ import {
   userToJson,
 } from '../repositories/users.ts';
 import { parseId } from '../utils/ids.ts';
+import { findCompanyEmployee, isEmployeeCheckEnabled } from '../repositories/companyEmployee.ts';
 import { BCRYPT_ROUNDS, displayNameSchema, passwordSchema, usernameSchema } from './auth.ts';
 
 export const usersRouter = Router();
@@ -46,7 +47,21 @@ const updateSchema = z.object({
   displayName: displayNameSchema.optional(),
   role: z.enum(ROLES).optional(),
   password: passwordSchema.optional(),
+  // Admin nhập / sửa mã nhân viên ('' = bỏ mã -> tài khoản xem được tất cả như tài khoản cũ)
+  employeeCode: z
+    .string()
+    .trim()
+    .regex(/^([0-9]{1,5})?$/, 'Mã nhân viên chỉ chấp nhận số, tối đa 5 ký tự')
+    .optional(),
 });
+
+// Mã nhân viên -> bộ phận (tra view công ty). Không có trong view thì báo lỗi.
+async function departmentOf(employeeCode: string): Promise<string | null> {
+  if (!isEmployeeCheckEnabled()) return null;
+  const employee = await findCompanyEmployee(employeeCode);
+  if (!employee) throw new HttpError(400, 'Mã nhân viên không tồn tại trong dữ liệu công ty');
+  return employee.department || null;
+}
 
 // Không được để hệ thống mất admin cuối cùng — mất là không ai quản lý
 // được tài khoản nữa. Chỉ đếm admin ĐANG HOẠT ĐỘNG.
@@ -79,13 +94,17 @@ usersRouter.post('/', async (req, res) => {
 
 usersRouter.put('/:id', async (req, res) => {
   const user = await findOr404(req.params.id);
-  const { displayName, role, password } = updateSchema.parse(req.body ?? {});
+  const { displayName, role, password, employeeCode } = updateSchema.parse(req.body ?? {});
   if (role && role !== 'admin' && user.role === 'admin') await assertNotLastAdmin(user.id);
 
   const updated = await updateUser(user.id, {
     displayName,
     role,
     passwordHash: password !== undefined ? await bcrypt.hash(password, BCRYPT_ROUNDS) : undefined,
+    // Đổi mã -> tra lại bộ phận ngay (không phải đợi người đó đăng nhập lại).
+    ...(employeeCode !== undefined
+      ? { employeeCode: employeeCode || null, department: employeeCode ? await departmentOf(employeeCode) : null }
+      : {}),
   });
   res.json(userToJson(updated!));
 });

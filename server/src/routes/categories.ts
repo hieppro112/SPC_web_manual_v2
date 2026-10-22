@@ -1,9 +1,9 @@
 // ============================================================
 // routes/categories.ts — Mọi API của thể loại (dạng cây)
 // ============================================================
-//   GET    /api/categories      danh sách phẳng { ..., parentId, docCount } (ai cũng xem)
-//   POST   /api/categories      tạo mới   { name, iconName?, parentId? }   (admin)
-//   PUT    /api/categories/:id  sửa       { name?, iconName?, parentId? }  (admin)
+//   GET    /api/categories      danh sách phẳng { ..., parentId, isShared, docCount } (lọc theo bộ phận)
+//   POST   /api/categories      tạo mới   { name, iconName?, parentId?, isShared? }   (admin)
+//   PUT    /api/categories/:id  sửa       { name?, iconName?, parentId?, isShared? }  (admin)
 //   DELETE /api/categories/:id  xóa       (admin, chỉ khi không còn tài liệu và thể loại con)
 
 import { Router } from 'express';
@@ -21,6 +21,7 @@ import {
   listCategoryLinks,
   updateCategory,
 } from '../repositories/categories.ts';
+import { canSee, invalidateAccessCache, requestScope } from '../services/access.ts';
 import { wouldCreateCycle } from '../services/categoryTree.ts';
 import { parseId } from '../utils/ids.ts';
 
@@ -45,22 +46,32 @@ async function parseParent(value: unknown): Promise<number | null> {
 
 categoriesRouter.get('/', async (_req, res) => {
   // Khách / role "user" chỉ đếm bài đã xuất bản (không lộ số bài nháp).
-  res.json(await listCategoriesWithCount(!isEditor(res.locals.user)));
+  const all = await listCategoriesWithCount(!isEditor(res.locals.user));
+  // Phân quyền theo bộ phận: chỉ thấy thể loại của bộ phận mình + thể loại dùng chung.
+  // (Thể loại cha bị ẩn thì client tự coi thể loại con là cấp cao nhất.)
+  const scope = await requestScope(res);
+  res.json(scope.all ? all : all.filter((c) => canSee(scope, c.id)));
 });
 
 categoriesRouter.post('/', requireAdmin, async (req, res) => {
   const body = req.body ?? {};
-  const { name, iconName } = z.object({ name: nameSchema, iconName: iconSchema.default('Folder') }).parse(body);
+  const { name, iconName, isShared } = z
+    .object({ name: nameSchema, iconName: iconSchema.default('Folder'), isShared: z.boolean().default(false) })
+    .parse(body);
   const parentId = await parseParent(body.parentId);
   // Trùng tên -> SQL Server báo vi phạm UQ_WebManualCategories_Name -> errorHandler trả 409.
-  res.status(201).json(await createCategory(name, iconName, parentId));
+  const created = await createCategory(name, iconName, parentId, isShared);
+  invalidateAccessCache();
+  res.status(201).json(created);
 });
 
 categoriesRouter.put('/:id', requireAdmin, async (req, res) => {
   const category = await findOr404(req.params.id);
   const id = Number(category.id);
   const body = req.body ?? {};
-  const { name, iconName } = z.object({ name: nameSchema.optional(), iconName: iconSchema.optional() }).parse(body);
+  const { name, iconName, isShared } = z
+    .object({ name: nameSchema.optional(), iconName: iconSchema.optional(), isShared: z.boolean().optional() })
+    .parse(body);
 
   // Không gửi parentId = giữ nguyên cha hiện tại.
   const parentId = body.parentId === undefined ? (category.parentId === null ? null : Number(category.parentId)) : await parseParent(body.parentId);
@@ -68,7 +79,10 @@ categoriesRouter.put('/:id', requireAdmin, async (req, res) => {
     throw new HttpError(400, 'Không thể đặt thể loại làm con của chính nó hoặc của thể loại con của nó');
   }
 
-  res.json(await updateCategory(id, name ?? category.name, iconName ?? category.iconName, parentId));
+  const updated = await updateCategory(id, name ?? category.name, iconName ?? category.iconName, parentId, isShared ?? category.isShared);
+  // Đổi tên / cha / "dùng chung" làm đổi quyền xem -> tính lại ngay.
+  invalidateAccessCache();
+  res.json(updated);
 });
 
 categoriesRouter.delete('/:id', requireAdmin, async (req, res) => {
@@ -82,5 +96,6 @@ categoriesRouter.delete('/:id', requireAdmin, async (req, res) => {
   if (docs > 0) throw new HttpError(409, `Còn ${docs} tài liệu thuộc thể loại này, không thể xóa`);
 
   await deleteCategory(id);
+  invalidateAccessCache();
   res.status(204).end();
 });

@@ -28,6 +28,7 @@ import { randomInt } from 'node:crypto';
 import { Router, type Response } from 'express';
 import ExcelJS from 'exceljs';
 import { mustReadFor, mustReadForMany, type MustRead } from '../services/reading.ts';
+import { assertDocsVisible, quizzesVisible, requestScope } from '../services/access.ts';
 import { z } from 'zod';
 import { config } from '../config.ts';
 import { HttpError } from '../middleware/errorHandler.ts';
@@ -57,9 +58,10 @@ import { slugify } from '../utils/slugify.ts';
 
 export const quizzesRouter = Router();
 
-async function findOr404(id: unknown): Promise<FullQuiz> {
+// Đề tạo từ tài liệu của bộ phận khác -> như không tồn tại (phân quyền theo bộ phận).
+async function findOr404(id: unknown, res: Response): Promise<FullQuiz> {
   const quiz = await findQuiz(parseId(id));
-  if (!quiz) throw new HttpError(404, 'Không tìm thấy bài kiểm tra');
+  if (!quiz || !(await quizzesVisible(await requestScope(res), [quiz])).length) throw new HttpError(404, 'Không tìm thấy bài kiểm tra');
   return quiz;
 }
 
@@ -111,14 +113,15 @@ function shuffle<T>(items: T[]): T[] {
 
 quizzesRouter.get('/', async (_req, res) => {
   const user = currentUser(res);
-  const quizzes = await listQuizzesForUser(user.id);
+  // Chỉ đề tạo từ tài liệu người này được xem (phân quyền theo bộ phận).
+  const quizzes = await quizzesVisible(await requestScope(res), await listQuizzesForUser(user.id));
   // Đề nào còn khóa vì chưa đọc đủ bài nguồn -> kèm danh sách bài cần đọc.
   const mustRead = await mustReadForMany(user, quizzes);
   res.json(quizzes.map((q) => ({ ...q, mustRead: mustRead.get(q.id) ?? null })));
 });
 
 quizzesRouter.get('/manage', requireEditor, async (_req, res) => {
-  res.json(await listAllQuizzes());
+  res.json(await quizzesVisible(await requestScope(res), await listAllQuizzes()));
 });
 
 quizzesRouter.get('/users', requireEditor, async (_req, res) => {
@@ -126,7 +129,7 @@ quizzesRouter.get('/users', requireEditor, async (_req, res) => {
 });
 
 quizzesRouter.get('/:id/take', async (req, res) => {
-  const quiz = await findOr404(req.params.id);
+  const quiz = await findOr404(req.params.id, res);
   const access = await checkAccess(quiz, currentUser(res));
   res.json({
     quiz: {
@@ -161,7 +164,7 @@ const submitSchema = z.object({
 });
 
 quizzesRouter.post('/:id/submit', async (req, res) => {
-  const quiz = await findOr404(req.params.id);
+  const quiz = await findOr404(req.params.id, res);
   const user = currentUser(res);
   const access = await checkAccess(quiz, user);
   if (access.blocked === 'expired') throw new HttpError(403, 'Bài kiểm tra đã hết hạn');
@@ -213,6 +216,7 @@ quizzesRouter.post('/generate', requireEditor, async (req, res) => {
   const user = currentUser(res);
   const body = generateSchema.parse(req.body ?? {});
   const docIds = body.docIds.map((id) => parseId(id, 'docIds'));
+  await assertDocsVisible(docIds, res);
 
   const limit = config.quiz.generatePerDay;
   if (user.role !== 'admin' && (generatedToday.get(todayKey(user.id)) ?? 0) >= limit) {
@@ -282,17 +286,21 @@ function toRecord(body: z.infer<typeof quizSchema>): QuizRecord {
 }
 
 quizzesRouter.post('/', requireEditor, async (req, res) => {
-  const id = await createQuiz(toRecord(quizSchema.parse(req.body ?? {})), currentUser(res).id);
+  const body = quizSchema.parse(req.body ?? {});
+  await assertDocsVisible(body.sourceDocs.map((d) => parseId(d.id, 'sourceDocs')), res);
+  const id = await createQuiz(toRecord(body), currentUser(res).id);
   res.status(201).json(await findQuiz(id));
 });
 
 quizzesRouter.get('/:id/edit', requireEditor, async (req, res) => {
-  res.json(await findOr404(req.params.id));
+  res.json(await findOr404(req.params.id, res));
 });
 
 quizzesRouter.put('/:id', requireEditor, async (req, res) => {
-  const quiz = await findOr404(req.params.id);
-  await updateQuiz(Number(quiz.id), toRecord(quizSchema.parse(req.body ?? {})), currentUser(res).id);
+  const quiz = await findOr404(req.params.id, res);
+  const body = quizSchema.parse(req.body ?? {});
+  await assertDocsVisible(body.sourceDocs.map((d) => parseId(d.id, 'sourceDocs')), res);
+  await updateQuiz(Number(quiz.id), toRecord(body), currentUser(res).id);
   res.json(await findQuiz(Number(quiz.id)));
 });
 
@@ -304,7 +312,7 @@ quizzesRouter.delete('/:id', requireEditor, async (req, res) => {
 // ---------- Admin: bảng điểm + Excel ----------
 
 quizzesRouter.get('/:id/results', requireAdmin, async (req, res) => {
-  const quiz = await findOr404(req.params.id);
+  const quiz = await findOr404(req.params.id, res);
   res.json({ quiz: { id: quiz.id, title: quiz.title, kind: quiz.kind, passPercent: quiz.passPercent, maxAttempts: quiz.maxAttempts, dueAt: quiz.dueAt, questionCount: quiz.questionCount }, rows: await listResults(Number(quiz.id)) });
 });
 
@@ -312,7 +320,7 @@ quizzesRouter.get('/:id/results', requireAdmin, async (req, res) => {
 const localDate = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60_000);
 
 quizzesRouter.get('/:id/results.xlsx', requireAdmin, async (req, res: Response) => {
-  const quiz = await findOr404(req.params.id);
+  const quiz = await findOr404(req.params.id, res);
   const rows = await listResults(Number(quiz.id));
 
   const wb = new ExcelJS.Workbook();

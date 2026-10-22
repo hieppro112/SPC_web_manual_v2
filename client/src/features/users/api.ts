@@ -3,7 +3,8 @@ import { http } from '../../lib/http.ts';
 import type { Role, User } from '../../lib/types.ts';
 
 export type NewUser = { username: string; displayName: string; email?: string; password: string; role: Role };
-export type UserUpdate = { displayName?: string; role?: Role; password?: string };
+// employeeCode: '' = bỏ mã (tài khoản xem được tất cả như tài khoản cũ)
+export type UserUpdate = { displayName?: string; role?: Role; password?: string; employeeCode?: string };
 
 export const usersApi = {
   list: () => http.get<User[]>('/users'),

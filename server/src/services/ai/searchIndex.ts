@@ -174,8 +174,16 @@ export const indexedDocCount = () => Object.keys(index.docs).length;
 
 // Tìm các đoạn giống câu hỏi nhất. Mỗi bài tối đa `perDoc` đoạn để câu trả
 // lời không chỉ xoay quanh một bài.
-export async function searchChunks(question: string, limit = 6, perDoc = 3): Promise<(Chunk & { score: number })[]> {
-  const all = Object.values(index.docs).flatMap((d) => d.chunks);
+// allowDoc: chỉ tìm trong tài liệu người hỏi được xem (phân quyền theo bộ phận).
+export async function searchChunks(
+  question: string,
+  limit = 6,
+  perDoc = 3,
+  allowDoc?: (docId: string) => boolean,
+): Promise<(Chunk & { score: number })[]> {
+  const all = Object.values(index.docs)
+    .flatMap((d) => d.chunks)
+    .filter((c) => !allowDoc || allowDoc(c.docId));
   if (!all.length) return [];
   const [q] = await embed([question]);
   const qv = normalize(q);

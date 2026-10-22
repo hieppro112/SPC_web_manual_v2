@@ -15,7 +15,7 @@ import { z } from 'zod';
 import { config } from '../config.ts';
 import { HttpError } from '../middleware/errorHandler.ts';
 import { clearAuthCookie, currentUser, requireAuth, setAuthCookie } from '../middleware/auth.ts';
-import { countUsers, createUser, findUserForLogin, getPasswordHash, updateUser, userToJson } from '../repositories/users.ts';
+import { countUsers, createUser, findUserForLogin, getPasswordHash, updateUser, userToJson, type User } from '../repositories/users.ts';
 import { findCompanyEmployee, isEmployeeCheckEnabled } from '../repositories/companyEmployee.ts';
 
 export const authRouter = Router();
@@ -94,13 +94,18 @@ authRouter.post('/register', async (req, res) => {
   if ((await countUsers()) === 0) {
     throw new HttpError(409, 'Hệ thống chưa có admin. Hãy tạo tài khoản admin trước.');
   }
-  if(isEmployeeCheckEnabled() && !(await findCompanyEmployee(req.body?.employeeCode ?? ''))) {
-    throw new HttpError(400, 'Mã nhân viên không hợp lệ hoặc không tồn tại trong dữ liệu công ty');
-  }
+  // Kiểm tra định dạng TRƯỚC (zod), rồi mới tra mã trong view: dữ liệu thô
+  // (chữ, số, object...) không bao giờ đi thẳng vào câu SQL.
   const { password, ...data } = registerSchema.parse(req.body ?? {});
+  let department: string | null = null;
+  if (isEmployeeCheckEnabled()) {
+    const employee = await findCompanyEmployee(data.employeeCode);
+    if (!employee) throw new HttpError(400, 'Mã nhân viên không hợp lệ hoặc không tồn tại trong dữ liệu công ty');
+    department = employee.department || null;
+  }
   // Luôn là "user" (chỉ đọc + làm bài) + pending, client gửi role/status gì
   // cũng bị bỏ qua. Admin nâng lên editor khi duyệt hoặc sau đó.
-  await createUser({ ...data, role: 'user', status: 'pending', passwordHash: await bcrypt.hash(password, BCRYPT_ROUNDS), employeeCode: data.employeeCode });
+  await createUser({ ...data, department, role: 'user', status: 'pending', passwordHash: await bcrypt.hash(password, BCRYPT_ROUNDS) });
   // KHÔNG đăng nhập luôn: phải đợi admin duyệt.
   res.status(201).json({ pending: true });
 });
@@ -115,9 +120,25 @@ authRouter.post('/login', async (req, res) => {
   // Chỉ báo "đang chờ duyệt" khi mật khẩu ĐÚNG — người ngoài không dò được.
   if (found.user.status !== 'active') throw new HttpError(403, 'Tài khoản đang chờ admin duyệt');
 
-  setAuthCookie(res, found.user);
-  res.json({ user: userToJson(found.user) });
+  const user = await refreshDepartment(found.user);
+  setAuthCookie(res, user);
+  res.json({ user: userToJson(user) });
 });
+
+// Mỗi lần đăng nhập: tra lại bộ phận theo mã nhân viên (nhân viên chuyển bộ phận
+// thì quyền xem đổi theo). Mã không còn trong view (vd đã nghỉ việc) -> bộ phận
+// trống -> chỉ xem được thể loại dùng chung. View lỗi -> giữ bộ phận cũ, KHÔNG chặn đăng nhập.
+async function refreshDepartment(user: User): Promise<User> {
+  if (!isEmployeeCheckEnabled() || !user.employeeCode) return user;
+  try {
+    const employee = await findCompanyEmployee(user.employeeCode);
+    const department = employee?.department || null;
+    if (department === user.department) return user;
+    return (await updateUser(user.id, { department })) ?? user;
+  } catch {
+    return user; // lỗi đã được ghi log trong findCompanyEmployee
+  }
+}
 
 authRouter.post('/logout', (_req, res) => {
   clearAuthCookie(res);

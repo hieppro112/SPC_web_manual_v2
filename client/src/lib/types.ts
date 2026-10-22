@@ -21,6 +21,8 @@ export type User = {
   status: 'active' | 'pending';
   createdAt: string;
   employeeCode: string | null;
+  // Bộ phận tra từ dữ liệu nhân viên (cập nhật mỗi lần đăng nhập) — quyết định xem được thể loại nào.
+  department?: string | null;
 };
 
 // Được soạn tài liệu / tạo đề không (editor, admin). Khách và role "user" -> false.
@@ -33,6 +35,8 @@ export type Category = {
   iconName: string;
   // Thể loại cha; null = cấp cao nhất (thể loại dạng cây)
   parentId: string | null;
+  // Dùng chung cho mọi bộ phận (+ khách). Thể loại tên "Community" cũng được coi là dùng chung.
+  isShared?: boolean;
   // Số tài liệu nằm TRỰC TIẾP trong thể loại này (chưa cộng thể loại con)
   docCount: number;
 };

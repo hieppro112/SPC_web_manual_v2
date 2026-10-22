@@ -20,7 +20,8 @@ import { z } from 'zod';
 import { config } from '../config.ts';
 import { isEditor } from '../middleware/auth.ts';
 import { HttpError } from '../middleware/errorHandler.ts';
-import { findDocumentById, findDocumentBySlug, listPublishedStamps } from '../repositories/documents.ts';
+import { docIdsInCategories, findDocumentById, findDocumentBySlug, listPublishedStamps } from '../repositories/documents.ts';
+import { assertDocVisible, requestScope } from '../services/access.ts';
 import { writeChatLog } from '../services/ai/chatLog.ts';
 import { docMarkdown } from '../services/ai/docText.ts';
 import { AiUnavailableError, chatStream, type ChatMessage } from '../services/ai/llm.ts';
@@ -93,7 +94,10 @@ aiRouter.post('/chat', async (req, res) => {
     if (body.mode === 'all') {
       // Tìm theo câu hỏi hiện tại + câu hỏi ngay trước (để hiểu "nó", "bước đó"...).
       const prevQuestion = body.history.filter((m) => m.role === 'user').at(-1)?.content ?? '';
-      const chunks = await searchChunks(`${prevQuestion}\n${question}`.trim());
+      // Phân quyền theo bộ phận: AI chỉ được đọc tài liệu người hỏi được xem.
+      const scope = await requestScope(res);
+      const visible = scope.all ? null : await docIdsInCategories([...scope.categoryIds]);
+      const chunks = await searchChunks(`${prevQuestion}\n${question}`.trim(), 6, 3, visible ? (id) => visible.has(Number(id)) : undefined);
       const seen = new Set<string>();
       sources = chunks
         .filter((c) => !seen.has(c.url) && seen.add(c.url))
@@ -108,6 +112,7 @@ aiRouter.post('/chat', async (req, res) => {
       // Chỉ đọc bài ĐÃ XUẤT BẢN (kể cả người đã đăng nhập) — đúng phạm vi đã chốt.
       const doc = body.slug ? await findDocumentBySlug(body.slug) : null;
       if (!doc || doc.status !== 'published') throw new HttpError(404, 'Trợ lý AI chỉ đọc được tài liệu đã xuất bản');
+      await assertDocVisible(doc, res);
       sources = [{ title: doc.title, url: `/docs/${doc.slug}` }];
       messages = [
         { role: 'system', content: SYSTEM_DOC },

@@ -41,8 +41,9 @@ export type SeedResult = { createdDocs: number; skippedDocs: number; createdQuiz
 
 export async function seedGuide(userId: number): Promise<SeedResult> {
   const result: SeedResult = { createdDocs: 0, skippedDocs: 0, createdQuizzes: 0, skippedQuizzes: 0 };
+  // Tạo mới thì đánh dấu "Dùng chung": mọi bộ phận (và khách) đều đọc được hướng dẫn.
   const categoryId =
-    (await findCategoryIdByName(ROOT_CATEGORY, null)) ?? Number((await createCategory(ROOT_CATEGORY, 'BookOpen', null)).id);
+    (await findCategoryIdByName(ROOT_CATEGORY, null)) ?? Number((await createCategory(ROOT_CATEGORY, 'BookOpen', null, true)).id);
 
   // Bài hướng dẫn: tạo theo thứ tự 01, 02... (slug cố định để trang /guide nhận ra).
   for (const doc of GUIDE_DOCS) {

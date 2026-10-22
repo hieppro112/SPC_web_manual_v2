@@ -129,6 +129,26 @@ export async function listPublishedStamps() {
   return rows.map((r) => ({ id: String(r.Id), updatedAt: r.UpdatedAt.toISOString() }));
 }
 
+// Thể loại của từng tài liệu (để lọc theo bộ phận: đề kiểm tra, trợ lý AI...).
+export async function docCategoryMap(documentIds: number[]): Promise<Map<number, number | null>> {
+  if (!documentIds.length) return new Map();
+  const rows = await query<{ Id: number; CategoryId: number | null }>(
+    'SELECT Id, CategoryId FROM WebManualDocuments WHERE Id IN (SELECT CAST(value AS INT) FROM OPENJSON(@ids))',
+    { ids: JSON.stringify([...new Set(documentIds)]) },
+  );
+  return new Map(rows.map((r) => [r.Id, r.CategoryId]));
+}
+
+// Id mọi tài liệu thuộc các thể loại này.
+export async function docIdsInCategories(categoryIds: number[]): Promise<Set<number>> {
+  if (!categoryIds.length) return new Set();
+  const rows = await query<{ Id: number }>(
+    'SELECT Id FROM WebManualDocuments WHERE CategoryId IN (SELECT CAST(value AS INT) FROM OPENJSON(@ids))',
+    { ids: JSON.stringify(categoryIds) },
+  );
+  return new Set(rows.map((r) => r.Id));
+}
+
 export async function slugExists(slug: string): Promise<boolean> {
   return !!(await queryOne('SELECT 1 AS Found FROM WebManualDocuments WHERE Slug = @slug', { slug }));
 }

@@ -26,6 +26,7 @@ type UserRow = {
   CreatedAt: Date;
   UpdatedAt: Date;
   EmployeeCode:string | null;
+  Department: string | null;
 };
 
 export type User = {
@@ -38,6 +39,8 @@ export type User = {
   createdAt: Date;
   updatedAt: Date;
   employeeCode: string | null;
+  // Bộ phận tra từ view nhân viên (cập nhật mỗi lần đăng nhập) — quyết định xem được thể loại nào.
+  department: string | null;
 };
 
 // Dạng gửi cho client: id là chuỗi (giống hồi dùng MongoDB). KHÔNG BAO GIỜ
@@ -46,7 +49,7 @@ export function userToJson(user: User) {
   return { ...user, id: String(user.id) };
 }
 
-const USER_COLUMNS = 'Id, Username, DisplayName, Email, Role, Status, CreatedAt, UpdatedAt, EmployeeCode';
+const USER_COLUMNS = 'Id, Username, DisplayName, Email, Role, Status, CreatedAt, UpdatedAt, EmployeeCode, Department';
 
 function toUser(row: UserRow): User {
   return {
@@ -59,6 +62,7 @@ function toUser(row: UserRow): User {
     createdAt: row.CreatedAt,
     updatedAt: row.UpdatedAt,
     employeeCode: row.EmployeeCode,
+    department: row.Department,
   };
 }
 
@@ -108,21 +112,29 @@ export type NewUser = {
   role: Role;
   status: UserStatus;
   employeeCode: string | null;
+  department?: string | null;
 };
 
 export async function createUser(data: NewUser): Promise<User> {
   // OUTPUT INSERTED.* : trả về luôn dòng vừa thêm (kèm Id tự tăng), khỏi
   // phải SELECT lại lần nữa.
   const row = await queryOne<UserRow>(
-    `INSERT INTO WebManualUsers (Username, DisplayName, Email, PasswordHash, Role, Status, EmployeeCode)
+    `INSERT INTO WebManualUsers (Username, DisplayName, Email, PasswordHash, Role, Status, EmployeeCode, Department)
      OUTPUT ${USER_COLUMNS.split(', ').map((c) => `INSERTED.${c}`).join(', ')}
-     VALUES (@username, @displayName, @email, @passwordHash, @role, @status, @employeeCode)`,
-    data,
+     VALUES (@username, @displayName, @email, @passwordHash, @role, @status, @employeeCode, @department)`,
+    { ...data, department: data.department ?? null },
   );
   return toUser(row!);
 }
 
-export type UserChanges = Partial<{ displayName: string; role: Role; status: UserStatus; passwordHash: string }>;
+export type UserChanges = Partial<{
+  displayName: string;
+  role: Role;
+  status: UserStatus;
+  passwordHash: string;
+  employeeCode: string | null;
+  department: string | null;
+}>;
 
 // Chỉ cập nhật những cột có trong `changes`.
 export async function updateUser(id: number, changes: UserChanges): Promise<User | null> {
@@ -131,6 +143,8 @@ export async function updateUser(id: number, changes: UserChanges): Promise<User
     role: 'Role',
     status: 'Status',
     passwordHash: 'PasswordHash',
+    employeeCode: 'EmployeeCode',
+    department: 'Department',
   };
   const keys = (Object.keys(changes) as (keyof UserChanges)[]).filter((k) => changes[k] !== undefined);
   if (keys.length) {
