@@ -79,17 +79,29 @@ function ParentSelect({ tree, value, onChange, exclude }: { tree: CategoryNode[]
   );
 }
 
+// Ô "Dùng chung cho mọi bộ phận": thể loại (và con cháu) ai cũng xem được, kể cả khách.
+function SharedCheckbox({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+  const { t } = useTranslation();
+  return (
+    <label className="flex items-center gap-1.5 text-sm" title={t('categories.sharedHint')}>
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="accent-accent" />
+      {t('categories.shared')}
+    </label>
+  );
+}
+
 function NewCategoryForm({ tree }: { tree: CategoryNode[] }) {
   const { t } = useTranslation();
   const save = useSaveCategory();
   const [name, setName] = useState('');
   const [iconName, setIconName] = useState('Folder');
   const [parentId, setParentId] = useState('');
+  const [isShared, setIsShared] = useState(false);
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
     save.mutate(
-      { name, iconName, parentId: parentId || null },
+      { name, iconName, parentId: parentId || null, isShared },
       {
         onSuccess: () => {
           toast.success(t('categories.saved'));
@@ -105,6 +117,7 @@ function NewCategoryForm({ tree }: { tree: CategoryNode[] }) {
       <IconSelect value={iconName} onChange={setIconName} />
       <Input required value={name} onChange={(e) => setName(e.target.value)} placeholder={t('categories.newPlaceholder')} className="min-w-40 flex-1" />
       <ParentSelect tree={tree} value={parentId} onChange={setParentId} />
+      <SharedCheckbox checked={isShared} onChange={setIsShared} />
       <Button type="submit" loading={save.isPending}>
         <Plus className="h-4 w-4" /> {t('common.add')}
       </Button>
@@ -120,14 +133,16 @@ function CategoryRow({ node, tree, categories }: { node: CategoryNode; tree: Cat
   const [name, setName] = useState(category.name);
   const [iconName, setIconName] = useState(category.iconName);
   const [parentId, setParentId] = useState(category.parentId ?? '');
-  const changed = name !== category.name || iconName !== category.iconName || parentId !== (category.parentId ?? '');
+  const [isShared, setIsShared] = useState(!!category.isShared);
+  const changed =
+    name !== category.name || iconName !== category.iconName || parentId !== (category.parentId ?? '') || isShared !== !!category.isShared;
 
   // Không được chọn chính nó hoặc con cháu của nó làm cha (sẽ thành vòng lặp).
   const exclude = useMemo(() => subtreeIds(categories, category.id), [categories, category.id]);
 
   const onSave = () =>
     save.mutate(
-      { id: category.id, name, iconName, parentId: parentId || null },
+      { id: category.id, name, iconName, parentId: parentId || null, isShared },
       { onSuccess: () => toast.success(t('categories.saved')), onError: (err) => toast.error(errorMessage(err)) },
     );
 
@@ -147,6 +162,7 @@ function CategoryRow({ node, tree, categories }: { node: CategoryNode; tree: Cat
       <IconSelect value={iconName} onChange={setIconName} />
       <Input value={name} onChange={(e) => setName(e.target.value)} className="min-w-36 flex-1" aria-label={t('categories.name')} />
       <ParentSelect tree={tree} value={parentId} onChange={setParentId} exclude={exclude} />
+      <SharedCheckbox checked={isShared} onChange={setIsShared} />
       <span className="w-20 text-sm text-muted">
         {category.docCount} {t('categories.docs').toLowerCase()}
       </span>

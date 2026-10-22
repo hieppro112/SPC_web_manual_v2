@@ -3,7 +3,7 @@ import { http } from '../../lib/http.ts';
 import type { Category } from '../../lib/types.ts';
 
 // parentId: null = cấp cao nhất
-export type CategoryInput = { name: string; iconName: string; parentId: string | null };
+export type CategoryInput = { name: string; iconName: string; parentId: string | null; isShared?: boolean };
 
 export const categoriesApi = {
   list: () => http.get<Category[]>('/categories'),

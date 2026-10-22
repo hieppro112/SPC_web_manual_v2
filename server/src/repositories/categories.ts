@@ -8,9 +8,9 @@
 import { execute, query, queryOne } from '../db/pool.ts';
 import type { CategoryLink } from '../services/categoryTree.ts';
 
-type CategoryRow = { Id: number; Name: string; IconName: string; ParentId: number | null; CreatedAt: Date; UpdatedAt: Date };
+type CategoryRow = { Id: number; Name: string; IconName: string; ParentId: number | null; IsShared: boolean; CreatedAt: Date; UpdatedAt: Date };
 
-const COLUMNS = 'Id, Name, IconName, ParentId, CreatedAt, UpdatedAt';
+const COLUMNS = 'Id, Name, IconName, ParentId, IsShared, CreatedAt, UpdatedAt';
 
 function toJson(row: CategoryRow) {
   return {
@@ -19,6 +19,8 @@ function toJson(row: CategoryRow) {
     iconName: row.IconName,
     // Id dạng chuỗi giống mọi id khác gửi cho client; null = cấp cao nhất
     parentId: row.ParentId === null ? null : String(row.ParentId),
+    // Dùng chung cho mọi bộ phận (+ khách) — xem services/access.ts
+    isShared: !!row.IsShared,
     createdAt: row.CreatedAt,
     updatedAt: row.UpdatedAt,
   };
@@ -29,10 +31,10 @@ function toJson(row: CategoryRow) {
 // Khách chỉ đếm bài đã xuất bản — đúng với những gì khách nhìn thấy.
 export async function listCategoriesWithCount(onlyPublished: boolean) {
   const rows = await query<CategoryRow & { DocCount: number }>(
-    `SELECT c.Id, c.Name, c.IconName, c.ParentId, c.CreatedAt, c.UpdatedAt, COUNT(d.Id) AS DocCount
+    `SELECT c.Id, c.Name, c.IconName, c.ParentId, c.IsShared, c.CreatedAt, c.UpdatedAt, COUNT(d.Id) AS DocCount
      FROM WebManualCategories c
      LEFT JOIN WebManualDocuments d ON d.CategoryId = c.Id AND (@onlyPublished = 0 OR d.Status = N'published')
-     GROUP BY c.Id, c.Name, c.IconName, c.ParentId, c.CreatedAt, c.UpdatedAt
+     GROUP BY c.Id, c.Name, c.IconName, c.ParentId, c.IsShared, c.CreatedAt, c.UpdatedAt
      ORDER BY c.Name`,
     { onlyPublished: onlyPublished ? 1 : 0 },
   );
@@ -45,6 +47,14 @@ export async function listCategoryLinks(): Promise<CategoryLink[]> {
   return rows.map((r) => ({ id: r.Id, parentId: r.ParentId }));
 }
 
+// Đủ thông tin để tính quyền xem theo bộ phận (services/access.ts).
+export async function listCategoriesForAccess(): Promise<{ id: number; name: string; parentId: number | null; isShared: boolean }[]> {
+  const rows = await query<{ Id: number; Name: string; ParentId: number | null; IsShared: boolean }>(
+    'SELECT Id, Name, ParentId, IsShared FROM WebManualCategories',
+  );
+  return rows.map((r) => ({ id: r.Id, name: r.Name, parentId: r.ParentId, isShared: !!r.IsShared }));
+}
+
 export async function findCategoryById(id: number) {
   const row = await queryOne<CategoryRow>(`SELECT ${COLUMNS} FROM WebManualCategories WHERE Id = @id`, { id });
   return row && toJson(row);
@@ -54,22 +64,22 @@ export async function categoryExists(id: number): Promise<boolean> {
   return !!(await queryOne('SELECT 1 AS Found FROM WebManualCategories WHERE Id = @id', { id }));
 }
 
-export async function createCategory(name: string, iconName: string, parentId: number | null) {
+export async function createCategory(name: string, iconName: string, parentId: number | null, isShared = false) {
   const row = await queryOne<CategoryRow>(
-    `INSERT INTO WebManualCategories (Name, IconName, ParentId)
+    `INSERT INTO WebManualCategories (Name, IconName, ParentId, IsShared)
      OUTPUT ${COLUMNS.split(', ').map((c) => `INSERTED.${c}`).join(', ')}
-     VALUES (@name, @iconName, @parentId)`,
-    { name, iconName, parentId },
+     VALUES (@name, @iconName, @parentId, @isShared)`,
+    { name, iconName, parentId, isShared: isShared ? 1 : 0 },
   );
   return toJson(row!);
 }
 
-export async function updateCategory(id: number, name: string, iconName: string, parentId: number | null) {
+export async function updateCategory(id: number, name: string, iconName: string, parentId: number | null, isShared: boolean) {
   await execute(
     `UPDATE WebManualCategories
-     SET Name = @name, IconName = @iconName, ParentId = @parentId, UpdatedAt = SYSUTCDATETIME()
+     SET Name = @name, IconName = @iconName, ParentId = @parentId, IsShared = @isShared, UpdatedAt = SYSUTCDATETIME()
      WHERE Id = @id`,
-    { id, name, iconName, parentId },
+    { id, name, iconName, parentId, isShared: isShared ? 1 : 0 },
   );
   return findCategoryById(id);
 }

@@ -87,6 +87,8 @@ export const vi = {
     history: 'Lịch sử',
     notFound: 'Không tìm thấy tài liệu',
     notFoundDesc: 'Tài liệu không tồn tại, đã bị xóa hoặc chưa được xuất bản.',
+    loginRequired: 'Hãy đăng nhập để xem tài liệu này',
+    loginRequiredDesc: 'Tài liệu này dành cho nhân viên của bộ phận. Đăng nhập xong bạn sẽ quay lại đúng trang này.',
     copyLink: 'Sao chép link tới mục này',
   },
   share: {
@@ -286,6 +288,8 @@ export const vi = {
     deleted: 'Đã xóa thể loại',
     parent: 'Thuộc thể loại',
     noParent: '— Cấp cao nhất —',
+    shared: 'Dùng chung',
+    sharedHint: 'Mọi bộ phận (và khách chưa đăng nhập) đều xem được thể loại này cùng các thể loại con. Thể loại tên "Community" luôn được coi là dùng chung.',
   },
   users: {
     title: 'Quản lý tài khoản',
@@ -309,6 +313,10 @@ export const vi = {
     emailOptional: 'Email (không bắt buộc)',
     pendingTitle: 'Chờ duyệt',
     employeeCode: 'Mã nhân viên',
+    editEmployeeCode: 'Nhập / sửa mã nhân viên',
+    employeeCodeHint: 'Mã nhân viên của “{{name}}”. Lưu xong web tự lấy bộ phận từ dữ liệu công ty và chỉ cho xem thể loại của bộ phận đó + thể loại dùng chung. Để trống = xem được tất cả.',
+    noDepartment: 'Không tìm thấy bộ phận',
+    seesAll: 'Chưa có mã: xem tất cả',
     pendingHint: 'Người tự đăng ký. Chọn quyền rồi bấm Duyệt, hoặc Từ chối để xóa đăng ký.',
     approve: 'Duyệt',
     reject: 'Từ chối',

@@ -37,6 +37,7 @@ import {
   type QuizJob,
 } from '../repositories/quizJobs.ts';
 import { createQuiz } from '../repositories/quizzes.ts';
+import { assertDocsVisible } from '../services/access.ts';
 import { normalizeQuestions, prepareQuizPrompt } from '../services/quiz/generate.ts';
 import { QUIZ_LANGS, type QuizLang } from '../services/quiz/types.ts';
 import { parseId } from '../utils/ids.ts';
@@ -65,9 +66,11 @@ quizJobsRouter.post('/', async (req, res) => {
   if (user.role !== 'admin' && (await countJobsToday(user.id)) >= config.quiz.claudeJobsPerDay) {
     throw new HttpError(429, `Mỗi ngày chỉ được gửi ${config.quiz.claudeJobsPerDay} yêu cầu tạo đề cho Claude.`);
   }
+  const docIds = body.docIds.map((id) => parseId(id, 'docIds'));
+  await assertDocsVisible(docIds, res); // chỉ tài liệu trong bộ phận của người gửi
   // Kiểm tra tài liệu ngay lúc gửi (đã xuất bản) + lấy tên để hiện trong danh sách.
   const prompt = await prepareQuizPrompt(
-    body.docIds.map((id) => parseId(id, 'docIds')),
+    docIds,
     body.count,
     body.language,
     1, // chỉ cần kiểm tra + lấy tên tài liệu, chưa cần nội dung

@@ -33,6 +33,7 @@ import {
   type FullDocument,
 } from '../repositories/documents.ts';
 import { getRule, setRule } from '../repositories/reading.ts';
+import { assertCanPostTo, assertDocVisible, canSee, requestScope } from '../services/access.ts';
 import { translatedTitles } from '../repositories/translations.ts';
 import { requestIndexSync } from '../services/ai/searchIndex.ts';
 import { createDocument, updateDocument, type DocumentInput } from '../services/documents.ts';
@@ -64,16 +65,20 @@ documentsRouter.use((req, res, next) => {
 });
 
 // Khách mở link bài nháp -> 404 (giả như không tồn tại), không phải 403,
-// để người ngoài không biết là có bài đó.
-function assertReadable(doc: FullDocument | null, res: Response): asserts doc is FullDocument {
+// để người ngoài không biết là có bài đó. Bài của bộ phận khác: xem assertDocVisible.
+async function readable(doc: FullDocument | null, res: Response): Promise<FullDocument> {
   if (!doc || (!isEditor(res.locals.user) && doc.status !== 'published')) {
     throw new HttpError(404, 'Không tìm thấy tài liệu');
   }
+  await assertDocVisible(doc, res);
+  return doc;
 }
 
-async function findOr404(id: unknown): Promise<FullDocument> {
+// Dùng cho các thao tác GHI của biên tập: bài phải nằm trong phạm vi (bộ phận) của người sửa.
+async function findOr404(id: unknown, res: Response): Promise<FullDocument> {
   const doc = await findDocumentById(parseId(id));
   if (!doc) throw new HttpError(404, 'Không tìm thấy tài liệu');
+  await assertDocVisible(doc, res);
   return doc;
 }
 
@@ -90,7 +95,16 @@ documentsRouter.get('/', async (req, res) => {
   const { q, category, status, lang } = req.query;
   // Lọc theo thể loại = thể loại đó + toàn bộ thể loại con cháu.
   const categoryId = tryParseId(category);
-  const categoryIds = categoryId ? descendantIds(await listCategoryLinks(), categoryId) : undefined;
+  let categoryIds = categoryId ? descendantIds(await listCategoryLinks(), categoryId) : undefined;
+  // Phân quyền theo bộ phận: chỉ trong các thể loại được xem.
+  const scope = await requestScope(res);
+  if (!scope.all) {
+    categoryIds = (categoryIds ?? [...scope.categoryIds]).filter((id) => scope.categoryIds.has(id));
+    if (!categoryIds.length) {
+      res.json([]);
+      return;
+    }
+  }
   const docs = await listDocuments({
     // Khách / role "user": luôn chỉ bài đã xuất bản, bỏ qua ?status gửi lên.
     status: !isEditor(res.locals.user) ? 'published' : isDocStatus(status) ? status : undefined,
@@ -108,14 +122,12 @@ const withReading = async (doc: FullDocument) => ({ ...doc, readingSeconds: awai
 
 // '/slug/:slug' có HAI đoạn nên không xung đột với '/:id' (một đoạn).
 documentsRouter.get('/slug/:slug', async (req, res) => {
-  const doc = await findDocumentBySlug(String(req.params.slug));
-  assertReadable(doc, res);
+  const doc = await readable(await findDocumentBySlug(String(req.params.slug)), res);
   res.json(await withReading(doc));
 });
 
 documentsRouter.get('/:id', async (req, res) => {
-  const doc = await findDocumentById(parseId(req.params.id));
-  assertReadable(doc, res);
+  const doc = await readable(await findDocumentById(parseId(req.params.id)), res);
   res.json(await withReading(doc));
 });
 
@@ -135,12 +147,13 @@ documentsRouter.post('/', requireEditor, async (req, res) => {
     status: body.status === undefined ? 'draft' : (statusSchema.parse(body.status) as DocumentInput['status']),
     blocks: parseBlocks(body.blocks ?? []),
   };
+  await assertCanPostTo(input.categoryId, res);
   const doc = await createDocument(input, currentUser(res).id);
   res.status(201).json(await saveReading(doc, body.readingSeconds, currentUser(res).id));
 });
 
 documentsRouter.put('/:id', requireEditor, async (req, res) => {
-  const doc = await findOr404(req.params.id);
+  const doc = await findOr404(req.params.id, res);
   const body = req.body ?? {};
   // Field nào không gửi thì giữ nguyên giá trị hiện tại.
   const input: DocumentInput = {
@@ -149,12 +162,14 @@ documentsRouter.put('/:id', requireEditor, async (req, res) => {
     status: body.status !== undefined ? (statusSchema.parse(body.status) as DocumentInput['status']) : doc.status,
     blocks: body.blocks !== undefined ? parseBlocks(body.blocks) : doc.blocks!,
   };
+  await assertCanPostTo(input.categoryId, res);
   const saved = await updateDocument(Number(doc.id), input, currentUser(res).id);
   res.json(await saveReading(saved, body.readingSeconds, currentUser(res).id));
 });
 
 documentsRouter.delete('/:id', requireEditor, async (req, res) => {
-  if (!(await deleteDocument(parseId(req.params.id)))) throw new HttpError(404, 'Không tìm thấy tài liệu');
+  const doc = await findOr404(req.params.id, res);
+  if (!(await deleteDocument(Number(doc.id)))) throw new HttpError(404, 'Không tìm thấy tài liệu');
   // 204 No Content: thành công, không có gì để trả về.
   res.status(204).end();
 });
@@ -162,11 +177,13 @@ documentsRouter.delete('/:id', requireEditor, async (req, res) => {
 // ---------- Lịch sử phiên bản ----------
 
 documentsRouter.get('/:id/versions', requireEditor, async (req, res) => {
-  res.json(await listVersions(parseId(req.params.id)));
+  const doc = await findOr404(req.params.id, res);
+  res.json(await listVersions(Number(doc.id)));
 });
 
 documentsRouter.get('/:id/versions/:version', requireEditor, async (req, res) => {
-  const version = await findVersion(parseId(req.params.id), parseId(req.params.version, 'version'));
+  const doc = await findOr404(req.params.id, res);
+  const version = await findVersion(Number(doc.id), parseId(req.params.version, 'version'));
   if (!version) throw new HttpError(404, 'Không tìm thấy phiên bản');
   res.json(version);
 });
@@ -176,12 +193,13 @@ documentsRouter.get('/:id/versions/:version', requireEditor, async (req, res) =>
 // Giữ nguyên trạng thái xuất bản hiện tại: khôi phục nội dung không nên
 // vô tình làm bài đang công khai biến thành nháp (hoặc ngược lại).
 documentsRouter.post('/:id/versions/:version/restore', requireEditor, async (req, res) => {
-  const doc = await findOr404(req.params.id);
+  const doc = await findOr404(req.params.id, res);
   const old = await findVersionForRestore(Number(doc.id), parseId(req.params.version, 'version'));
   if (!old) throw new HttpError(404, 'Không tìm thấy phiên bản');
 
-  // Thể loại cũ có thể đã bị xóa -> giữ thể loại hiện tại.
-  const keepOldCategory = old.categoryId !== null && (await categoryExists(old.categoryId));
+  // Thể loại cũ có thể đã bị xóa, hoặc nằm ngoài bộ phận của người khôi phục -> giữ thể loại hiện tại.
+  const keepOldCategory =
+    old.categoryId !== null && (await categoryExists(old.categoryId)) && canSee(await requestScope(res), old.categoryId);
   const input: DocumentInput = {
     title: old.title,
     categoryId: keepOldCategory ? old.categoryId! : Number(doc.category?.id),

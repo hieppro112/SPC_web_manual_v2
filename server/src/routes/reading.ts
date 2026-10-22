@@ -16,6 +16,7 @@ import { HttpError } from '../middleware/errorHandler.ts';
 import { currentUser, isEditor, requireAdmin, requireAuth } from '../middleware/auth.ts';
 import { findDocumentById, type FullDocument } from '../repositories/documents.ts';
 import { getProgress, getRule, listRuledDocuments, readingReport, recordBeat } from '../repositories/reading.ts';
+import { assertDocVisible } from '../services/access.ts';
 import { parseId } from '../utils/ids.ts';
 import { slugify } from '../utils/slugify.ts';
 
@@ -24,6 +25,7 @@ export const readingRouter = Router();
 async function readableDoc(id: unknown, res: Response): Promise<FullDocument> {
   const doc = await findDocumentById(parseId(id));
   if (!doc || (!isEditor(res.locals.user) && doc.status !== 'published')) throw new HttpError(404, 'Không tìm thấy tài liệu');
+  await assertDocVisible(doc, res); // bài của bộ phận khác -> như không tồn tại
   return doc;
 }
 

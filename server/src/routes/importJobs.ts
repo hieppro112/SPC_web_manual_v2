@@ -25,6 +25,7 @@ import { config } from '../config.ts';
 import { currentUser } from '../middleware/auth.ts';
 import { HttpError } from '../middleware/errorHandler.ts';
 import { categoryExists } from '../repositories/categories.ts';
+import { assertCanPostTo } from '../services/access.ts';
 import {
   cancelImportJob,
   claimNextImportJob,
@@ -61,6 +62,7 @@ importJobsRouter.post('/', uploadSingle, async (req, res) => {
 
     const categoryId = tryParseId(req.body?.categoryId);
     if (!categoryId || !(await categoryExists(categoryId))) throw new HttpError(400, 'Hãy chọn thể loại cho bài viết');
+    await assertCanPostTo(categoryId, res); // chỉ thể loại trong bộ phận của người gửi
     const language = z.enum(QUIZ_LANGS).catch('vi').parse(req.body?.language);
 
     // 1. Đọc nội dung slide (nhanh, < 1 giây với file 25 MB).

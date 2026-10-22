@@ -83,6 +83,8 @@ export const ja: Messages = {
     history: '履歴',
     notFound: 'ドキュメントが見つかりません',
     notFoundDesc: '存在しないか、削除されたか、まだ公開されていません。',
+    loginRequired: 'このドキュメントを見るにはログインしてください',
+    loginRequiredDesc: 'このドキュメントは部署の社員向けです。ログイン後、このページに戻ります。',
     copyLink: 'このセクションへのリンクをコピー',
   },
   share: {
@@ -282,6 +284,8 @@ export const ja: Messages = {
     deleted: 'カテゴリを削除しました',
     parent: '親カテゴリ',
     noParent: '— 最上位 —',
+    shared: '共通',
+    sharedHint: 'すべての部署(とログインしていないゲスト)がこのカテゴリとサブカテゴリを閲覧できます。「Community」という名前のカテゴリは常に共通です。',
   },
   users: {
     title: 'アカウント管理',
@@ -304,6 +308,10 @@ export const ja: Messages = {
     email: 'メール',
     emailOptional: 'メール(任意)',
     employeeCode: '社員コード',
+    editEmployeeCode: '社員コードを入力 / 編集',
+    employeeCodeHint: '「{{name}}」の社員コード。保存すると会社のデータから部署を取得し、その部署のカテゴリと共通カテゴリだけ閲覧できます。空欄 = すべて閲覧可。',
+    noDepartment: '部署が見つかりません',
+    seesAll: 'コードなし:すべて閲覧可',
     pendingTitle: '承認待ち',
     pendingHint: '自己登録したユーザーです。権限を選んで承認するか、却下して削除します。',
     approve: '承認',

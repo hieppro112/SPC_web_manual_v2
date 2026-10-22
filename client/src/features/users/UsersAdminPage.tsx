@@ -8,7 +8,7 @@
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { Check, KeyRound, Trash, UserPlus, X } from 'lucide-react';
+import { Check, KeyRound, Pencil, Trash, UserPlus, X } from 'lucide-react';
 import Badge from '../../components/ui/Badge.tsx';
 import Button from '../../components/ui/Button.tsx';
 import Dialog from '../../components/ui/Dialog.tsx';
@@ -29,6 +29,7 @@ export default function UsersAdminPage() {
   const update = useUpdateUser();
   const remove = useDeleteUser();
   const [resetFor, setResetFor] = useState<User | null>(null);
+  const [codeFor, setCodeFor] = useState<User | null>(null);
   useDocumentTitle(t('users.title'));
   useCompleteOnMount('adminUsers');
 
@@ -98,11 +99,18 @@ export default function UsersAdminPage() {
                       </td>
 
                       
+                      {/* Mã nhân viên + bộ phận (tra từ dữ liệu công ty). Admin bấm bút chì để nhập / sửa mã. */}
                       <td className="px-4 py-2.5">
-                        <p className="font-medium">
-                          {u.employeeCode} {u.id === me?.id && <span className="text-muted">({t('users.you')})</span>}
-                        </p>
-                       
+                        <button
+                          type="button"
+                          onClick={() => setCodeFor(u)}
+                          className="group flex items-center gap-1.5 text-left"
+                          title={t('users.editEmployeeCode')}
+                        >
+                          <span className="font-medium">{u.employeeCode || '—'}</span>
+                          <Pencil className="h-3.5 w-3.5 text-muted opacity-0 group-hover:opacity-100" />
+                        </button>
+                        <p className="text-xs text-muted">{u.employeeCode ? u.department || t('users.noDepartment') : t('users.seesAll')}</p>
                       </td>
 
 
@@ -138,6 +146,9 @@ export default function UsersAdminPage() {
       <Dialog open={!!resetFor} onClose={() => setResetFor(null)} title={t('users.resetPassword')} className="max-w-sm">
         {resetFor && <ResetPasswordForm user={resetFor} onDone={() => setResetFor(null)} />}
       </Dialog>
+      <Dialog open={!!codeFor} onClose={() => setCodeFor(null)} title={t('users.editEmployeeCode')} className="max-w-sm">
+        {codeFor && <EmployeeCodeForm user={codeFor} onDone={() => setCodeFor(null)} />}
+      </Dialog>
     </div>
   );
 }
@@ -164,6 +175,7 @@ function PendingRow({ user, locale }: { user: User; locale: string }) {
       <div className="min-w-0 flex-1">
         <p className="font-medium">
           {user.displayName} <span className="font-mono text-xs text-muted"> - {user.employeeCode}</span>
+          {user.department && <span className="text-xs text-muted"> · {user.department}</span>}
         </p>
         <p className="truncate text-xs text-muted">
           {user.email} · {t('users.registeredAt', { date: formatDateTime(user.createdAt, locale) })}
@@ -237,6 +249,38 @@ function NewUserForm() {
       </div>
       <Button type="submit" loading={create.isPending}>
         <UserPlus className="h-4 w-4" /> {t('common.create')}
+      </Button>
+    </form>
+  );
+}
+
+// Nhập / sửa mã nhân viên. Lưu xong server tra ngay bộ phận từ dữ liệu công ty.
+// Để trống = bỏ mã: tài khoản xem được tất cả (như tài khoản cũ).
+function EmployeeCodeForm({ user, onDone }: { user: User; onDone: () => void }) {
+  const { t } = useTranslation();
+  const update = useUpdateUser();
+  const [code, setCode] = useState(user.employeeCode ?? '');
+
+  const onSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    update.mutate(
+      { id: user.id, data: { employeeCode: code.trim() } },
+      {
+        onSuccess: () => {
+          toast.success(t('users.updated'));
+          onDone();
+        },
+      },
+    );
+  };
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-4">
+      <p className="text-sm">{t('users.employeeCodeHint', { name: user.displayName })}</p>
+      <Input inputMode="numeric" maxLength={5} pattern="[0-9]*" autoFocus value={code} onChange={(e) => setCode(e.target.value)} />
+      {update.error && <p className="text-sm text-danger">{errorMessage(update.error)}</p>}
+      <Button type="submit" loading={update.isPending} className="w-full justify-center">
+        {t('common.save')}
       </Button>
     </form>
   );

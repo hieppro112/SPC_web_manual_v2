@@ -13,7 +13,7 @@ function quoteName(name:string): string{
 }
 
 export function isEmployeeCheckEnabled(): boolean {
-    return config.companyEmployeeView !== '';
+    return config.companyEmployeeView.trim() !== '';
 }
 
 // Tra mã nhân viên trong view của công ty.
