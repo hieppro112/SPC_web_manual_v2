@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { BookOpenCheck, FolderCog, KeyRound, LogOut, Users } from 'lucide-react';
+import { BarChart3, BookOpenCheck, FolderCog, Heart, KeyRound, LogOut, Users } from 'lucide-react';
 import MenuItem from '../components/ui/MenuItem.tsx';
 import Popover from '../components/ui/Popover.tsx';
 import ChangePasswordDialog from '../features/auth/ChangePasswordDialog.tsx';
@@ -49,6 +49,15 @@ export default function UserMenu({ user }: { user: User }) {
               </p>
             </div>
             <div className="my-1 border-t border-border" />
+            <MenuItem
+              icon={Heart}
+              onClick={() => {
+                close();
+                navigate('/favorites');
+              }}
+            >
+              {t('nav.favorites')}
+            </MenuItem>
             {user.role === 'admin' && (
               <>
                 <MenuItem
@@ -82,6 +91,15 @@ export default function UserMenu({ user }: { user: User }) {
                   }}
                 >
                   {t('nav.readingReport')}
+                </MenuItem>
+                <MenuItem
+                  icon={BarChart3}
+                  onClick={() => {
+                    close();
+                    navigate('/admin/stats');
+                  }}
+                >
+                  {t('nav.stats')}
                 </MenuItem>
               </>
             )}

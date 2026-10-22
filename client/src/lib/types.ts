@@ -55,10 +55,17 @@ export type DocSummary = {
   updatedAt: string;
   // Chỉ có trong danh sách: tiêu đề + mô tả đã dịch sang ngôn ngữ người đọc (null = chưa có / là bài gốc)
   translated?: { title: string; desc: string } | null;
+  // Lượt xem (mỗi người tối đa 1 lần / ngày) + số tim
+  stats?: { views: number; likes: number };
 };
 
 // readingSeconds: thời gian đọc tối thiểu (giây), null = không bắt buộc.
-export type Doc = DocSummary & { blocks: Block[]; readingSeconds?: number | null };
+// stats.likedByMe: người đang xem đã thả tim bài này chưa.
+export type Doc = Omit<DocSummary, 'stats'> & {
+  blocks: Block[];
+  readingSeconds?: number | null;
+  stats?: { views: number; likes: number; likedByMe: boolean };
+};
 
 // Dữ liệu gửi lên khi tạo/sửa.
 export type DocInput = {

@@ -33,6 +33,8 @@ import {
   type FullDocument,
 } from '../repositories/documents.ts';
 import { getRule, setRule } from '../repositories/reading.ts';
+import { statsFor } from '../repositories/engagement.ts';
+import { docEngagement } from './engagement.ts';
 import { assertCanPostTo, assertDocVisible, canSee, requestScope } from '../services/access.ts';
 import { translatedTitles } from '../repositories/translations.ts';
 import { requestIndexSync } from '../services/ai/searchIndex.ts';
@@ -92,7 +94,7 @@ async function parseCategory(value: unknown): Promise<number> {
 }
 
 documentsRouter.get('/', async (req, res) => {
-  const { q, category, status, lang } = req.query;
+  const { q, category, status, lang, sort } = req.query;
   // Lọc theo thể loại = thể loại đó + toàn bộ thể loại con cháu.
   const categoryId = tryParseId(category);
   let categoryIds = categoryId ? descendantIds(await listCategoryLinks(), categoryId) : undefined;
@@ -113,22 +115,28 @@ documentsRouter.get('/', async (req, res) => {
     words: typeof q === 'string' ? removeDiacritics(q).split(/\s+/).filter(Boolean).slice(0, 8) : [],
   });
   // ?lang=ja: kèm tiêu đề + mô tả đã dịch (nếu có) để thẻ tài liệu hiện đúng ngôn ngữ người đọc.
-  const titles = typeof lang === 'string' && /^(vi|en|ja)$/.test(lang) ? await translatedTitles(lang, docs.map((d) => Number(d.id))) : new Map();
-  res.json(docs.map((d) => ({ ...d, translated: titles.get(d.id) ?? null })));
+  const ids = docs.map((d) => Number(d.id));
+  const titles = typeof lang === 'string' && /^(vi|en|ja)$/.test(lang) ? await translatedTitles(lang, ids) : new Map();
+  // Lượt xem + tim cho thẻ tài liệu; ?sort=views|likes sắp xếp theo đó (mặc định: mới cập nhật).
+  const stats = await statsFor(ids);
+  const list = docs.map((d) => ({ ...d, translated: titles.get(d.id) ?? null, stats: stats.get(Number(d.id)) }));
+  if (sort === 'views' || sort === 'likes') list.sort((a, b) => (b.stats?.[sort] ?? 0) - (a.stats?.[sort] ?? 0));
+  res.json(list);
 });
 
 // Kèm thời gian đọc tối thiểu (giây, null = không bắt buộc) — bảng riêng của migration 008.
 const withReading = async (doc: FullDocument) => ({ ...doc, readingSeconds: await getRule(Number(doc.id)) });
 
 // '/slug/:slug' có HAI đoạn nên không xung đột với '/:id' (một đoạn).
+// Trang đọc: kèm lượt xem / tim + "tôi đã thả tim chưa".
 documentsRouter.get('/slug/:slug', async (req, res) => {
   const doc = await readable(await findDocumentBySlug(String(req.params.slug)), res);
-  res.json(await withReading(doc));
+  res.json({ ...(await withReading(doc)), stats: await docEngagement(Number(doc.id), res) });
 });
 
 documentsRouter.get('/:id', async (req, res) => {
   const doc = await readable(await findDocumentById(parseId(req.params.id)), res);
-  res.json(await withReading(doc));
+  res.json({ ...(await withReading(doc)), stats: await docEngagement(Number(doc.id), res) });
 });
 
 // Thời gian đọc gửi kèm khi lưu: số giây (0 / null = bỏ bắt buộc); không gửi = giữ nguyên.

@@ -9,6 +9,7 @@
 //   /guide                    hướng dẫn & thực hành (tour, nhiệm vụ) ai cũng xem
 //   /quizzes                  bài kiểm tra của tôi (+ quản lý đề)  đã đăng nhập
 //   /quizzes/:id              làm bài                               đã đăng nhập
+//   /favorites                bài tôi đã thả tim                    đã đăng nhập
 //   /new                      tạo tài liệu                          editor
 //   /docs/:slug/edit          sửa tài liệu                          editor
 //   /docs/:slug/history       lịch sử phiên bản                     editor
@@ -20,6 +21,7 @@
 //   /admin/categories         quản lý thể loại                      admin
 //   /admin/users              quản lý tài khoản                     admin
 //   /admin/reading            báo cáo ai đã đọc tài liệu + Excel    admin
+//   /admin/stats              thống kê lượt xem / tim + Excel       admin
 //
 // `lazy`: trang chỉ editor/admin dùng (trình soạn, kéo thả...) được tách
 // thành file JS riêng, chỉ tải khi mở trang đó. Người chỉ đọc tài liệu
@@ -54,6 +56,7 @@ export const router = createBrowserRouter([
         children: [
           { path: 'quizzes', lazy: () => import('../features/quizzes/QuizListPage.tsx').then((m) => ({ Component: m.default })) },
           { path: 'quizzes/:id', lazy: () => import('../features/quizzes/QuizTakePage.tsx').then((m) => ({ Component: m.default })) },
+          { path: 'favorites', lazy: () => import('../features/engagement/FavoritesPage.tsx').then((m) => ({ Component: m.default })) },
         ],
       },
       {
@@ -88,6 +91,10 @@ export const router = createBrowserRouter([
           {
             path: 'admin/reading',
             lazy: () => import('../features/reading/ReadingReportPage.tsx').then((m) => ({ Component: m.default })),
+          },
+          {
+            path: 'admin/stats',
+            lazy: () => import('../features/engagement/StatsPage.tsx').then((m) => ({ Component: m.default })),
           },
           {
             path: 'quizzes/:id/results',

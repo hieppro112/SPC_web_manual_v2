@@ -1,7 +1,7 @@
 // DocCard — một tài liệu trong danh sách ở trang chủ.
 import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { Languages } from 'lucide-react';
+import { Eye, Heart, Languages } from 'lucide-react';
 import Badge from '../../components/ui/Badge.tsx';
 import type { DocSummary } from '../../lib/types.ts';
 import { formatDate } from '../../lib/utils.ts';
@@ -29,7 +29,20 @@ export default function DocCard({ doc }: { doc: DocSummary }) {
         {doc.translated?.title ?? doc.title}
       </h3>
       {(doc.translated?.desc || doc.desc) && <p className="mt-1 line-clamp-2 text-sm text-muted">{doc.translated?.desc || doc.desc}</p>}
-      <p className="mt-3 text-xs text-muted">{t('home.updated', { date: formatDate(doc.updatedAt, i18n.language) })}</p>
+      <p className="mt-3 flex items-center gap-3 text-xs text-muted">
+        <span>{t('home.updated', { date: formatDate(doc.updatedAt, i18n.language) })}</span>
+        {/* Lượt xem + số tim */}
+        {doc.stats && (
+          <span className="ml-auto flex items-center gap-2.5">
+            <span className="flex items-center gap-1" title={t('engagement.views')}>
+              <Eye className="h-3.5 w-3.5" /> {doc.stats.views}
+            </span>
+            <span className="flex items-center gap-1" title={t('engagement.likes')}>
+              <Heart className="h-3.5 w-3.5" /> {doc.stats.likes}
+            </span>
+          </span>
+        )}
+      </p>
     </Link>
   );
 }

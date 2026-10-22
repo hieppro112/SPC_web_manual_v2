@@ -12,7 +12,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { ChevronRight, ClipboardCheck, Clock, FileQuestionMark, Pencil, Printer, Share2, Trash } from 'lucide-react';
+import { ChevronRight, ClipboardCheck, Clock, Eye, FileQuestionMark, Pencil, Printer, Share2, Trash } from 'lucide-react';
 import Badge from '../../components/ui/Badge.tsx';
 import Button from '../../components/ui/Button.tsx';
 import EmptyState from '../../components/ui/EmptyState.tsx';
@@ -27,6 +27,8 @@ import { useCurrentUser } from '../auth/queries.ts';
 import CategoryIcon from '../categories/CategoryIcon.tsx';
 import { useCategories } from '../categories/queries.ts';
 import { categoryPath } from '../categories/tree.ts';
+import LikeButton from '../engagement/LikeButton.tsx';
+import { useRecordView } from '../engagement/queries.ts';
 import { useCompleteTask } from '../guide/queries.ts';
 import { READING_END_ID } from '../reading/api.ts';
 import QuizEntryButton from '../reading/QuizEntryButton.tsx';
@@ -95,6 +97,9 @@ export default function DocPage() {
   // Thời gian đọc tối thiểu: người bị đếm giờ chưa đọc xong -> nút "Bài kiểm tra" bị khóa.
   const { data: reading } = useReadingStatus(doc?.id);
   const quizLocked = !!reading?.tracked && !reading.progress?.completedAt;
+
+  // Mở bài -> +1 lượt xem (mỗi người tối đa 1 lần / ngày, server tự lọc trùng).
+  useRecordView(doc?.id);
 
   // Nhiệm vụ thực hành: đã đọc một tài liệu (bài hướng dẫn có slug "guide-...").
   const complete = useCompleteTask();
@@ -203,9 +208,15 @@ export default function DocPage() {
               {t('doc.updatedBy', { date: formatDateTime(doc.updatedAt, i18n.language), name: doc.updatedBy?.displayName ?? '—' })}
             </span>
             {editor && <span>· {t('doc.version', { n: doc.version })}</span>}
+            {doc.stats && (
+              <span className="flex items-center gap-1" title={t('engagement.viewsHint')}>
+                · <Eye className="h-4 w-4" /> {doc.stats.views}
+              </span>
+            )}
           </div>
 
           <div className="no-print mt-4 flex flex-wrap gap-2">
+            {doc.stats && <LikeButton docId={doc.id} slug={doc.slug} liked={doc.stats.likedByMe} likes={doc.stats.likes} loggedIn={!!user} />}
             {editor && (
               <>
                 <Link to={`/docs/${doc.slug}/edit`}>
