@@ -16,6 +16,7 @@ import { config } from '../config.ts';
 import { HttpError } from '../middleware/errorHandler.ts';
 import { clearAuthCookie, currentUser, requireAuth, setAuthCookie } from '../middleware/auth.ts';
 import { countUsers, createUser, findUserForLogin, getPasswordHash, updateUser, userToJson } from '../repositories/users.ts';
+import { findCompanyEmployee, isEmployeeCheckEnabled } from '../repositories/companyEmployee.ts';
 
 export const authRouter = Router();
 
@@ -92,6 +93,9 @@ authRouter.post('/register', async (req, res) => {
   // Chưa có admin thì không ai duyệt được -> phải setup trước.
   if ((await countUsers()) === 0) {
     throw new HttpError(409, 'Hệ thống chưa có admin. Hãy tạo tài khoản admin trước.');
+  }
+  if(isEmployeeCheckEnabled() && !(await findCompanyEmployee(req.body?.employeeCode ?? ''))) {
+    throw new HttpError(400, 'Mã nhân viên không hợp lệ hoặc không tồn tại trong dữ liệu công ty');
   }
   const { password, ...data } = registerSchema.parse(req.body ?? {});
   // Luôn là "user" (chỉ đọc + làm bài) + pending, client gửi role/status gì
