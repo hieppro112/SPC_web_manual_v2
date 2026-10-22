@@ -3,7 +3,8 @@ import { http, toQuery } from '../../lib/http.ts';
 import type { Doc, DocInput, DocStatus, DocSummary, DocVersion, DocVersionFull } from '../../lib/types.ts';
 
 // lang: ngôn ngữ người đọc -> server kèm tiêu đề / mô tả đã dịch (nếu có).
-export type DocListParams = { q?: string; category?: string; status?: DocStatus; lang?: string };
+// sort: 'views' | 'likes' = xem nhiều / thích nhiều nhất (bỏ trống = mới cập nhật)
+export type DocListParams = { q?: string; category?: string; status?: DocStatus; lang?: string; sort?: string };
 
 export const documentsApi = {
   list: (params: DocListParams) => http.get<DocSummary[]>(`/documents${toQuery(params)}`),

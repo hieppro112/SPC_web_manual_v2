@@ -339,6 +339,22 @@ Chỉ bật khi đã cấu hình view nhân viên `COMPANY_EMPLOYEE_VIEW` trong 
 
 **Giới hạn:** file ảnh / video / file đính kèm (`/uploads/...`) vẫn mở được bằng link trực tiếp (không kiểm tra bộ phận); chỉ trang tài liệu chứa chúng bị ẩn. Thư viện media của biên tập vẫn thấy ảnh của mọi bộ phận.
 
+## Lượt xem 👁 + thả tim ❤ (migration 010)
+
+- **Lượt xem:** mỗi người tính tối đa **1 lượt / bài / ngày**, kể cả editor, admin và khách.
+  - Tài khoản đăng nhập được nhận theo tài khoản.
+  - Khách được nhận theo IP + trình duyệt, nên chỉ gần đúng: nhiều máy dùng chung một IP và cùng loại trình duyệt sẽ bị tính là một người.
+- **Tim:** chỉ người đã đăng nhập thả được; bấm lần nữa để bỏ tim. Không hiện danh sách ai đã thả tim.
+- Số lượt xem và số tim hiện cho mọi người, ở thẻ bài trang chủ và trang đọc. Trang chủ có thêm ô **Sắp xếp**: Mới cập nhật / Xem nhiều nhất / Được thích nhiều nhất.
+- Sửa bài vẫn giữ nguyên số liệu. Xóa bài thì số liệu của bài đó mất theo.
+- Menu tài khoản:
+  - **Bài tôi yêu thích**: các bài đã thả tim, cho mọi tài khoản.
+  - **Thống kê tài liệu**: chỉ admin. Chọn khoảng ngày (mặc định 30 ngày) để xem lượt xem, số người xem, tim trong kỳ và tổng tim của từng bài; xuất được Excel.
+
+**1. Database — chạy TRƯỚC khi restart web:** SSMS, tài khoản quản trị → chạy `server\sql\010_engagement.sql`. Kết quả đúng: có 2 bảng `WebManualDocViews` và `WebManualDocLikes`, `kvh_write` có quyền trên 2 bảng, và có dòng đánh dấu 010. Thiếu bảng thì web không khởi động.
+
+**2. Máy chủ app:** Stop WEB_MANUAL → `git pull` → build client → Start. Không cần cài thư viện mới.
+
 ## Bước 9 (tùy chọn) — Trợ lý AI chạy local
 
 Nút 💬 ở góc màn hình: hỏi đáp trên toàn bộ tài liệu, hỏi về bài đang đọc, tóm tắt bài. App tự tìm đoạn tài liệu liên quan (RAG), phần mềm AI chỉ việc trả lời. Không bật thì nút 💬 tự ẩn, app chạy bình thường.

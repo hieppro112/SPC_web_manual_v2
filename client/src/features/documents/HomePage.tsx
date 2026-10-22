@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { ChevronRight, FilePlus2, FileSearch, FolderOpen } from 'lucide-react';
 import Button from '../../components/ui/Button.tsx';
 import EmptyState from '../../components/ui/EmptyState.tsx';
+import Select from '../../components/ui/Select.tsx';
 import Spinner from '../../components/ui/Spinner.tsx';
 import SearchBox from '../../components/SearchBox.tsx';
 import { isEditor, type DocStatus } from '../../lib/types.ts';
@@ -35,9 +36,12 @@ export default function HomePage() {
   const category = params.get('category') ?? '';
   const statusParam = params.get('status');
   const status = statusParam === 'draft' || statusParam === 'published' ? statusParam : undefined;
+  // Sắp xếp: mới cập nhật (mặc định) / xem nhiều nhất / được thích nhiều nhất — cũng nằm trên URL.
+  const sortParam = params.get('sort');
+  const sort = sortParam === 'views' || sortParam === 'likes' ? sortParam : '';
 
   const { data: categories } = useCategories();
-  const { data: docs, isPending, error, refetch } = useDocuments({ q, category, status });
+  const { data: docs, isPending, error, refetch } = useDocuments({ q, category, status, sort: sort || undefined });
   const categoryName = categories?.find((c) => c.id === category)?.name;
   // Các thể loại cha của thể loại đang chọn (AI -> [IT]) để hiện "IT ›" phía trên tiêu đề.
   const parents = categoryPath(categories ?? [], category).slice(0, -1);
@@ -53,12 +57,14 @@ export default function HomePage() {
     if (category) complete('category');
   }, [category, complete]);
 
-  const setStatus = (value: string) => {
+  // Đổi một tham số trên URL (giữ nguyên các tham số khác). '' = bỏ tham số.
+  const setParam = (name: string, value: string) => {
     const next = new URLSearchParams(params);
-    if (value) next.set('status', value);
-    else next.delete('status');
+    if (value) next.set(name, value);
+    else next.delete(name);
     setParams(next, { replace: true });
   };
+  const setStatus = (value: string) => setParam('status', value);
 
   return (
     <div className="mx-auto max-w-page px-4 py-6 lg:px-8 md:grid md:grid-cols-[220px_1fr] md:gap-8 md:py-8">
@@ -94,23 +100,30 @@ export default function HomePage() {
             <h1 className="text-2xl font-bold">{heading}</h1>
             {docs && <p className="mt-1 text-sm text-muted">{t('home.count', { count: docs.length })}</p>}
           </div>
-          {editor && (
-            <div className="flex rounded-lg border border-border p-0.5" role="group" aria-label={t('home.filterStatus')}>
-              {STATUS_FILTERS.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setStatus(s)}
-                  className={cn(
-                    'rounded-md px-3 py-1 text-sm',
-                    (status ?? '') === s ? 'bg-surface-2 font-medium' : 'text-muted hover:text-fg',
-                  )}
-                >
-                  {s ? t(`status.${s}`) : t('common.all')}
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <Select aria-label={t('engagement.sortLabel')} value={sort} onChange={(e) => setParam('sort', e.target.value)} className="h-9 w-auto">
+              <option value="">{t('engagement.sortNewest')}</option>
+              <option value="views">{t('engagement.sortViews')}</option>
+              <option value="likes">{t('engagement.sortLikes')}</option>
+            </Select>
+            {editor && (
+              <div className="flex rounded-lg border border-border p-0.5" role="group" aria-label={t('home.filterStatus')}>
+                {STATUS_FILTERS.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setStatus(s)}
+                    className={cn(
+                      'rounded-md px-3 py-1 text-sm',
+                      (status ?? '') === s ? 'bg-surface-2 font-medium' : 'text-muted hover:text-fg',
+                    )}
+                  >
+                    {s ? t(`status.${s}`) : t('common.all')}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {isPending ? (

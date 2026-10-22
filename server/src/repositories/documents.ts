@@ -64,7 +64,8 @@ function toJson(row: DocRow) {
 
 // categoryIds: thể loại được chọn + mọi thể loại con cháu (tính sẵn ở route),
 // để bấm "IT" thì thấy cả tài liệu của "AI" nằm bên trong.
-export type DocListFilter = { status?: DocStatus; categoryIds?: number[]; words?: string[] };
+// ids: chỉ lấy đúng các bài này (vd trang "Bài tôi yêu thích").
+export type DocListFilter = { status?: DocStatus; categoryIds?: number[]; words?: string[]; ids?: number[] };
 
 export async function listDocuments(filter: DocListFilter) {
   const where: string[] = [];
@@ -80,6 +81,10 @@ export async function listDocuments(filter: DocListFilter) {
       return `@c${i}`;
     });
     where.push(`d.CategoryId IN (${names.join(', ')})`);
+  }
+  if (filter.ids) {
+    where.push('d.Id IN (SELECT CAST(value AS INT) FROM OPENJSON(@ids))');
+    params.ids = JSON.stringify(filter.ids);
   }
   // Tìm kiếm: MỌI từ phải có trong SearchText (đã bỏ dấu). Mỗi từ là một
   // tham số riêng @w0, @w1... — không bao giờ ghép chữ người dùng gõ vào SQL.
