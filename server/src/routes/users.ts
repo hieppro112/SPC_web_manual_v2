@@ -72,6 +72,7 @@ usersRouter.post('/', async (req, res) => {
     email: email || null,
     status: 'active',
     passwordHash: await bcrypt.hash(password, BCRYPT_ROUNDS),
+    employeeCode: null,
   });
   res.status(201).json(userToJson(user));
 });

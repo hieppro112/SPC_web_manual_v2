@@ -16,6 +16,7 @@ import { config } from '../config.ts';
 import { HttpError } from '../middleware/errorHandler.ts';
 import { clearAuthCookie, currentUser, requireAuth, setAuthCookie } from '../middleware/auth.ts';
 import { countUsers, createUser, findUserForLogin, getPasswordHash, updateUser, userToJson } from '../repositories/users.ts';
+import { findCompanyEmployee, isEmployeeCheckEnabled } from '../repositories/companyEmployee.ts';
 
 export const authRouter = Router();
 
@@ -57,6 +58,7 @@ const registerSchema = z.object({
   displayName: displayNameSchema,
   email: companyEmailSchema,
   password: passwordSchema,
+  employeeCode: z.string().trim().regex(/^[0-9]{1,5}$/, 'Mã nhân viên chỉ chấp nhận số, tối đa 5 ký tự'),
 });
 
 authRouter.get('/me', (_req, res) => {
@@ -81,6 +83,7 @@ authRouter.post('/setup', async (req, res) => {
     role: 'admin',
     status: 'active',
     passwordHash: await bcrypt.hash(password, BCRYPT_ROUNDS),
+    employeeCode: null,
   });
   setAuthCookie(res, user);
   res.status(201).json({ user: userToJson(user) });
@@ -91,10 +94,13 @@ authRouter.post('/register', async (req, res) => {
   if ((await countUsers()) === 0) {
     throw new HttpError(409, 'Hệ thống chưa có admin. Hãy tạo tài khoản admin trước.');
   }
+  if(isEmployeeCheckEnabled() && !(await findCompanyEmployee(req.body?.employeeCode ?? ''))) {
+    throw new HttpError(400, 'Mã nhân viên không hợp lệ hoặc không tồn tại trong dữ liệu công ty');
+  }
   const { password, ...data } = registerSchema.parse(req.body ?? {});
   // Luôn là "user" (chỉ đọc + làm bài) + pending, client gửi role/status gì
   // cũng bị bỏ qua. Admin nâng lên editor khi duyệt hoặc sau đó.
-  await createUser({ ...data, role: 'user', status: 'pending', passwordHash: await bcrypt.hash(password, BCRYPT_ROUNDS) });
+  await createUser({ ...data, role: 'user', status: 'pending', passwordHash: await bcrypt.hash(password, BCRYPT_ROUNDS), employeeCode: data.employeeCode });
   // KHÔNG đăng nhập luôn: phải đợi admin duyệt.
   res.status(201).json({ pending: true });
 });

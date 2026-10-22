@@ -25,6 +25,7 @@ type UserRow = {
   Status: UserStatus;
   CreatedAt: Date;
   UpdatedAt: Date;
+  EmployeeCode:string | null;
 };
 
 export type User = {
@@ -36,6 +37,7 @@ export type User = {
   status: UserStatus;
   createdAt: Date;
   updatedAt: Date;
+  employeeCode: string | null;
 };
 
 // Dạng gửi cho client: id là chuỗi (giống hồi dùng MongoDB). KHÔNG BAO GIỜ
@@ -44,7 +46,7 @@ export function userToJson(user: User) {
   return { ...user, id: String(user.id) };
 }
 
-const USER_COLUMNS = 'Id, Username, DisplayName, Email, Role, Status, CreatedAt, UpdatedAt';
+const USER_COLUMNS = 'Id, Username, DisplayName, Email, Role, Status, CreatedAt, UpdatedAt, EmployeeCode';
 
 function toUser(row: UserRow): User {
   return {
@@ -56,6 +58,7 @@ function toUser(row: UserRow): User {
     status: row.Status,
     createdAt: row.CreatedAt,
     updatedAt: row.UpdatedAt,
+    employeeCode: row.EmployeeCode,
   };
 }
 
@@ -104,15 +107,16 @@ export type NewUser = {
   passwordHash: string;
   role: Role;
   status: UserStatus;
+  employeeCode: string | null;
 };
 
 export async function createUser(data: NewUser): Promise<User> {
   // OUTPUT INSERTED.* : trả về luôn dòng vừa thêm (kèm Id tự tăng), khỏi
   // phải SELECT lại lần nữa.
   const row = await queryOne<UserRow>(
-    `INSERT INTO WebManualUsers (Username, DisplayName, Email, PasswordHash, Role, Status)
+    `INSERT INTO WebManualUsers (Username, DisplayName, Email, PasswordHash, Role, Status, EmployeeCode)
      OUTPUT ${USER_COLUMNS.split(', ').map((c) => `INSERTED.${c}`).join(', ')}
-     VALUES (@username, @displayName, @email, @passwordHash, @role, @status)`,
+     VALUES (@username, @displayName, @email, @passwordHash, @role, @status, @employeeCode)`,
     data,
   );
   return toUser(row!);

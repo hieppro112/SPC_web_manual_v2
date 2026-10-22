@@ -62,6 +62,9 @@ export const config = {
     .map((d) => d.trim().toLowerCase().replace(/^@/, ''))
     .filter(Boolean),
 
+  // Nếu có biến COMPANY_EMPLOYEE_VIEW, thì khi đăng ký sẽ kiểm tra
+  companyEmployeeView: process.env.COMPANY_EMPLOYEE_VIEW ?? '',
+
   // Chỉ bật khi chạy HTTPS. Bật trên HTTP thì trình duyệt không gửi
   // cookie đăng nhập -> không đăng nhập được.
   cookieSecure: process.env.COOKIE_SECURE === 'true',
