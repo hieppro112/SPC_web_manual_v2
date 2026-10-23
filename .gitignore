@@ -13,3 +13,5 @@ server/drawio.tmp
 server/ai-data
 # Log khi chạy trên máy chủ (deploy/start.cmd ghi vào đây)
 logs/
+# Báo cáo xuất ra (npm run ai-cost-report) — có tên tài liệu nội bộ
+reports/

@@ -14,6 +14,7 @@
     "migrate-from-mongo": "node --env-file=.env src/scripts/migrateFromMongo.ts",
     "install-drawio": "node src/scripts/installDrawio.ts",
     "quiz-worker": "node --env-file=quiz-worker.env src/scripts/quizWorker.ts",
+    "ai-cost-report": "node --env-file=.env src/scripts/aiCostReport.ts",
     "typecheck": "tsc"
   },
   "dependencies": {
