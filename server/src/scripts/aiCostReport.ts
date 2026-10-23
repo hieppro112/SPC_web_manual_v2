@@ -425,21 +425,58 @@ try {
     ]);
   });
   const total = summary.addRow([
-    'TỔNG',
+    'TỔNG (cả 3 loại)',
     ...['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'].map((c) => ({ formula: `SUM(${c}4:${c}6)` })),
   ]);
   total.font = { bold: true };
   const batch = summary.addRow([
-    'Nếu dùng Batch API',
+    'TỔNG nếu dùng Batch API',
     '',
     '',
-    '',
-    '',
+    { formula: `D${total.number}` },
+    { formula: `E${total.number}` },
     ...['F', 'G', 'H', 'I', 'J', 'K'].map((c) => ({ formula: `${c}${total.number}*(1-${BATCH})` })),
   ]);
   batch.font = { italic: true };
+  // Cách dùng hợp lý: chỉ Dịch bài (dòng 5) đi Batch, hai loại còn lại giá đầy đủ.
+  const mixed = summary.addRow([
+    'Đề xuất: chỉ Dịch bài dùng Batch',
+    '',
+    '',
+    { formula: `D${total.number}` },
+    { formula: `E${total.number}` },
+    ...['F', 'G', 'H', 'I', 'J', 'K'].map((c) => ({ formula: `${c}4+${c}6+${c}5*(1-${BATCH})` })),
+  ]);
+  mixed.font = { bold: true, color: { argb: 'FF047857' } };
 
-  summary.getColumn(1).width = 20;
+  // Giải thích ngay dưới bảng để người đọc file không phải hỏi lại.
+  summary.addRow([]);
+  const explain = [
+    ['Đọc bảng thế nào', true],
+    ['• Mỗi dòng là một loại việc mà quiz-worker giao cho Claude. Chi tiết từng việc nằm ở sheet cùng tên.', false],
+    ['• "Số việc đã gọi Claude": số việc thật sự được gửi cho Claude (việc bị hủy / còn chờ không tính).', false],
+    ['• "Số lần gọi": một việc có thể gọi Claude nhiều lần — file PowerPoint dài chia ~10 slide một lần, bài dài chia nhiều phần, mỗi ngôn ngữ dịch là một lần riêng.', false],
+    ['• "Token vào": chữ gửi cho Claude (lời dặn + nội dung tài liệu). "Token ra": chữ Claude viết trả lời, đã cộng 25% cho phần suy nghĩ (thinking).', false],
+    ['• Cột USD / VND: số tiền NẾU cùng khối lượng việc đó chạy qua Claude API, tính riêng cho từng model. Chỉ chọn MỘT model để dùng → chỉ đọc một cột, không cộng 3 cột lại.', false],
+    ['', false],
+    ['TỔNG (cả 3 loại)', true],
+    ['• = Nhập PowerPoint + Dịch bài + Tạo đề cộng lại: toàn bộ việc worker đã làm từ trước tới lúc lập file này.', false],
+    ['• Đây là tổng tích lũy từ đầu, không phải chi phí một tháng.', false],
+    ['', false],
+    ['TỔNG nếu dùng Batch API', true],
+    ['• Batch API là cách gửi request THEO LÔ của Claude API: gom nhiều việc gửi một lần, Claude xử lý trong vòng tối đa 24 giờ (thường dưới 1 giờ), đổi lại giá rẻ hơn 50%.', false],
+    ['• Số token GIỮ NGUYÊN (cùng prompt, cùng model, cùng câu trả lời) — chỉ số tiền giảm một nửa. Tỷ lệ giảm lấy từ sheet "Giả định".', false],
+    ['• Dòng này giả định TOÀN BỘ việc đều gửi theo lô. Thực tế chỉ "Dịch bài" hợp với Batch (không ai ngồi chờ); "Tạo đề" và "Nhập PowerPoint" người dùng đang chờ kết quả nên gọi API thường, giá đầy đủ.', false],
+    ['', false],
+    ['Đề xuất: chỉ Dịch bài dùng Batch', true],
+    ['• Dịch bài gửi theo lô (giảm 50%), Nhập PowerPoint + Tạo đề gọi API thường (giá đầy đủ). Đây là con số sát thực tế nhất nếu chuyển sang API.', false],
+  ] as const;
+  for (const [text, bold] of explain) {
+    const r = summary.addRow([text]);
+    if (bold) r.font = { bold: true };
+  }
+
+  summary.getColumn(1).width = 26;
   for (let c = 2; c <= 5; c++) {
     summary.getColumn(c).width = 13;
     summary.getColumn(c).numFmt = '#,##0';
