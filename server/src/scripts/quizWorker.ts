@@ -94,9 +94,20 @@ function runClaude(job: ClaudeTask): Promise<unknown> {
     child.on('close', (code) => {
       clearTimeout(timer);
       try {
-        const result = JSON.parse(out) as { is_error?: boolean; result?: string; structured_output?: unknown; total_cost_usd?: number };
+        const result = JSON.parse(out) as {
+          is_error?: boolean;
+          result?: string;
+          structured_output?: unknown;
+          total_cost_usd?: number;
+          modelUsage?: Record<string, { inputTokens?: number; outputTokens?: number; cacheReadInputTokens?: number; cacheCreationInputTokens?: number }>;
+        };
         if (result.is_error) return reject(new Error(`Claude báo lỗi: ${String(result.result).slice(0, 300)}`));
         log(`   Claude xong (exit ${code}, tương đương ~$${result.total_cost_usd?.toFixed(3) ?? '?'} nếu tính theo API)`);
+        // Token THẬT theo từng model (để đối chiếu với báo cáo ước tính npm run ai-cost-report).
+        for (const [model, u] of Object.entries(result.modelUsage ?? {})) {
+          const input = (u.inputTokens ?? 0) + (u.cacheReadInputTokens ?? 0) + (u.cacheCreationInputTokens ?? 0);
+          log(`   ↳ ${model}: vào ${input.toLocaleString('vi-VN')} token, ra ${(u.outputTokens ?? 0).toLocaleString('vi-VN')} token`);
+        }
         resolve(result.structured_output ?? JSON.parse(String(result.result)));
       } catch {
         reject(new Error(`Không đọc được kết quả Claude (exit ${code}): ${(err || out).slice(0, 300)}`));
