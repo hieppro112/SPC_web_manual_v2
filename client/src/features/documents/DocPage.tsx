@@ -37,6 +37,7 @@ import ReadingTracker from '../reading/ReadingTracker.tsx';
 import { LANGS, type Lang } from '../translations/api.ts';
 import { useDocTranslation } from '../translations/queries.ts';
 import TranslationBar from '../translations/TranslationBar.tsx';
+import DeckDownloadButton from './DeckDownloadButton.tsx';
 import DocContent from './DocContent.tsx';
 import ShareDialog from './ShareDialog.tsx';
 import Toc from './Toc.tsx';
@@ -245,6 +246,8 @@ export default function DocPage() {
             <Button size="sm" variant="secondary" onClick={() => window.print()}>
               <Printer className="h-4 w-4" /> {t('common.print')}
             </Button>
+            {/* Tải bài dạng slide PowerPoint (bản gốc + bản đã dịch). */}
+            <DeckDownloadButton docId={doc.id} />
             {/* Bài kiểm tra / ôn tập CỦA BÀI NÀY (khóa tới khi đọc đủ thời gian). */}
             <QuizEntryButton docId={doc.id} loggedIn={!!user} locked={quizLocked} />
             {/* Tạo bài kiểm tra từ chính tài liệu này (Claude / AI nội bộ / tự soạn; chỉ bài đã xuất bản). */}

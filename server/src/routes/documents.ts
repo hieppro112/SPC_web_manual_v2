@@ -13,6 +13,8 @@
 //   GET    /:id/versions           (editor)                 danh sách phiên bản
 //   GET    /:id/versions/:version  (editor)                 một phiên bản đầy đủ
 //   POST   /:id/versions/:version/restore (editor)          khôi phục
+//   GET    /:id/pptx-info                                   ngôn ngữ tải được PowerPoint + số slide
+//   GET    /:id/pptx           ?lang=vi|en|ja               tải file PowerPoint của bài
 
 import { Router, type Response } from 'express';
 import { z } from 'zod';
@@ -39,6 +41,8 @@ import { assertCanPostTo, assertDocVisible, canSee, requestScope } from '../serv
 import { translatedTitles } from '../repositories/translations.ts';
 import { requestIndexSync } from '../services/ai/searchIndex.ts';
 import { createDocument, updateDocument, type DocumentInput } from '../services/documents.ts';
+import { deckInfo, ensureDeck } from '../services/pptx/exportStore.ts';
+import { LANGS, detectLang, type Lang } from '../services/translate/texts.ts';
 import { parseId, tryParseId } from '../utils/ids.ts';
 import { removeDiacritics } from '../utils/slugify.ts';
 
@@ -180,6 +184,28 @@ documentsRouter.delete('/:id', requireEditor, async (req, res) => {
   if (!(await deleteDocument(Number(doc.id)))) throw new HttpError(404, 'Không tìm thấy tài liệu');
   // 204 No Content: thành công, không có gì để trả về.
   res.status(204).end();
+});
+
+// ---------- PowerPoint của bài ----------
+// Ai đọc được bài thì tải được (readable: nháp chỉ editor, đúng bộ phận).
+
+documentsRouter.get('/:id/pptx-info', async (req, res) => {
+  const doc = await readable(await findDocumentById(parseId(req.params.id)), res);
+  res.json(await deckInfo(doc));
+});
+
+documentsRouter.get('/:id/pptx', async (req, res) => {
+  const doc = await readable(await findDocumentById(parseId(req.params.id)), res);
+  const lang = (LANGS as readonly string[]).includes(String(req.query.lang)) ? (req.query.lang as Lang) : detectLang(doc.title, doc.blocks ?? []);
+  const deck = await ensureDeck(doc, lang);
+  // Tên file tiếng Việt / tiếng Nhật: dạng filename* (UTF-8) cho trình duyệt hiển thị đúng.
+  const name = `${doc.title.replace(/[\\/:*?"<>|]+/g, ' ').trim().slice(0, 120)} (${lang.toUpperCase()}).pptx`;
+  res.set({
+    'Content-Type': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'Content-Disposition': `attachment; filename="slides-${doc.id}-${lang}.pptx"; filename*=UTF-8''${encodeURIComponent(name)}`,
+    'Cache-Control': 'private, no-cache',
+  });
+  res.sendFile(deck.file);
 });
 
 // ---------- Lịch sử phiên bản ----------

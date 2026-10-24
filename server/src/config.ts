@@ -51,6 +51,11 @@ export const config = {
   uploadDir: path.resolve(process.env.UPLOAD_DIR ?? 'uploads'),
   maxUploadMb: Number(process.env.MAX_UPLOAD_MB ?? 500),
 
+  // File PowerPoint tạo từ bài viết. Cố ý KHÔNG nằm trong uploadDir: thư mục đó
+  // được phục vụ công khai qua /uploads, còn file PPT phải đi qua API để kiểm
+  // tra quyền xem bài (phân quyền theo bộ phận).
+  exportDir: path.resolve(process.env.EXPORT_DIR ?? 'exports'),
+
   // Địa chỉ mà ĐIỆN THOẠI dùng để mở trang upload khi quét QR, vd
   // http://192.168.1.20:5000. Để trống thì client tự đoán theo IP mạng LAN.
   publicBaseUrl: process.env.PUBLIC_BASE_URL ?? '',

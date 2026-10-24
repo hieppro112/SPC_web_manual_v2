@@ -19,6 +19,7 @@ import {
 import { slugify } from '../utils/slugify.ts';
 import { buildDesc, buildSearchText } from './documentText.ts';
 import { requestTranslation } from './translate/queue.ts';
+import { requestDeckExports } from './pptx/exportStore.ts';
 
 export type DocumentInput = {
   title: string;
@@ -50,8 +51,10 @@ export async function createDocument(input: DocumentInput, userId: number, fixed
     await insertVersion({ ...input, documentId: id, version: 1, userId, restoredFrom: null }, tx);
     return (await findDocumentById(id, tx))!;
   });
-  // Lưu xong (ngoài transaction) mới đưa vào hàng đợi dịch sang 2 ngôn ngữ còn lại.
+  // Lưu xong (ngoài transaction) mới đưa vào hàng đợi dịch sang 2 ngôn ngữ còn lại,
+  // và tạo sẵn file PowerPoint (chỉ bài đã xuất bản — hàm tự kiểm tra).
   requestTranslation(doc);
+  requestDeckExports(doc.id);
   return doc;
 }
 
@@ -64,5 +67,6 @@ export async function updateDocument(id: number, input: DocumentInput, userId: n
     return (await findDocumentById(id, tx))!;
   });
   requestTranslation(doc);
+  requestDeckExports(doc.id);
   return doc;
 }

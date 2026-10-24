@@ -33,6 +33,7 @@ import {
 import { assertDocVisible } from '../services/access.ts';
 import { requestIndexSync } from '../services/ai/searchIndex.ts';
 import { isLegacyGuideCopy } from '../services/translate/queue.ts';
+import { requestDeckExports } from '../services/pptx/exportStore.ts';
 import { buildDesc, buildSearchText } from '../services/documentText.ts';
 import { applyTranslation, mergeForRead, planHasWork, planParts, planTranslation } from '../services/translate/engine.ts';
 import { LANGS, applyTexts, detectLang, extractTexts, type Texts } from '../services/translate/texts.ts';
@@ -116,6 +117,7 @@ translationsRouter.put('/:docId/:lang', requireEditor, async (req, res) => {
     currentUser(res).id,
   );
   requestIndexSync();
+  requestDeckExports(doc.id); // bản dịch sửa tay -> tạo lại PowerPoint ngôn ngữ đó
   res.status(204).end();
 });
 
@@ -152,6 +154,7 @@ translateWorkerRouter.post('/claim', async (_req, res) => {
       await applyTranslation(plan, [], claimed.force);
       await finishTranslationJob(source.id, source.version);
       requestIndexSync();
+      requestDeckExports(source.id);
       continue;
     }
     const parts = planParts(plan, config.translate.maxCharsPerPart);
@@ -182,6 +185,7 @@ translateWorkerRouter.post('/:id/complete', async (req, res) => {
   if (missing) await failTranslationJob(id, `Claude bỏ sót ${missing} mục, sẽ dịch lại phần còn thiếu`);
   else await finishTranslationJob(id, version);
   requestIndexSync();
+  requestDeckExports(id); // có bản dịch mới -> tạo PowerPoint EN / JA
   console.log(`✅ Dịch bài #${id} (v${version}) xong${missing ? `, còn thiếu ${missing} mục` : ''}`);
   res.json({ missing });
 });

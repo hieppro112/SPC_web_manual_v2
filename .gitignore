@@ -15,3 +15,5 @@ server/ai-data
 logs/
 # Báo cáo xuất ra (npm run ai-cost-report) — có tên tài liệu nội bộ
 reports/
+# File PowerPoint tạo từ bài viết (tự tạo lại được)
+server/exports

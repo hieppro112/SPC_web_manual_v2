@@ -37,6 +37,15 @@ export function useDocument(slug: string | undefined) {
   });
 }
 
+// Thông tin file PowerPoint — chỉ tải khi người dùng mở menu (enabled).
+export function useDeckInfo(docId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['documents', 'deck', docId],
+    queryFn: () => documentsApi.deckInfo(docId),
+    enabled,
+  });
+}
+
 // Ghi tài liệu làm thay đổi cả số đếm trong thể loại -> làm mới cả hai.
 function useInvalidateDocs() {
   const queryClient = useQueryClient();
