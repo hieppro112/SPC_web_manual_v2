@@ -79,6 +79,10 @@ export const vi = {
   },
   doc: {
     updatedBy: 'Cập nhật {{date}} bởi {{name}}',
+    deckHint: 'Tải bài viết dạng slide PowerPoint (16:9, mẫu công ty).',
+    deckSlides: '{{n}} slide',
+    deckNotReady: 'Chưa tạo sẵn — bấm để tạo (vài giây)',
+    deckLong: 'Bài dài ({{n}} slide), file có thể lớn.',
     version: 'Phiên bản {{n}}',
     draftBanner: 'Bản nháp — chỉ người đã đăng nhập mới thấy. Chọn “Đã xuất bản” trong trình soạn để công khai.',
     toc: 'Mục lục',

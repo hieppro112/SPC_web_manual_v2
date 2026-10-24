@@ -75,6 +75,10 @@ export const en: Messages = {
   },
   doc: {
     updatedBy: 'Updated {{date}} by {{name}}',
+    deckHint: 'Download this document as PowerPoint slides (16:9, company template).',
+    deckSlides: '{{n}} slides',
+    deckNotReady: 'Not generated yet — click to create (a few seconds)',
+    deckLong: 'Long document ({{n}} slides), the file may be large.',
     version: 'Version {{n}}',
     draftBanner: 'Draft — only signed-in users can see this. Choose “Published” in the editor to make it public.',
     toc: 'On this page',

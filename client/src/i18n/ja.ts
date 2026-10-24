@@ -75,6 +75,10 @@ export const ja: Messages = {
   },
   doc: {
     updatedBy: '{{date}} に {{name}} が更新',
+    deckHint: 'この文書を PowerPoint スライド（16:9、会社テンプレート）でダウンロードします。',
+    deckSlides: '{{n}} 枚',
+    deckNotReady: '未作成 — クリックすると作成します（数秒）',
+    deckLong: '長い文書です（{{n}} 枚）。ファイルが大きくなる場合があります。',
     version: 'バージョン {{n}}',
     draftBanner: '下書きです。ログインしたユーザーのみ表示されます。公開するにはエディタで「公開中」を選んでください。',
     toc: '目次',
