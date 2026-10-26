@@ -6,7 +6,11 @@
 //   7 bài hướng dẫn tiếng Việt (slug cố định guide-vi-0X-...). Bản tiếng Anh /
 //     tiếng Nhật do tính năng dịch tự động tạo, không viết tay nữa.
 //   3 bài ôn tập (vi / en / ja). "Xem lại" mở bài gốc với ?lang= của đề.
-// Cái đã có thì GIỮ NGUYÊN (kể cả đã bị sửa) -> bấm lại bao nhiêu lần cũng an toàn.
+// Bài hướng dẫn đã có:
+//   vẫn là một bản mẫu CŨ (chưa ai sửa tay, xem content/history.ts) -> cập nhật lên
+//     nội dung mới (tạo phiên bản mới, lịch sử giữ nguyên; tự dịch lại + tạo lại PowerPoint)
+//   đã có người sửa tay -> GIỮ NGUYÊN
+// -> bấm lại bao nhiêu lần cũng an toàn. Bài ôn tập đã có luôn giữ nguyên.
 // Riêng bài ôn tập cũ có link "Xem lại" trỏ vào bản en/ja viết tay (đã bỏ) thì được
 // sửa link về bài gốc.
 // Chỉ ghi dữ liệu (INSERT / UPDATE), không tạo bảng -> tài khoản kvh_write làm được.
@@ -16,7 +20,8 @@ import { createCategory } from '../../repositories/categories.ts';
 import { findDocumentBySlug, slugExists } from '../../repositories/documents.ts';
 import { findCategoryIdByName, findQuizIdByTitle } from '../../repositories/guide.ts';
 import { createQuiz, findQuiz, updateQuiz } from '../../repositories/quizzes.ts';
-import { createDocument } from '../documents.ts';
+import { createDocument, updateDocument } from '../documents.ts';
+import { PAST_TEMPLATE_HASHES, guideHash } from './content/history.ts';
 import { QUIZ_LANGS, questionSchema, type QuizLang, type QuizQuestion } from '../quiz/types.ts';
 import { en } from './content/en.ts';
 import { ja } from './content/ja.ts';
@@ -37,22 +42,31 @@ function fixLegacySource(q: QuizQuestion, lang: QuizLang): QuizQuestion {
   return doc && q.source ? { ...q, source: { title: q.source.title, url: reviewUrl(doc.slug, lang) } } : q;
 }
 
-export type SeedResult = { createdDocs: number; skippedDocs: number; createdQuizzes: number; skippedQuizzes: number };
+export type SeedResult = { createdDocs: number; updatedDocs: number; skippedDocs: number; createdQuizzes: number; skippedQuizzes: number };
 
 export async function seedGuide(userId: number): Promise<SeedResult> {
-  const result: SeedResult = { createdDocs: 0, skippedDocs: 0, createdQuizzes: 0, skippedQuizzes: 0 };
+  const result: SeedResult = { createdDocs: 0, updatedDocs: 0, skippedDocs: 0, createdQuizzes: 0, skippedQuizzes: 0 };
   // Tạo mới thì đánh dấu "Dùng chung": mọi bộ phận (và khách) đều đọc được hướng dẫn.
   const categoryId =
     (await findCategoryIdByName(ROOT_CATEGORY, null)) ?? Number((await createCategory(ROOT_CATEGORY, 'BookOpen', null, true)).id);
 
   // Bài hướng dẫn: tạo theo thứ tự 01, 02... (slug cố định để trang /guide nhận ra).
   for (const doc of GUIDE_DOCS) {
-    if (await slugExists(doc.slug)) {
-      result.skippedDocs++;
-      continue;
-    }
     // parseBlocks: cùng luật kiểm tra như khi người dùng lưu -> nội dung mẫu sai là báo ngay.
     const blocks = parseBlocks(toBlocks(doc.slug, doc.blocks));
+    if (await slugExists(doc.slug)) {
+      const existing = (await findDocumentBySlug(doc.slug))!;
+      const current = guideHash(existing.title, existing.blocks);
+      // Còn là bản mẫu cũ (chưa ai sửa) và khác bản mới -> cập nhật. Giữ thể loại + trạng thái hiện tại.
+      if (current !== guideHash(doc.title, blocks) && PAST_TEMPLATE_HASHES.has(current)) {
+        const input = { title: doc.title, categoryId: Number(existing.category?.id ?? categoryId), status: existing.status, blocks };
+        await updateDocument(Number(existing.id), input, userId);
+        result.updatedDocs++;
+      } else {
+        result.skippedDocs++;
+      }
+      continue;
+    }
     await createDocument({ title: doc.title, categoryId, status: 'published', blocks }, userId, doc.slug);
     result.createdDocs++;
   }
