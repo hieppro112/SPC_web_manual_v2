@@ -15,6 +15,7 @@
     "install-drawio": "node src/scripts/installDrawio.ts",
     "quiz-worker": "node --env-file=quiz-worker.env src/scripts/quizWorker.ts",
     "ai-cost-report": "node --env-file=.env src/scripts/aiCostReport.ts",
+    "guide-hashes": "node src/scripts/guideHashes.ts",
     "typecheck": "tsc"
   },
   "dependencies": {

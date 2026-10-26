@@ -223,7 +223,8 @@ function SeedPanel() {
           loading={seed.isPending}
           onClick={() =>
             seed.mutate(undefined, {
-              onSuccess: (r) => toast.success(t('guide.seedDone', { docs: r.createdDocs, quizzes: r.createdQuizzes, skipped: r.skippedDocs + r.skippedQuizzes })),
+              onSuccess: (r) =>
+                toast.success(t('guide.seedDone', { docs: r.createdDocs, updated: r.updatedDocs, quizzes: r.createdQuizzes, skipped: r.skippedDocs + r.skippedQuizzes })),
               onError: (err) => toast.error(errorMessage(err)),
             })
           }

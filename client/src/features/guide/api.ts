@@ -19,7 +19,8 @@ export type GuideReportRow = {
   total: number;
   lastAt: string | null;
 };
-export type SeedResult = { createdDocs: number; skippedDocs: number; createdQuizzes: number; skippedQuizzes: number };
+// updatedDocs: bài hướng dẫn còn là bản mẫu cũ (chưa ai sửa tay) được cập nhật lên nội dung mới.
+export type SeedResult = { createdDocs: number; updatedDocs: number; skippedDocs: number; createdQuizzes: number; skippedQuizzes: number };
 
 export const guideApi = {
   docs: (lang: string) => http.get<{ lang: QuizLang; docs: GuideDoc[] }>(`/guide/docs?lang=${encodeURIComponent(lang)}`),
