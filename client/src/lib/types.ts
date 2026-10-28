@@ -57,6 +57,10 @@ export type DocSummary = {
   translated?: { title: string; desc: string } | null;
   // Lượt xem (mỗi người tối đa 1 lần / ngày) + số tim
   stats?: { views: number; likes: number };
+  // Chỉ có trong danh sách: ảnh bìa (ảnh đầu tiên trong bài, null = bài không có ảnh)
+  // + số phút đọc ước tính theo độ dài chữ.
+  cover?: string | null;
+  readMinutes?: number;
 };
 
 // readingSeconds: thời gian đọc tối thiểu (giây), null = không bắt buộc.

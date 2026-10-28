@@ -1,6 +1,7 @@
 // features/engagement/queries.ts
 import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import type { Doc } from '../../lib/types.ts';
 import { engagementApi } from './api.ts';
 
@@ -38,7 +39,19 @@ export function useToggleLike(slug: string) {
 }
 
 export function useFavorites() {
-  return useQuery({ queryKey: ['engagement', 'favorites'], queryFn: engagementApi.favorites });
+  const { i18n } = useTranslation();
+  return useQuery({ queryKey: ['engagement', 'favorites', i18n.language], queryFn: () => engagementApi.favorites(i18n.language) });
+}
+
+// Khu "Xem nhiều 7 ngày" ở trang chủ. Số liệu thay đổi chậm -> giữ 5 phút mới hỏi lại.
+export function useTrending(enabled = true) {
+  const { i18n } = useTranslation();
+  return useQuery({
+    queryKey: ['engagement', 'trending', i18n.language],
+    queryFn: () => engagementApi.trending(i18n.language),
+    enabled,
+    staleTime: 5 * 60_000,
+  });
 }
 
 export function useEngagementReport(from: string, to: string) {

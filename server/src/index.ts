@@ -33,6 +33,7 @@ import { guideRouter } from './routes/guide.ts';
 import { translateWorkerRouter, translationsRouter } from './routes/translations.ts';
 import { readingRouter } from './routes/reading.ts';
 import { engagementRouter } from './routes/engagement.ts';
+import { thumbsRouter } from './routes/thumbs.ts';
 import { startTranslationSweep } from './services/translate/queue.ts';
 import { deleteOldAttempts } from './repositories/quizzes.ts';
 import { metaRouter } from './routes/meta.ts';
@@ -105,6 +106,8 @@ ensureUploadDirs();
 app.use('/uploads/tmp', (_req, res) => {
   res.status(404).end();
 });
+// Ảnh thu nhỏ cho thẻ ở trang chủ: tạo lần đầu khi có người xin (xem routes/thumbs.ts).
+app.use('/uploads/thumbs', thumbsRouter);
 app.use(
   '/uploads',
   express.static(config.uploadDir, {

@@ -113,6 +113,22 @@
   }
 }
 
+/* Ảnh bìa dự phòng của thẻ tài liệu (bài không có ảnh): nền chuyển màu theo
+   thể loại, cùng thể loại luôn cùng màu (xem features/documents/cover.ts).
+   Theme tối dùng tông trầm hơn để không chói giữa nền tối. */
+.cover-tone-0 { background: linear-gradient(135deg, #3b82f6, #6366f1); }
+.cover-tone-1 { background: linear-gradient(135deg, #10b981, #0d9488); }
+.cover-tone-2 { background: linear-gradient(135deg, #f59e0b, #ea580c); }
+.cover-tone-3 { background: linear-gradient(135deg, #ec4899, #e11d48); }
+.cover-tone-4 { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+.cover-tone-5 { background: linear-gradient(135deg, #06b6d4, #2563eb); }
+.dark .cover-tone-0 { background: linear-gradient(135deg, #1e3a8a, #3730a3); }
+.dark .cover-tone-1 { background: linear-gradient(135deg, #065f46, #115e59); }
+.dark .cover-tone-2 { background: linear-gradient(135deg, #92400e, #9a3412); }
+.dark .cover-tone-3 { background: linear-gradient(135deg, #9d174d, #9f1239); }
+.dark .cover-tone-4 { background: linear-gradient(135deg, #5b21b6, #6d28d9); }
+.dark .cover-tone-5 { background: linear-gradient(135deg, #155e75, #1e40af); }
+
 /* Văn bản Markdown trong tài liệu: dùng plugin typography rồi nối màu
    của nó vào token của app, để sáng/tối tự đúng. */
 .doc-prose {

@@ -5,27 +5,35 @@
 // -> bấm F5, nút Back, gửi link cho đồng nghiệp đều giữ nguyên bộ lọc.
 // 🔸 Flutter: giống đưa tham số vào route của go_router thay vì giữ trong State.
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { ChevronRight, FilePlus2, FileSearch, FolderOpen } from 'lucide-react';
+import { ChevronRight, FilePlus2, FileSearch, FolderOpen, LayoutGrid, List } from 'lucide-react';
 import Button from '../../components/ui/Button.tsx';
 import EmptyState from '../../components/ui/EmptyState.tsx';
 import Select from '../../components/ui/Select.tsx';
-import Spinner from '../../components/ui/Spinner.tsx';
 import SearchBox from '../../components/SearchBox.tsx';
 import { isEditor, type DocStatus } from '../../lib/types.ts';
-import { cn, errorMessage } from '../../lib/utils.ts';
+import { cn, errorMessage, storage } from '../../lib/utils.ts';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.ts';
 import { useCurrentUser } from '../auth/queries.ts';
 import CategoryNav from '../categories/CategoryNav.tsx';
 import { useCategories } from '../categories/queries.ts';
 import { useCompleteTask } from '../guide/queries.ts';
 import { categoryPath } from '../categories/tree.ts';
-import DocCard from './DocCard.tsx';
+import DocCard, { DocCardSkeleton, DocRow } from './DocCard.tsx';
+import FeaturedSection from './FeaturedSection.tsx';
 import { useDocuments } from './queries.ts';
 
 const STATUS_FILTERS: (DocStatus | '')[] = ['', 'published', 'draft'];
+type HomeView = 'grid' | 'list';
+const VIEW_KEY = 'home.view';
+// Ít bài quá thì khu "Nổi bật" chỉ lặp lại đúng mấy bài bên dưới -> không hiện.
+const FEATURED_MIN_DOCS = 4;
+const VIEW_OPTIONS = [
+  { value: 'grid', icon: LayoutGrid, label: 'home.viewGrid' },
+  { value: 'list', icon: List, label: 'home.viewList' },
+] as const;
 
 export default function HomePage() {
   const { t } = useTranslation();
@@ -66,6 +74,15 @@ export default function HomePage() {
   };
   const setStatus = (value: string) => setParam('status', value);
 
+  // Kiểu hiển thị lưới / danh sách: sở thích riêng mỗi người -> nhớ trong trình duyệt (không cần lên URL).
+  const [view, setViewState] = useState<HomeView>(() => (storage.get(VIEW_KEY) === 'list' ? 'list' : 'grid'));
+  const setView = (v: HomeView) => {
+    setViewState(v);
+    storage.set(VIEW_KEY, v);
+  };
+  // Khu "Nổi bật" chỉ ở trang chủ gốc: đang tìm / lọc / sắp xếp thì người dùng đang muốn thứ khác.
+  const showFeatured = !q && !category && !status && !sort && (docs?.length ?? 0) >= FEATURED_MIN_DOCS;
+
   return (
     <div className="mx-auto max-w-page px-4 py-6 lg:px-8 md:grid md:grid-cols-[220px_1fr] md:gap-8 md:py-8">
       <aside className="mb-6 md:mb-0">
@@ -81,8 +98,9 @@ export default function HomePage() {
         </div>
       </aside>
 
-      <main>
+      <main className="min-w-0">
         <SearchBox className="mb-4 md:hidden" />
+        {showFeatured && docs && <FeaturedSection docs={docs} />}
         <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
           <div>
             {!q && parents.length > 0 && (
@@ -101,6 +119,21 @@ export default function HomePage() {
             {docs && <p className="mt-1 text-sm text-muted">{t('home.count', { count: docs.length })}</p>}
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <div className="flex rounded-lg border border-border p-0.5" role="group">
+              {VIEW_OPTIONS.map(({ value, icon: Icon, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setView(value)}
+                  title={t(label)}
+                  aria-label={t(label)}
+                  aria-pressed={view === value}
+                  className={cn('rounded-md p-1.5', view === value ? 'bg-surface-2 text-fg' : 'text-muted hover:text-fg')}
+                >
+                  <Icon className="h-4 w-4" />
+                </button>
+              ))}
+            </div>
             <Select aria-label={t('engagement.sortLabel')} value={sort} onChange={(e) => setParam('sort', e.target.value)} className="h-9 w-auto">
               <option value="">{t('engagement.sortNewest')}</option>
               <option value="views">{t('engagement.sortViews')}</option>
@@ -127,7 +160,11 @@ export default function HomePage() {
         </div>
 
         {isPending ? (
-          <Spinner />
+          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+            {Array.from({ length: 8 }, (_, i) => (
+              <DocCardSkeleton key={i} />
+            ))}
+          </div>
         ) : error ? (
           <EmptyState
             icon={FolderOpen}
@@ -149,8 +186,14 @@ export default function HomePage() {
               ) : undefined
             }
           />
+        ) : view === 'list' ? (
+          <div data-tour="doc-list" className="space-y-3">
+            {docs.map((doc) => (
+              <DocRow key={doc.id} doc={doc} />
+            ))}
+          </div>
         ) : (
-          <div data-tour="doc-list" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          <div data-tour="doc-list" className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {docs.map((doc) => (
               <DocCard key={doc.id} doc={doc} />
             ))}

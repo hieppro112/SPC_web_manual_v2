@@ -4,6 +4,7 @@
 //   POST /api/engagement/:docId/view        ghi một lượt xem (mỗi người / khách 1 lần mỗi ngày)
 //   PUT  /api/engagement/:docId/like        { liked } thả / bỏ tim -> { liked, likes }   đã đăng nhập
 //   GET  /api/engagement/favorites          "Bài tôi yêu thích"                         đã đăng nhập
+//   GET  /api/engagement/trending           xem nhiều 7 ngày qua (trang chủ)            ai cũng xem
 //   GET  /api/engagement/report?from&to     top bài xem / thích nhiều                   admin
 //   GET  /api/engagement/report.xlsx?from&to   xuất Excel                               admin
 //
@@ -16,7 +17,8 @@ import { z } from 'zod';
 import { HttpError } from '../middleware/errorHandler.ts';
 import { currentUser, isEditor, requireAdmin, requireAuth } from '../middleware/auth.ts';
 import { findDocumentById, listDocuments, type FullDocument } from '../repositories/documents.ts';
-import { engagementReport, isLiked, likedDocIds, localDate, recordView, setLike, statsFor } from '../repositories/engagement.ts';
+import { engagementReport, isLiked, likedDocIds, localDate, recordView, setLike, statsFor, topViewed } from '../repositories/engagement.ts';
+import { translatedTitles } from '../repositories/translations.ts';
 import { assertDocVisible, requestScope } from '../services/access.ts';
 import { parseId } from '../utils/ids.ts';
 
@@ -52,26 +54,41 @@ engagementRouter.put('/:docId/like', requireAuth, async (req, res) => {
   res.json({ liked, likes: stats.likes });
 });
 
-// Bài tôi yêu thích: chỉ bài còn đọc được (đã xuất bản / editor, đúng bộ phận), giữ thứ tự mới thả trước.
-engagementRouter.get('/favorites', requireAuth, async (_req, res) => {
-  const ids = await likedDocIds(currentUser(res).id);
-  if (!ids.length) {
-    res.json([]);
-    return;
-  }
+// Lấy đúng các bài `ids` mà người đang xem đọc được (đã xuất bản / editor, đúng bộ phận),
+// giữ nguyên thứ tự của `ids`, kèm tiêu đề dịch (?lang) + lượt xem / tim như thẻ ở trang chủ.
+async function cardsFor(ids: number[], req: Request, res: Response, publishedOnly = false) {
+  if (!ids.length) return [];
   const scope = await requestScope(res);
   const docs = await listDocuments({
     ids,
-    status: isEditor(res.locals.user) ? undefined : 'published',
+    status: publishedOnly || !isEditor(res.locals.user) ? 'published' : undefined,
     categoryIds: scope.all ? undefined : [...scope.categoryIds],
   });
-  const stats = await statsFor(docs.map((d) => Number(d.id)));
+  const docIds = docs.map((d) => Number(d.id));
+  const { lang } = req.query;
+  const [stats, titles] = await Promise.all([
+    statsFor(docIds),
+    typeof lang === 'string' && /^(vi|en|ja)$/.test(lang) ? translatedTitles(lang, docIds) : new Map<string, { title: string; desc: string }>(),
+  ]);
   const order = new Map(ids.map((id, i) => [String(id), i]));
-  res.json(
-    docs
-      .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))
-      .map((d) => ({ ...d, stats: stats.get(Number(d.id)) })),
-  );
+  return docs
+    .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0))
+    .map((d) => ({ ...d, translated: titles.get(d.id) ?? null, stats: stats.get(Number(d.id)) }));
+}
+
+// Bài tôi yêu thích, mới thả trước.
+engagementRouter.get('/favorites', requireAuth, async (req, res) => {
+  res.json(await cardsFor(await likedDocIds(currentUser(res).id), req, res));
+});
+
+// Xem nhiều 7 ngày qua (khu "Nổi bật" ở trang chủ): tối đa 5 bài đã xuất bản.
+// Lấy dư 30 bài rồi mới lọc quyền, vì nhiều bài top có thể thuộc bộ phận khác.
+const TRENDING_DAYS = 7;
+engagementRouter.get('/trending', async (req, res) => {
+  const top = await topViewed(localDate(new Date(Date.now() - (TRENDING_DAYS - 1) * 24 * 3600_000)), 30);
+  const recentViews = new Map(top.map((t) => [String(t.id), t.views]));
+  const cards = await cardsFor(top.map((t) => t.id), req, res, true);
+  res.json(cards.slice(0, 5).map((d) => ({ ...d, recentViews: recentViews.get(d.id) ?? 0 })));
 });
 
 // ---------- Admin: thống kê ----------

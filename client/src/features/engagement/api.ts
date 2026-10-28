@@ -17,7 +17,10 @@ export type EngagementRow = {
 export const engagementApi = {
   view: (docId: string) => http.post<void>(`/engagement/${docId}/view`),
   like: (docId: string, liked: boolean) => http.put<{ liked: boolean; likes: number }>(`/engagement/${docId}/like`, { liked }),
-  favorites: () => http.get<DocSummary[]>('/engagement/favorites'),
+  // lang: kèm tiêu đề đã dịch như danh sách ở trang chủ.
+  favorites: (lang: string) => http.get<DocSummary[]>(`/engagement/favorites?lang=${lang}`),
+  // Xem nhiều 7 ngày qua; recentViews = số lượt xem trong 7 ngày đó.
+  trending: (lang: string) => http.get<(DocSummary & { recentViews: number })[]>(`/engagement/trending?lang=${lang}`),
   report: (from: string, to: string) => http.get<{ from: string; to: string; rows: EngagementRow[] }>(`/engagement/report?from=${from}&to=${to}`),
   excelUrl: (from: string, to: string) => `/api/engagement/report.xlsx?from=${from}&to=${to}`,
 };

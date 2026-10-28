@@ -60,6 +60,26 @@ export function formatDate(iso: string, locale: string): string {
   return new Intl.DateTimeFormat(locale, { dateStyle: 'medium' }).format(new Date(iso));
 }
 
+// Thời gian tương đối theo ngôn ngữ: "3 ngày trước", "3 days ago", "3 日前".
+// now truyền vào (không tự gọi Date.now()) để component render "thuần".
+const RELATIVE_STEPS: [Intl.RelativeTimeFormatUnit, number][] = [
+  ['minute', 60],
+  ['hour', 60],
+  ['day', 24],
+  ['week', 7],
+  ['month', 4.345],
+  ['year', 12],
+];
+export function formatRelative(iso: string, locale: string, now: number): string {
+  let value = (new Date(iso).getTime() - now) / 60_000; // phút, số âm = quá khứ
+  let unit: Intl.RelativeTimeFormatUnit = 'minute';
+  for (let i = 1; i < RELATIVE_STEPS.length && Math.abs(value) >= RELATIVE_STEPS[i][1]; i++) {
+    value /= RELATIVE_STEPS[i][1];
+    unit = RELATIVE_STEPS[i][0];
+  }
+  return new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(Math.round(value), unit);
+}
+
 // Sao chép chữ vào clipboard.
 // navigator.clipboard cũng chỉ có trong secure context (HTTPS/localhost)
 // -> mạng nội bộ http:// phải dùng cách cũ: tạo textarea ẩn rồi "copy".

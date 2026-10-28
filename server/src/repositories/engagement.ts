@@ -82,6 +82,16 @@ export async function likedDocIds(userId: number): Promise<number[]> {
   return rows.map((r) => r.DocumentId);
 }
 
+// Bài xem nhiều nhất từ ngày `from` tới nay (khu "Xem nhiều" ở trang chủ). Lọc quyền ở route.
+export async function topViewed(from: string, limit: number): Promise<{ id: number; views: number }[]> {
+  const rows = await query<{ DocumentId: number; N: number }>(
+    `SELECT TOP (@limit) DocumentId, COUNT(*) AS N FROM WebManualDocViews
+     WHERE ViewDate >= @from GROUP BY DocumentId ORDER BY N DESC, DocumentId DESC`,
+    { from, limit },
+  );
+  return rows.map((r) => ({ id: r.DocumentId, views: r.N }));
+}
+
 // Thống kê cho admin trong khoảng ngày [from, to] (giờ máy chủ).
 // Lượt xem / tim TRONG khoảng + tổng tim từ trước tới nay.
 export async function engagementReport(from: string, to: string) {

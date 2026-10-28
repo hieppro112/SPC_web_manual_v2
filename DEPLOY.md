@@ -355,6 +355,18 @@ Chỉ bật khi đã cấu hình view nhân viên `COMPANY_EMPLOYEE_VIEW` trong 
 
 **2. Máy chủ app:** Stop WEB_MANUAL → `git pull` → build client → Start. Không cần cài thư viện mới.
 
+## Trang chủ mới: ảnh bìa, khu Nổi bật, lưới / danh sách (không cần SQL)
+
+- **Ảnh bìa** của mỗi thẻ là ảnh đầu tiên trong bài: khối Ảnh, ảnh của khối Bước, hoặc nếu không có thì hình khối Sơ đồ. Bài không có ảnh nào thì dùng nền màu theo thể loại kèm icon thể loại.
+- **Ảnh thu nhỏ** cho thẻ (rộng 640px) được server tạo vào lần đầu có người mở trang, rồi lưu trong `uploads\thumbs\`.
+  - Thư mục này không cần sao lưu: xóa đi thì lần mở sau server tự tạo lại.
+  - Lần đầu mở trang chủ sau khi cập nhật có thể chậm 1–2 giây vì đang tạo ảnh.
+- **Khu Nổi bật** ở đầu trang chủ gồm bài mới nhất (ảnh lớn) và "Xem nhiều 7 ngày qua". Chỉ hiện khi không tìm kiếm, lọc hay sắp xếp, và khi có từ 4 bài trở lên.
+- **Nhãn trên thẻ:** "Mới" cho bài tạo trong 7 ngày; "~N phút đọc" ước tính theo độ dài chữ, khoảng 1000 ký tự mỗi phút.
+- Nút **lưới / danh sách** ở góc phải trên danh sách bài. Lựa chọn được nhớ riêng trên từng trình duyệt.
+
+**Máy chủ app:** Stop WEB_MANUAL → `git pull` → build client → Start.
+
 ## Bước 9 (tùy chọn) — Trợ lý AI chạy local
 
 Nút 💬 ở góc màn hình: hỏi đáp trên toàn bộ tài liệu, hỏi về bài đang đọc, tóm tắt bài. App tự tìm đoạn tài liệu liên quan (RAG), phần mềm AI chỉ việc trả lời. Không bật thì nút 💬 tự ẩn, app chạy bình thường.
