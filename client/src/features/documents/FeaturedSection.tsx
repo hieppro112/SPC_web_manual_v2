@@ -16,6 +16,7 @@ import { ArrowRight, Building2, ChevronLeft, ChevronRight, Clock, Eye, Flame, He
 import { cn, formatRelative } from '../../lib/utils.ts';
 import { useCurrentUser } from '../auth/queries.ts';
 import CategoryIcon from '../categories/CategoryIcon.tsx';
+import { matchDepartmentRoot } from '../categories/department.ts';
 import { useCategoryTree } from '../categories/queries.ts';
 import type { TopDoc, TopKind } from '../engagement/api.ts';
 import { useTops } from '../engagement/queries.ts';
@@ -32,7 +33,6 @@ const KINDS: { kind: TopKind; icon: LucideIcon; color: string }[] = [
 const BANNER_INTERVAL = 6000; // khớp .banner-progress trong index.css
 
 const titleOf = (d: TopDoc) => d.translated?.title ?? d.title;
-const norm = (s: string) => s.trim().toLowerCase();
 
 export default function FeaturedSection() {
   const { t } = useTranslation();
@@ -42,7 +42,9 @@ export default function FeaturedSection() {
   // Mặc định: bộ phận của người xem (thể loại gốc trùng tên bộ phận); không có thì "Tất cả".
   // Chưa bấm chọn (picked = null) thì luôn theo mặc định — danh sách thể loại tải xong sau cũng đúng.
   const [picked, setPicked] = useState<string | null>(null);
-  const ownRoot = user?.department ? roots.find((c) => norm(c.name) === norm(user.department!))?.id : undefined;
+  // Bỏ thể loại dùng chung (Community...) như server: chúng không phải bộ phận.
+  const departments = roots.filter((c) => !c.isShared && c.name.trim().toLowerCase() !== 'community');
+  const ownRoot = user?.department ? matchDepartmentRoot(departments, user.department)?.id : undefined;
   const root = picked ?? ownRoot ?? '';
   const tops = useTops(root);
 
