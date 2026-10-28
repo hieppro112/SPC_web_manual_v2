@@ -3,6 +3,8 @@
 // ============================================================
 //   GET    /api/categories      danh sách phẳng { ..., parentId, isShared, docCount } (lọc theo bộ phận)
 //   POST   /api/categories      tạo mới   { name, iconName?, parentId?, isShared? }   (admin)
+//                               tạo bộ phận (cấp cao nhất, không dùng chung) -> tự có các mục mặc định
+//   POST   /api/categories/sync-defaults   thêm mục mặc định còn thiếu vào mọi bộ phận  (admin)
 //   PUT    /api/categories/:id  sửa       { name?, iconName?, parentId?, isShared? }  (admin)
 //   DELETE /api/categories/:id  xóa       (admin, chỉ khi không còn tài liệu và thể loại con)
 
@@ -21,7 +23,9 @@ import {
   listCategoryLinks,
   updateCategory,
 } from '../repositories/categories.ts';
-import { canSee, invalidateAccessCache, requestScope } from '../services/access.ts';
+import { withTransaction } from '../db/pool.ts';
+import { canSee, invalidateAccessCache, isSharedCategory, requestScope } from '../services/access.ts';
+import { applyDefaults, applyDefaultsTx } from '../services/categoryDefaults.ts';
 import { wouldCreateCycle } from '../services/categoryTree.ts';
 import { parseId } from '../utils/ids.ts';
 
@@ -59,10 +63,22 @@ categoriesRouter.post('/', requireAdmin, async (req, res) => {
     .object({ name: nameSchema, iconName: iconSchema.default('Folder'), isShared: z.boolean().default(false) })
     .parse(body);
   const parentId = await parseParent(body.parentId);
-  // Trùng tên -> SQL Server báo vi phạm UQ_WebManualCategories_Name -> errorHandler trả 409.
-  const created = await createCategory(name, iconName, parentId, isShared);
+  // Trùng tên trong cùng thể loại cha -> SQL Server báo vi phạm UX_WebManualCategories_Parent_Name -> errorHandler trả 409.
+  // Tạo BỘ PHẬN (cấp cao nhất, không dùng chung) -> tự có luôn các mục mặc định.
+  // Chung một transaction: chép mục mặc định lỗi thì bộ phận cũng không được tạo dở dang.
+  const created = await withTransaction(async (tx) => {
+    const category = await createCategory(name, iconName, parentId, isShared, tx);
+    const isDepartment = parentId === null && !isSharedCategory({ name, isShared });
+    const defaultsCreated = isDepartment ? await applyDefaultsTx(tx, [Number(category.id)]) : 0;
+    return { ...category, defaultsCreated };
+  });
   invalidateAccessCache();
   res.status(201).json(created);
+});
+
+// "Đồng bộ mục mặc định": thêm các mục mặc định còn thiếu vào MỌI bộ phận (không xóa / sửa gì).
+categoriesRouter.post('/sync-defaults', requireAdmin, async (_req, res) => {
+  res.json({ created: await applyDefaults() });
 });
 
 categoriesRouter.put('/:id', requireAdmin, async (req, res) => {

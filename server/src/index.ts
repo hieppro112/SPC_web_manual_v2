@@ -24,6 +24,8 @@ import { loadUser, requireAdmin, requireAuth, requireEditor } from './middleware
 import { aiRouter } from './routes/ai.ts';
 import { authRouter } from './routes/auth.ts';
 import { categoriesRouter } from './routes/categories.ts';
+import { categoryRequestsRouter } from './routes/categoryRequests.ts';
+import { categoryTemplatesRouter } from './routes/categoryTemplates.ts';
 import { documentsRouter } from './routes/documents.ts';
 import { mediaRouter } from './routes/media.ts';
 import { quizzesRouter } from './routes/quizzes.ts';
@@ -33,6 +35,7 @@ import { guideRouter } from './routes/guide.ts';
 import { translateWorkerRouter, translationsRouter } from './routes/translations.ts';
 import { readingRouter } from './routes/reading.ts';
 import { engagementRouter } from './routes/engagement.ts';
+import { thumbsRouter } from './routes/thumbs.ts';
 import { startTranslationSweep } from './services/translate/queue.ts';
 import { deleteOldAttempts } from './repositories/quizzes.ts';
 import { metaRouter } from './routes/meta.ts';
@@ -66,6 +69,10 @@ app.use('/api', loadUser);
 app.use('/api/auth', authRouter);
 app.use('/api/meta', metaRouter);
 app.use('/api/categories', categoriesRouter);
+// Mục mặc định của mọi bộ phận: chỉ admin sửa.
+app.use('/api/category-templates', requireAdmin, categoryTemplatesRouter);
+// Đề xuất thể loại: biên tập gửi, admin duyệt (quyền chi tiết trong router).
+app.use('/api/category-requests', requireAuth, categoryRequestsRouter);
 app.use('/api/documents', documentsRouter);
 // Gắn middleware kiểm tra quyền cho CẢ nhóm route ngay tại đây.
 // Upload ảnh/video/file chỉ dành cho người soạn tài liệu (role "user" không được).
@@ -105,6 +112,8 @@ ensureUploadDirs();
 app.use('/uploads/tmp', (_req, res) => {
   res.status(404).end();
 });
+// Ảnh thu nhỏ cho thẻ ở trang chủ: tạo lần đầu khi có người xin (xem routes/thumbs.ts).
+app.use('/uploads/thumbs', thumbsRouter);
 app.use(
   '/uploads',
   express.static(config.uploadDir, {

@@ -15,10 +15,11 @@
 //   /docs/:slug/history       lịch sử phiên bản                     editor
 //   /docs/:slug/translate/:lang  sửa tay bản dịch (vi/en/ja)         editor
 //   /import                   nhập bài từ PowerPoint (qua Claude)   editor
+//   /category-requests        đề xuất thể loại mới (chờ admin duyệt) editor
 //   /quizzes/new              tạo đề bằng AI                        editor
 //   /quizzes/:id/edit         sửa đề                                editor
 //   /quizzes/:id/results      bảng điểm + xuất Excel                admin
-//   /admin/categories         quản lý thể loại                      admin
+//   /admin/categories         quản lý thể loại (+ mục mặc định, duyệt đề xuất)  admin
 //   /admin/users              quản lý tài khoản                     admin
 //   /admin/reading            báo cáo ai đã đọc tài liệu + Excel    admin
 //   /admin/stats              thống kê lượt xem / tim + Excel       admin
@@ -73,6 +74,10 @@ export const router = createBrowserRouter([
             lazy: () => import('../features/translations/TranslationEditPage.tsx').then((m) => ({ Component: m.default })),
           },
           { path: 'import', lazy: () => import('../features/imports/ImportPage.tsx').then((m) => ({ Component: m.default })) },
+          {
+            path: 'category-requests',
+            lazy: () => import('../features/categories/CategoryRequestsPage.tsx').then((m) => ({ Component: m.default })),
+          },
           { path: 'quizzes/new', lazy: () => import('../features/quizzes/QuizCreatePage.tsx').then((m) => ({ Component: m.default })) },
           { path: 'quizzes/:id/edit', lazy: () => import('../features/quizzes/QuizEditPage.tsx').then((m) => ({ Component: m.default })) },
         ],

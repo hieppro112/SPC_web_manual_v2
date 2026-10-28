@@ -5,7 +5,7 @@
 // Các phép tính trên cây (con cháu, chống vòng lặp) nằm ở
 // services/categoryTree.ts; file này chỉ đọc/ghi dữ liệu.
 
-import { execute, query, queryOne } from '../db/pool.ts';
+import { execute, query, queryOne, type Tx } from '../db/pool.ts';
 import type { CategoryLink } from '../services/categoryTree.ts';
 
 type CategoryRow = { Id: number; Name: string; IconName: string; ParentId: number | null; IsShared: boolean; CreatedAt: Date; UpdatedAt: Date };
@@ -48,9 +48,12 @@ export async function listCategoryLinks(): Promise<CategoryLink[]> {
 }
 
 // Đủ thông tin để tính quyền xem theo bộ phận (services/access.ts).
-export async function listCategoriesForAccess(): Promise<{ id: number; name: string; parentId: number | null; isShared: boolean }[]> {
+// Cũng dùng để tạo mục mặc định (services/categoryDefaults.ts) -> nhận tx.
+export async function listCategoriesForAccess(tx?: Tx): Promise<{ id: number; name: string; parentId: number | null; isShared: boolean }[]> {
   const rows = await query<{ Id: number; Name: string; ParentId: number | null; IsShared: boolean }>(
     'SELECT Id, Name, ParentId, IsShared FROM WebManualCategories',
+    {},
+    tx,
   );
   return rows.map((r) => ({ id: r.Id, name: r.Name, parentId: r.ParentId, isShared: !!r.IsShared }));
 }
@@ -64,14 +67,22 @@ export async function categoryExists(id: number): Promise<boolean> {
   return !!(await queryOne('SELECT 1 AS Found FROM WebManualCategories WHERE Id = @id', { id }));
 }
 
-export async function createCategory(name: string, iconName: string, parentId: number | null, isShared = false) {
+// tx: tạo trong transaction (vd tạo bộ phận + các mục mặc định: lỗi giữa chừng thì không còn gì dở dang).
+export async function createCategory(name: string, iconName: string, parentId: number | null, isShared = false, tx?: Tx) {
   const row = await queryOne<CategoryRow>(
     `INSERT INTO WebManualCategories (Name, IconName, ParentId, IsShared)
      OUTPUT ${COLUMNS.split(', ').map((c) => `INSERTED.${c}`).join(', ')}
      VALUES (@name, @iconName, @parentId, @isShared)`,
     { name, iconName, parentId, isShared: isShared ? 1 : 0 },
+    tx,
   );
   return toJson(row!);
+}
+
+// Đã có thể loại tên này ngay trong thể loại cha chưa (so không phân biệt hoa thường như SQL Server).
+export async function findChildByName(parentId: number, name: string, tx?: Tx): Promise<number | null> {
+  const row = await queryOne<{ Id: number }>('SELECT Id FROM WebManualCategories WHERE ParentId = @parentId AND Name = @name', { parentId, name }, tx);
+  return row?.Id ?? null;
 }
 
 export async function updateCategory(id: number, name: string, iconName: string, parentId: number | null, isShared: boolean) {

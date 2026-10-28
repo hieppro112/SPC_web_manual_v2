@@ -32,7 +32,24 @@ type DocRow = {
   UpdatedById: number | null;
   UpdatedByName: string | null;
   Blocks?: string;
+  Cover?: string | null;
+  TextLength?: number;
 };
+
+// Chỉ danh sách (thẻ ở trang chủ) mới cần:
+//   Cover      = ảnh bìa: ảnh đầu tiên trong bài (khối Ảnh / ảnh của khối Bước);
+//                bài không có ảnh thì lấy hình khối Sơ đồ; không có gì -> NULL.
+//                OPENJSON đọc mảng khối ngay trong SQL, không phải tải cả Blocks về Node.
+//   TextLength = số ký tự chữ của bài, để ước tính thời gian đọc.
+const COVER_SRC = `COALESCE(NULLIF(JSON_VALUE(b.value, '$.props.src'), ''), NULLIF(JSON_VALUE(b.value, '$.props.image'), ''))`;
+const LIST_EXTRA = `,
+  (SELECT TOP 1 ${COVER_SRC} FROM OPENJSON(d.Blocks) b
+   WHERE JSON_VALUE(b.value, '$.type') IN ('image', 'step', 'diagram') AND ${COVER_SRC} IS NOT NULL
+   ORDER BY CASE JSON_VALUE(b.value, '$.type') WHEN 'diagram' THEN 1 ELSE 0 END, CAST(b.[key] AS INT)) AS Cover,
+  LEN(d.SearchText) AS TextLength`;
+
+// Ước tính phút đọc: khoảng 1000 ký tự / phút (tiếng Việt ~200 từ / phút), tối thiểu 1 phút.
+const CHARS_PER_MINUTE = 1000;
 
 // Cột chung cho danh sách và chi tiết. KHÔNG lấy SearchText (nặng, client không cần).
 const DOC_SELECT = `
@@ -59,6 +76,9 @@ function toJson(row: DocRow) {
     createdAt: row.CreatedAt,
     updatedAt: row.UpdatedAt,
     ...(row.Blocks !== undefined ? { blocks: JSON.parse(row.Blocks) as ParsedBlock[] } : {}),
+    ...(row.TextLength !== undefined
+      ? { cover: row.Cover ?? null, readMinutes: Math.max(1, Math.round(row.TextLength / CHARS_PER_MINUTE)) }
+      : {}),
   };
 }
 
@@ -105,7 +125,7 @@ export async function listDocuments(filter: DocListFilter) {
   }
 
   const rows = await query<DocRow>(
-    `${DOC_SELECT} ${DOC_FROM}
+    `${DOC_SELECT} ${LIST_EXTRA} ${DOC_FROM}
      ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
      ORDER BY d.UpdatedAt DESC, d.Id DESC
      OFFSET 0 ROWS FETCH NEXT 500 ROWS ONLY`,

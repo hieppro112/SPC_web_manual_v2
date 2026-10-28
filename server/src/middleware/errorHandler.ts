@@ -28,6 +28,9 @@ export class HttpError extends Error {
 const DUPLICATE_LABELS: [RegExp, string][] = [
   [/Users_Username/, 'Tên đăng nhập'],
   [/Users_Email/, 'Email'],
+  // Migration 011: tên thể loại / mục mặc định chỉ cần khác nhau TRONG CÙNG cha.
+  [/CategoryTemplates_Parent_Name/, 'Tên mục mặc định (trong cùng mục cha)'],
+  [/Categories_Parent_Name/, 'Tên thể loại (trong cùng thể loại cha)'],
   [/Categories_Name/, 'Tên thể loại'],
   [/Documents_Slug/, 'Đường dẫn tài liệu'],
 ];

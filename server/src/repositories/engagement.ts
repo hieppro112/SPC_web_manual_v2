@@ -82,6 +82,17 @@ export async function likedDocIds(userId: number): Promise<number[]> {
   return rows.map((r) => r.DocumentId);
 }
 
+// Lượt xem của các bài từ ngày `from` tới nay (khu Top "Xem nhiều 7 ngày" ở trang chủ).
+export async function viewsSince(documentIds: number[], from: string): Promise<Map<number, number>> {
+  if (!documentIds.length) return new Map();
+  const rows = await query<{ DocumentId: number; N: number }>(
+    `SELECT DocumentId, COUNT(*) AS N FROM WebManualDocViews
+     WHERE ViewDate >= @from AND DocumentId IN (SELECT CAST(value AS INT) FROM OPENJSON(@ids)) GROUP BY DocumentId`,
+    { from, ids: idsParam(documentIds) },
+  );
+  return new Map(rows.map((r) => [r.DocumentId, r.N]));
+}
+
 // Thống kê cho admin trong khoảng ngày [from, to] (giờ máy chủ).
 // Lượt xem / tim TRONG khoảng + tổng tim từ trước tới nay.
 export async function engagementReport(from: string, to: string) {

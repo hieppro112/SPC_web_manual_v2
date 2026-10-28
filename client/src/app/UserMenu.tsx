@@ -2,21 +2,28 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { BarChart3, BookOpenCheck, FolderCog, Heart, KeyRound, LogOut, Users } from 'lucide-react';
+import { BarChart3, BookOpenCheck, FolderCog, FolderPlus, Heart, KeyRound, LogOut, Users } from 'lucide-react';
 import MenuItem from '../components/ui/MenuItem.tsx';
 import Popover from '../components/ui/Popover.tsx';
 import ChangePasswordDialog from '../features/auth/ChangePasswordDialog.tsx';
 import { useLogout } from '../features/auth/queries.ts';
+import { usePendingRequestCount } from '../features/categories/queries.ts';
 import { usePendingCount } from '../features/users/queries.ts';
 import type { User } from '../lib/types.ts';
+
+const PendingBadge = ({ count }: { count: number }) => (
+  <span className="rounded-full bg-danger px-1.5 text-[10px] font-bold text-white">{count}</span>
+);
 
 export default function UserMenu({ user }: { user: User }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const logout = useLogout();
   const [passwordOpen, setPasswordOpen] = useState(false);
-  // Admin thấy số người đang chờ duyệt ngay trên avatar.
-  const pendingCount = usePendingCount(user.role === 'admin');
+  // Admin thấy ngay trên avatar tổng số việc chờ duyệt: tài khoản + đề xuất thể loại.
+  const pendingUsers = usePendingCount(user.role === 'admin');
+  const pendingCategories = usePendingRequestCount(user.role === 'admin');
+  const pendingCount = pendingUsers + pendingCategories;
 
   return (
     <>
@@ -58,16 +65,32 @@ export default function UserMenu({ user }: { user: User }) {
             >
               {t('nav.favorites')}
             </MenuItem>
+            {/* Biên tập: đề xuất thể loại mới (admin thì tự tạo trong Quản lý thể loại). */}
+            {user.role === 'editor' && (
+              <MenuItem
+                icon={FolderPlus}
+                onClick={() => {
+                  close();
+                  navigate('/category-requests');
+                }}
+              >
+                {t('nav.categoryRequests')}
+              </MenuItem>
+            )}
             {user.role === 'admin' && (
               <>
                 <MenuItem
                   icon={FolderCog}
                   onClick={() => {
                     close();
-                    navigate('/admin/categories');
+                    // Có đề xuất đang chờ -> mở thẳng tab "Chờ duyệt".
+                    navigate(pendingCategories > 0 ? '/admin/categories?tab=requests' : '/admin/categories');
                   }}
                 >
-                  {t('nav.categories')}
+                  <span className="flex items-center justify-between gap-2">
+                    {t('nav.categories')}
+                    {pendingCategories > 0 && <PendingBadge count={pendingCategories} />}
+                  </span>
                 </MenuItem>
                 <MenuItem
                   icon={Users}
@@ -78,9 +101,7 @@ export default function UserMenu({ user }: { user: User }) {
                 >
                   <span className="flex items-center justify-between gap-2">
                     {t('nav.users')}
-                    {pendingCount > 0 && (
-                      <span className="rounded-full bg-danger px-1.5 text-[10px] font-bold text-white">{pendingCount}</span>
-                    )}
+                    {pendingUsers > 0 && <PendingBadge count={pendingUsers} />}
                   </span>
                 </MenuItem>
                 <MenuItem
