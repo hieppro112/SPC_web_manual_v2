@@ -59,6 +59,14 @@ export function categoryPath(categories: Category[], id: string | null | undefin
   return path;
 }
 
+// Duỗi cây kèm đường dẫn đầy đủ của từng thể loại: [IT], [IT, AI], [IT, AI, LLM]...
+export function flattenWithPath(nodes: CategoryNode[], parents: string[] = []): { node: CategoryNode; path: string[] }[] {
+  return nodes.flatMap((node) => {
+    const path = [...parents, node.category.name];
+    return [{ node, path }, ...flattenWithPath(node.children, path)];
+  });
+}
+
 // Id của một thể loại + mọi con cháu — để không cho chọn làm "thể loại cha"
 // của chính nó (sẽ tạo vòng lặp).
 export function subtreeIds(categories: Category[], id: string): Set<string> {
@@ -78,6 +86,8 @@ export function subtreeIds(categories: Category[], id: string): Set<string> {
 
 // Nhãn thụt lề cho thẻ <option> (option không có CSS padding):
 //   "IT", "   └ AI", "      └ LLM"
-export function indentedLabel(node: CategoryNode): string {
-  return node.depth === 0 ? node.category.name : `${'   '.repeat(node.depth)}└ ${node.category.name}`;
+// Kèm ĐƯỜNG DẪN ĐẦY ĐỦ ("PE IT › Biểu mẫu"): mọi bộ phận đều có "Biểu mẫu" -> ô chọn
+// đã đóng vẫn đọc ra đúng của bộ phận nào.
+export function indentedLabel(node: CategoryNode, path: string[]): string {
+  return node.depth === 0 ? node.category.name : `${'   '.repeat(node.depth)}└ ${path.join(' › ')}`;
 }

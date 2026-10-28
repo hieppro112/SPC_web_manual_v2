@@ -100,7 +100,7 @@ export default function HomePage() {
 
       <main className="min-w-0">
         <SearchBox className="mb-4 md:hidden" />
-        {showFeatured && docs && <FeaturedSection docs={docs} />}
+        {showFeatured && <FeaturedSection />}
         <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
           <div>
             {!q && parents.length > 0 && (

@@ -4,7 +4,7 @@
 //   POST /api/engagement/:docId/view        ghi một lượt xem (mỗi người / khách 1 lần mỗi ngày)
 //   PUT  /api/engagement/:docId/like        { liked } thả / bỏ tim -> { liked, likes }   đã đăng nhập
 //   GET  /api/engagement/favorites          "Bài tôi yêu thích"                         đã đăng nhập
-//   GET  /api/engagement/trending           xem nhiều 7 ngày qua (trang chủ)            ai cũng xem
+//   GET  /api/engagement/tops?root=         các bảng xếp hạng theo bộ phận (trang chủ)  ai cũng xem
 //   GET  /api/engagement/report?from&to     top bài xem / thích nhiều                   admin
 //   GET  /api/engagement/report.xlsx?from&to   xuất Excel                               admin
 //
@@ -17,10 +17,12 @@ import { z } from 'zod';
 import { HttpError } from '../middleware/errorHandler.ts';
 import { currentUser, isEditor, requireAdmin, requireAuth } from '../middleware/auth.ts';
 import { findDocumentById, listDocuments, type FullDocument } from '../repositories/documents.ts';
-import { engagementReport, isLiked, likedDocIds, localDate, recordView, setLike, statsFor, topViewed } from '../repositories/engagement.ts';
+import { listCategoryLinks } from '../repositories/categories.ts';
+import { engagementReport, isLiked, likedDocIds, localDate, recordView, setLike, statsFor, viewsSince } from '../repositories/engagement.ts';
 import { translatedTitles } from '../repositories/translations.ts';
 import { assertDocVisible, requestScope } from '../services/access.ts';
-import { parseId } from '../utils/ids.ts';
+import { descendantIds } from '../services/categoryTree.ts';
+import { parseId, tryParseId } from '../utils/ids.ts';
 
 export const engagementRouter = Router();
 
@@ -56,12 +58,12 @@ engagementRouter.put('/:docId/like', requireAuth, async (req, res) => {
 
 // Lấy đúng các bài `ids` mà người đang xem đọc được (đã xuất bản / editor, đúng bộ phận),
 // giữ nguyên thứ tự của `ids`, kèm tiêu đề dịch (?lang) + lượt xem / tim như thẻ ở trang chủ.
-async function cardsFor(ids: number[], req: Request, res: Response, publishedOnly = false) {
+async function cardsFor(ids: number[], req: Request, res: Response) {
   if (!ids.length) return [];
   const scope = await requestScope(res);
   const docs = await listDocuments({
     ids,
-    status: publishedOnly || !isEditor(res.locals.user) ? 'published' : undefined,
+    status: isEditor(res.locals.user) ? undefined : 'published',
     categoryIds: scope.all ? undefined : [...scope.categoryIds],
   });
   const docIds = docs.map((d) => Number(d.id));
@@ -81,14 +83,50 @@ engagementRouter.get('/favorites', requireAuth, async (req, res) => {
   res.json(await cardsFor(await likedDocIds(currentUser(res).id), req, res));
 });
 
-// Xem nhiều 7 ngày qua (khu "Nổi bật" ở trang chủ): tối đa 5 bài đã xuất bản.
-// Lấy dư 30 bài rồi mới lọc quyền, vì nhiều bài top có thể thuộc bộ phận khác.
-const TRENDING_DAYS = 7;
-engagementRouter.get('/trending', async (req, res) => {
-  const top = await topViewed(localDate(new Date(Date.now() - (TRENDING_DAYS - 1) * 24 * 3600_000)), 30);
-  const recentViews = new Map(top.map((t) => [String(t.id), t.views]));
-  const cards = await cardsFor(top.map((t) => t.id), req, res, true);
-  res.json(cards.slice(0, 5).map((d) => ({ ...d, recentViews: recentViews.get(d.id) ?? 0 })));
+// Các bảng xếp hạng ở khu "Nổi bật" trang chủ, TÍNH TRONG MỘT BỘ PHẬN:
+//   ?root=<id thể loại cấp cao nhất> (bỏ trống = mọi thể loại người xem được thấy)
+// Trả 4 danh sách top 5 bài đã xuất bản:
+//   views7 = xem nhiều 7 ngày qua · views = xem nhiều nhất từ trước tới nay
+//   likes  = nhiều tim nhất        · newest = mới nhất
+// Bài top 1 của mỗi danh sách lên banner lớn chạy vòng.
+const TOP_SIZE = 5;
+const RECENT_DAYS = 7;
+engagementRouter.get('/tops', async (req, res) => {
+  const scope = await requestScope(res);
+  const rootId = tryParseId(req.query.root);
+  let categoryIds = rootId ? descendantIds(await listCategoryLinks(), rootId) : undefined;
+  if (!scope.all) categoryIds = (categoryIds ?? [...scope.categoryIds]).filter((id) => scope.categoryIds.has(id));
+  const empty = { views7: [], views: [], likes: [], newest: [] };
+  if (categoryIds && !categoryIds.length) {
+    res.json(empty);
+    return;
+  }
+  const docs = await listDocuments({ status: 'published', categoryIds });
+  const ids = docs.map((d) => Number(d.id));
+  const { lang } = req.query;
+  const [stats, recent, titles] = await Promise.all([
+    statsFor(ids),
+    viewsSince(ids, localDate(new Date(Date.now() - (RECENT_DAYS - 1) * 24 * 3600_000))),
+    typeof lang === 'string' && /^(vi|en|ja)$/.test(lang) ? translatedTitles(lang, ids) : new Map<string, { title: string; desc: string }>(),
+  ]);
+  const cards = docs.map((d) => ({
+    ...d,
+    translated: titles.get(d.id) ?? null,
+    stats: stats.get(Number(d.id)),
+    recentViews: recent.get(Number(d.id)) ?? 0,
+  }));
+  // Xếp theo một con số, bỏ bài có số 0 (chưa ai xem / thả tim thì không tính là "top").
+  const topBy = (score: (c: (typeof cards)[number]) => number) =>
+    cards
+      .filter((c) => score(c) > 0)
+      .sort((a, b) => score(b) - score(a))
+      .slice(0, TOP_SIZE);
+  res.json({
+    views7: topBy((c) => c.recentViews),
+    views: topBy((c) => c.stats?.views ?? 0),
+    likes: topBy((c) => c.stats?.likes ?? 0),
+    newest: [...cards].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)).slice(0, TOP_SIZE),
+  });
 });
 
 // ---------- Admin: thống kê ----------

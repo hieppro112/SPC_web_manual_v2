@@ -361,11 +361,42 @@ Chỉ bật khi đã cấu hình view nhân viên `COMPANY_EMPLOYEE_VIEW` trong 
 - **Ảnh thu nhỏ** cho thẻ (rộng 640px) được server tạo vào lần đầu có người mở trang, rồi lưu trong `uploads\thumbs\`.
   - Thư mục này không cần sao lưu: xóa đi thì lần mở sau server tự tạo lại.
   - Lần đầu mở trang chủ sau khi cập nhật có thể chậm 1–2 giây vì đang tạo ảnh.
-- **Khu Nổi bật** ở đầu trang chủ gồm bài mới nhất (ảnh lớn) và "Xem nhiều 7 ngày qua". Chỉ hiện khi không tìm kiếm, lọc hay sắp xếp, và khi có từ 4 bài trở lên.
+- **Khu Nổi bật** ở đầu trang chủ. Chỉ hiện khi không tìm kiếm, lọc hay sắp xếp, và khi có từ 4 bài trở lên.
+  - **Chọn bộ phận:** mặc định là bộ phận của người xem; bấm để xem bộ phận khác (trong phạm vi được xem) hoặc "Tất cả". Mọi bảng xếp hạng đều tính trong bộ phận đang chọn.
+  - **Banner lớn tự chạy:** hiện bài top 1 của từng bảng, mỗi bài 6 giây. Rê chuột vào thì dừng. Máy bật "giảm chuyển động" thì không tự chạy.
+  - **4 bảng xếp hạng (tab):** Xem nhiều 7 ngày · Xem nhiều nhất · Nhiều tim nhất · Mới nhất.
 - **Nhãn trên thẻ:** "Mới" cho bài tạo trong 7 ngày; "~N phút đọc" ước tính theo độ dài chữ, khoảng 1000 ký tự mỗi phút.
 - Nút **lưới / danh sách** ở góc phải trên danh sách bài. Lựa chọn được nhớ riêng trên từng trình duyệt.
 
 **Máy chủ app:** Stop WEB_MANUAL → `git pull` → build client → Start.
+
+## Mục mặc định cho mọi bộ phận + đề xuất thể loại (migration 011)
+
+- **Tên thể loại** giờ chỉ cần khác nhau **trong cùng thể loại cha**. Nhờ vậy bộ phận nào cũng có "Biểu mẫu", "Quy trình"…
+  - Các thể loại cấp cao nhất vẫn không được trùng tên nhau, nên phân quyền theo tên bộ phận không đổi.
+  - Ô chọn thể loại khi viết bài hiện đủ đường dẫn, ví dụ "PE IT › Biểu mẫu".
+- **Mục mặc định:** Quản lý thể loại → tab **Mục mặc định**. Ban đầu có 5 mục: Quy trình, Hướng dẫn, Biểu mẫu, Đào tạo, Thông báo. Mục có thể lồng nhau dạng cây.
+  - Tạo thể loại **cấp cao nhất không tick "Dùng chung"** (tức là một bộ phận) thì bộ phận đó tự có đủ các mục mặc định.
+  - Thêm một mục mặc định mới: web hỏi có thêm ngay vào tất cả bộ phận không.
+  - Sửa hoặc xóa mục mặc định chỉ đổi **danh sách mặc định**; thể loại đã có ở các bộ phận giữ nguyên.
+  - Nút **Đồng bộ mục mặc định**: thêm mục còn thiếu vào mọi bộ phận, không xóa hay đổi gì đang có. Community và các thể loại dùng chung không bao giờ nhận mục mặc định.
+- **Đề xuất thể loại:**
+  - **Biên tập** gửi đề xuất ở menu tài khoản (hoặc cột thể loại) → **Đề xuất thể loại**. Chỉ chọn được thể loại cha trong phạm vi mình xem được.
+  - Trong lúc chờ duyệt, thể loại **chưa tồn tại**: không ai thấy, chưa đăng bài vào được.
+  - **Admin:** avatar hiện số đỏ (tổng tài khoản chờ duyệt và đề xuất chờ duyệt). Vào Quản lý thể loại → tab **Chờ duyệt** để sửa tên / icon rồi duyệt, hoặc từ chối (lý do có thể bỏ trống).
+  - Người đề xuất xem kết quả ở **Đề xuất của tôi**: Chờ duyệt / Đã duyệt / Đã từ chối kèm lý do.
+  - Người dùng thường chỉ thấy dòng "Cần thêm mục? Liên hệ admin."
+
+**1. Database — chạy TRƯỚC khi restart web:** SSMS, tài khoản quản trị → chạy `server\sql\011_category_defaults.sql`. Kết quả đúng:
+- có index `UX_WebManualCategories_Parent_Name` và **không còn** `UQ_WebManualCategories_Name`;
+- có 2 bảng mới, 5 mục mặc định, quyền của `kvh_write` trên 2 bảng;
+- có 11 dòng đánh dấu.
+
+Thiếu thì web không khởi động.
+
+**2. Máy chủ app:** Stop WEB_MANUAL → `git pull` → build client → Start.
+
+**3. Các bộ phận đã có** (PE IT, HR…) chưa có mục mặc định: đăng nhập admin → Quản lý thể loại → tab Mục mặc định → bấm **Đồng bộ mục mặc định** một lần.
 
 ## Bước 9 (tùy chọn) — Trợ lý AI chạy local
 

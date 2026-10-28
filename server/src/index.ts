@@ -24,6 +24,8 @@ import { loadUser, requireAdmin, requireAuth, requireEditor } from './middleware
 import { aiRouter } from './routes/ai.ts';
 import { authRouter } from './routes/auth.ts';
 import { categoriesRouter } from './routes/categories.ts';
+import { categoryRequestsRouter } from './routes/categoryRequests.ts';
+import { categoryTemplatesRouter } from './routes/categoryTemplates.ts';
 import { documentsRouter } from './routes/documents.ts';
 import { mediaRouter } from './routes/media.ts';
 import { quizzesRouter } from './routes/quizzes.ts';
@@ -67,6 +69,10 @@ app.use('/api', loadUser);
 app.use('/api/auth', authRouter);
 app.use('/api/meta', metaRouter);
 app.use('/api/categories', categoriesRouter);
+// Mục mặc định của mọi bộ phận: chỉ admin sửa.
+app.use('/api/category-templates', requireAdmin, categoryTemplatesRouter);
+// Đề xuất thể loại: biên tập gửi, admin duyệt (quyền chi tiết trong router).
+app.use('/api/category-requests', requireAuth, categoryRequestsRouter);
 app.use('/api/documents', documentsRouter);
 // Gắn middleware kiểm tra quyền cho CẢ nhóm route ngay tại đây.
 // Upload ảnh/video/file chỉ dành cho người soạn tài liệu (role "user" không được).

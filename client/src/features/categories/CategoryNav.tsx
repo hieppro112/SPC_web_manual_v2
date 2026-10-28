@@ -14,7 +14,7 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { ChevronRight, LayoutGrid, Settings } from 'lucide-react';
+import { ChevronRight, FolderPlus, LayoutGrid, Settings } from 'lucide-react';
 import { cn } from '../../lib/utils.ts';
 import { useCurrentUser } from '../auth/queries.ts';
 import CategoryIcon from './CategoryIcon.tsx';
@@ -63,6 +63,13 @@ export default function CategoryNav() {
       </Link>
       <TreeLevel nodes={tree} current={current} collapsed={collapsed} onToggle={toggle} />
       {categories?.length === 0 && <p className="px-3 text-sm text-muted">{t('home.noCategories')}</p>}
+      {/* Thiếu mục? Biên tập gửi đề xuất (admin duyệt); người dùng thường liên hệ admin. */}
+      {user?.role === 'editor' && (
+        <Link to="/category-requests" className="mt-2 flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted hover:bg-surface-2 hover:text-accent">
+          <FolderPlus className="h-4 w-4" /> {t('nav.categoryRequests')}
+        </Link>
+      )}
+      {user?.role === 'user' && <p className="mt-2 px-3 text-xs text-muted">{t('categories.contactAdmin')}</p>}
     </nav>
   );
 }

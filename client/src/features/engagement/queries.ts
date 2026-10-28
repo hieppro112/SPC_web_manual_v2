@@ -43,14 +43,16 @@ export function useFavorites() {
   return useQuery({ queryKey: ['engagement', 'favorites', i18n.language], queryFn: () => engagementApi.favorites(i18n.language) });
 }
 
-// Khu "Xem nhiều 7 ngày" ở trang chủ. Số liệu thay đổi chậm -> giữ 5 phút mới hỏi lại.
-export function useTrending(enabled = true) {
+// Các bảng xếp hạng ở khu "Nổi bật" trang chủ, theo bộ phận (root '' = tất cả).
+// Số liệu thay đổi chậm -> giữ 5 phút mới hỏi lại. Đổi bộ phận thì giữ bảng cũ trên
+// màn hình trong lúc chờ (không nháy trắng).
+export function useTops(root: string) {
   const { i18n } = useTranslation();
   return useQuery({
-    queryKey: ['engagement', 'trending', i18n.language],
-    queryFn: () => engagementApi.trending(i18n.language),
-    enabled,
+    queryKey: ['engagement', 'tops', root, i18n.language],
+    queryFn: () => engagementApi.tops(root, i18n.language),
     staleTime: 5 * 60_000,
+    placeholderData: (previous) => previous,
   });
 }
 

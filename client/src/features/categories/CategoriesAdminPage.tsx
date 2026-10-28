@@ -1,40 +1,84 @@
 // ============================================================
-// CategoriesAdminPage — admin thêm / sửa / xóa thể loại dạng cây  (/admin/categories)
+// CategoriesAdminPage — admin quản lý thể loại  (/admin/categories)
 // ============================================================
-// Mỗi thể loại chọn được "Thuộc thể loại" (cha). Danh sách hiện theo thứ
-// tự cây, thụt lề theo cấp:
-//   IT
-//      └ AI
-//   PC
+// 3 tab:
+//   Thể loại      thêm / sửa / xóa thể loại dạng cây. Mỗi thể loại chọn được
+//                 "Thuộc thể loại" (cha). Danh sách thụt lề theo cấp:
+//                   IT
+//                      └ AI
+//                   PC
+//   Mục mặc định  các mục mọi bộ phận đều có (DefaultsTab.tsx)
+//   Chờ duyệt     đề xuất thể loại của biên tập (RequestsReviewTab.tsx)
 
 import { useMemo, useState, type FormEvent } from 'react';
+import { useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Plus, Save, Trash } from 'lucide-react';
 import Button from '../../components/ui/Button.tsx';
 import Input from '../../components/ui/Input.tsx';
-import Select from '../../components/ui/Select.tsx';
 import Spinner from '../../components/ui/Spinner.tsx';
 import type { Category } from '../../lib/types.ts';
-import { errorMessage } from '../../lib/utils.ts';
+import { cn, errorMessage } from '../../lib/utils.ts';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.ts';
 import { useCompleteOnMount } from '../guide/queries.ts';
-import CategoryIcon from './CategoryIcon.tsx';
-import CategoryOptions from './CategoryOptions.tsx';
-import { CATEGORY_ICONS } from './icons.ts';
-import { useCategoryTree, useDeleteCategory, useSaveCategory } from './queries.ts';
+import DefaultsTab from './DefaultsTab.tsx';
+import IconSelect from './IconSelect.tsx';
+import ParentSelect from './ParentSelect.tsx';
+import { useCategoryTree, useDeleteCategory, usePendingRequestCount, useSaveCategory } from './queries.ts';
+import RequestsReviewTab from './RequestsReviewTab.tsx';
 import { flattenTree, subtreeIds, type CategoryNode } from './tree.ts';
+
+// 3 tab, tab đang mở nằm trên URL (?tab=defaults) -> F5 / gửi link vẫn mở đúng tab.
+const TABS = ['categories', 'defaults', 'requests'] as const;
+type Tab = (typeof TABS)[number];
 
 export default function CategoriesAdminPage() {
   const { t } = useTranslation();
-  const { tree, data: categories, isPending } = useCategoryTree();
+  const [params, setParams] = useSearchParams();
+  const tabParam = params.get('tab');
+  const tab: Tab = TABS.includes(tabParam as Tab) ? (tabParam as Tab) : 'categories';
+  const pendingRequests = usePendingRequestCount(true);
   useDocumentTitle(t('categories.title'));
   useCompleteOnMount('adminCategories');
 
   return (
     <div className="mx-auto max-w-form px-4 py-8">
-      <h1 className="mb-6 text-2xl font-bold">{t('categories.title')}</h1>
+      <h1 className="mb-4 text-2xl font-bold">{t('categories.title')}</h1>
+      <div className="mb-6 flex gap-1 border-b border-border" role="tablist">
+        {TABS.map((key) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            aria-selected={tab === key}
+            onClick={() => setParams(key === 'categories' ? {} : { tab: key }, { replace: true })}
+            className={cn(
+              '-mb-px flex items-center gap-1.5 border-b-2 px-4 py-2 text-sm font-medium',
+              tab === key ? 'border-accent text-accent' : 'border-transparent text-muted hover:text-fg',
+            )}
+          >
+            {t(`categories.tab.${key}`)}
+            {key === 'requests' && pendingRequests > 0 && (
+              <span className="rounded-full bg-danger px-1.5 text-[10px] font-bold text-white">{pendingRequests}</span>
+            )}
+          </button>
+        ))}
+      </div>
+      {tab === 'categories' && <CategoriesTab />}
+      {tab === 'defaults' && <DefaultsTab />}
+      {tab === 'requests' && <RequestsReviewTab />}
+    </div>
+  );
+}
+
+function CategoriesTab() {
+  const { t } = useTranslation();
+  const { tree, data: categories, isPending } = useCategoryTree();
+  return (
+    <>
       <NewCategoryForm tree={tree} />
+      <p className="mt-2 text-xs text-muted">{t('categories.departmentHint')}</p>
       {isPending ? (
         <Spinner />
       ) : (
@@ -45,39 +89,10 @@ export default function CategoriesAdminPage() {
           ))}
         </ul>
       )}
-    </div>
+    </>
   );
 }
 
-function IconSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const { t } = useTranslation();
-  return (
-    <div className="flex items-center gap-2">
-      <CategoryIcon name={value} className="h-5 w-5 shrink-0 text-accent" />
-      <Select aria-label={t('categories.icon')} value={value} onChange={(e) => onChange(e.target.value)} className="w-36">
-        {Object.keys(CATEGORY_ICONS).map((name) => (
-          <option key={name} value={name}>
-            {name}
-          </option>
-        ))}
-      </Select>
-    </div>
-  );
-}
-
-// Ô chọn thể loại cha. Giá trị '' = cấp cao nhất.
-function ParentSelect({ tree, value, onChange, exclude }: { tree: CategoryNode[]; value: string; onChange: (v: string) => void; exclude?: Set<string> }) {
-  const { t } = useTranslation();
-  return (
-    <label className="flex items-center gap-2 text-sm">
-      <span className="shrink-0 text-muted">{t('categories.parent')}</span>
-      <Select value={value} onChange={(e) => onChange(e.target.value)} className="w-48">
-        <option value="">{t('categories.noParent')}</option>
-        <CategoryOptions tree={tree} exclude={exclude} />
-      </Select>
-    </label>
-  );
-}
 
 // Ô "Dùng chung cho mọi bộ phận": thể loại (và con cháu) ai cũng xem được, kể cả khách.
 function SharedCheckbox({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
@@ -103,8 +118,9 @@ function NewCategoryForm({ tree }: { tree: CategoryNode[] }) {
     save.mutate(
       { name, iconName, parentId: parentId || null, isShared },
       {
-        onSuccess: () => {
-          toast.success(t('categories.saved'));
+        onSuccess: (created) => {
+          // Tạo bộ phận -> server đã thêm sẵn các mục mặc định, báo cho admin biết.
+          toast.success(created.defaultsCreated ? t('categories.savedWithDefaults', { count: created.defaultsCreated }) : t('categories.saved'));
           setName('');
         },
         onError: (err) => toast.error(errorMessage(err)),

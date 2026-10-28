@@ -129,6 +129,21 @@
 .dark .cover-tone-4 { background: linear-gradient(135deg, #5b21b6, #6d28d9); }
 .dark .cover-tone-5 { background: linear-gradient(135deg, #155e75, #1e40af); }
 
+/* Banner "Nổi bật" ở trang chủ: vạch chạy đầy trong 6 giây rồi sang bài kế
+   (thời gian khớp BANNER_INTERVAL trong FeaturedSection.tsx). key={slide} ở
+   component làm vạch chạy lại từ đầu mỗi lần đổi bài. */
+@keyframes banner-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.banner-progress {
+  transform-origin: left;
+  animation: banner-progress 6s linear forwards;
+}
+.banner-progress.paused {
+  animation-play-state: paused;
+}
+
 /* Văn bản Markdown trong tài liệu: dùng plugin typography rồi nối màu
    của nó vào token của app, để sáng/tối tự đúng. */
 .doc-prose {
