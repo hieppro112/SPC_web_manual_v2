@@ -4,7 +4,8 @@
 // Chỉ bật khi đã cấu hình view nhân viên (COMPANY_EMPLOYEE_VIEW). Khi bật:
 //   admin                              -> xem tất cả
 //   tài khoản chưa có mã nhân viên     -> xem tất cả (tài khoản cũ, chờ admin nhập mã)
-//   tài khoản có mã (bộ phận "PE IT")  -> thể loại gốc tên "PE IT" + mọi con cháu
+//   tài khoản có mã (bộ phận "KP PC")  -> thể loại gốc có tên nằm trong bộ phận ("PC") + mọi con cháu
+//                                          (so theo từ nguyên vẹn, xem matchDepartmentRoot)
 //                                          + thể loại dùng chung + con cháu
 //   khách (chưa đăng nhập)             -> chỉ thể loại dùng chung + con cháu
 // "Dùng chung" = admin tick "Dùng chung cho mọi bộ phận", hoặc thể loại tên "Community".
@@ -45,6 +46,37 @@ async function categories(): Promise<Cat[]> {
 const norm = (s: string) => s.trim().toLowerCase();
 export const isSharedCategory = (c: { name: string; isShared: boolean }) => c.isShared || norm(c.name) === 'community';
 
+// ---------- Bộ phận (Section trong view nhân viên) -> thể loại gốc ----------
+// Section có thể chi tiết hơn tên thể loại: "KP PC", "KM PC" đều thuộc bộ phận "PC".
+// So theo TỪ NGUYÊN VẸN, không so từng ký tự (contains): "PCB" hay "NPC" KHÔNG khớp "PC",
+// "KITTING" không khớp "IT" -> không cho nhầm người sang bộ phận khác.
+//   "KP PC"   ~ "PC"     ✅      "PE-IT"  ~ "PE IT" ✅ (- _ / , . coi như dấu cách)
+//   "PCB"     ~ "PC"     ❌      "PE IT"  khớp cả "PE IT" lẫn "IT" -> chọn "PE IT" (nhiều từ hơn)
+// ⚠️ Phải giống hệt client/src/features/categories/department.ts (chọn bộ phận mặc định ở trang chủ).
+const words = (s: string) => s.toLowerCase().split(/[\s\-_/,.]+/).filter(Boolean);
+
+// Vị trí đầu tiên mà dãy từ `name` nằm liền nhau trong `section`, -1 = không có.
+function wordIndex(section: string[], name: string[]): number {
+  for (let i = 0; name.length && i + name.length <= section.length; i++) {
+    if (name.every((w, j) => section[i + j] === w)) return i;
+  }
+  return -1;
+}
+
+// Thể loại gốc (không dùng chung) ứng với bộ phận. Nhiều cái khớp -> nhiều từ hơn thắng;
+// bằng nhau -> cái đứng sau trong Section thắng ("KP PC": bộ phận thường là từ cuối).
+export function matchDepartmentRoot<T extends { name: string }>(roots: T[], department: string): T | undefined {
+  const section = words(department);
+  let best: { root: T; size: number; at: number } | undefined;
+  for (const root of roots) {
+    const name = words(root.name);
+    const at = wordIndex(section, name);
+    if (at < 0) continue;
+    if (!best || name.length > best.size || (name.length === best.size && at > best.at)) best = { root, size: name.length, at };
+  }
+  return best?.root;
+}
+
 // Các thể loại gốc + toàn bộ con cháu của chúng.
 function withDescendants(rows: Cat[], seeds: number[]): Set<number> {
   const result = new Set(seeds);
@@ -69,7 +101,10 @@ export async function scopeFor(user: User | undefined): Promise<Scope> {
   const seeds = rows.filter(isSharedCategory).map((c) => c.id);
   const department = user?.department?.trim();
   if (department) {
-    const root = rows.find((c) => c.parentId === null && norm(c.name) === norm(department));
+    const root = matchDepartmentRoot(
+      rows.filter((c) => c.parentId === null && !isSharedCategory(c)),
+      department,
+    );
     if (root) seeds.push(root.id);
   }
   return { all: false, categoryIds: withDescendants(rows, seeds) };

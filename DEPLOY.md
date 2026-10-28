@@ -321,9 +321,13 @@ Chỉ bật khi đã cấu hình view nhân viên `COMPANY_EMPLOYEE_VIEW` trong 
 | --- | --- |
 | Admin | Mọi thể loại |
 | Tài khoản **chưa có mã nhân viên** (tài khoản cũ) | Mọi thể loại, như trước đây |
-| Tài khoản có mã, bộ phận "PE IT" | Thể loại **cấp cao nhất tên đúng "PE IT"** + mọi thể loại con cháu, cộng các thể loại **dùng chung** + con cháu |
+| Tài khoản có mã, bộ phận "KP PC" | Thể loại **cấp cao nhất có tên nằm trong tên bộ phận** (ở đây là "PC") + mọi thể loại con cháu, cộng các thể loại **dùng chung** + con cháu |
 | Khách (chưa đăng nhập, gồm người quét QR) | Chỉ thể loại dùng chung. Mở bài khác thì được mời đăng nhập rồi quay lại đúng bài |
 
+- **Cách so bộ phận với tên thể loại:** so theo **từ nguyên vẹn**, không phân biệt hoa thường; dấu `-`, `_`, `/`, `,` được coi như dấu cách.
+  - "KP PC", "KM PC", "km-pc" đều thuộc "PC".
+  - "PCB", "NPC" **không** thuộc "PC"; "KITTING" không thuộc "IT".
+  - Khớp nhiều thể loại thì lấy cái nhiều từ hơn: "PE IT" khớp cả "PE IT" lẫn "IT" → chọn "PE IT".
 - **Dùng chung** = tick ô "Dùng chung" trong Quản lý thể loại, hoặc thể loại tên **Community**.
 - Thể loại không trùng tên bộ phận nào và không dùng chung thì chỉ admin (và tài khoản cũ) thấy.
 - Biên tập chỉ đăng / sửa / xóa bài, tạo đề, nhập PowerPoint **trong phạm vi của mình**.
