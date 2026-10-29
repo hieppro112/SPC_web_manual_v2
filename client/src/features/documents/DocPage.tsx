@@ -164,7 +164,8 @@ export default function DocPage() {
     <div className="mx-auto max-w-page px-4 py-6 lg:grid lg:grid-cols-[220px_minmax(0,1fr)_240px] lg:gap-10 lg:px-8 lg:py-8">
       {/* Cột trái: tài liệu cùng thể loại */}
       <aside className="no-print hidden lg:block">
-        <div className="sticky top-20 space-y-1">
+        {/* Thanh cuộn riêng + không cuộn lan sang trang (giống cột thể loại ở trang chủ). */}
+        <div className="sticky top-20 max-h-[calc(100dvh-6rem)] space-y-1 overflow-y-auto overscroll-contain pr-1">
           <h2 className="px-2 pb-1 text-xs font-semibold tracking-wide text-muted uppercase">{t('doc.sameCategory')}</h2>
           {siblings?.map((s) => (
             <Link
@@ -298,7 +299,7 @@ export default function DocPage() {
       {/* Cột phải: mục lục */}
       <aside className="no-print hidden lg:block">
         {toc.length > 0 && (
-          <div className="sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto">
+          <div className="sticky top-20 max-h-[calc(100dvh-6rem)] overflow-y-auto overscroll-contain pr-1">
             <h2 className="mb-2 text-xs font-semibold tracking-wide text-muted uppercase">{t('doc.toc')}</h2>
             <Toc entries={toc} />
           </div>
