@@ -93,7 +93,11 @@ export default function HomePage() {
             <CategoryNav />
           </div>
         </details>
-        <div data-tour="categories" className="sticky top-20 hidden md:block">
+        {/* Máy tính: cột thể loại đứng yên bên trái và có THANH CUỘN RIÊNG.
+            max-h = chiều cao màn hình trừ header -> cây thể loại dài thì cuộn trong cột.
+            overscroll-contain: cuộn tới đầu / cuối cột thì DỪNG, không "lan" sang cuộn cả trang.
+            🔸 Flutter: giống một ListView riêng trong Row, không dính vào cuộn của trang. */}
+        <div data-tour="categories" className="sticky top-20 hidden max-h-[calc(100dvh-6rem)] overflow-y-auto overscroll-contain pr-1 md:block">
           <CategoryNav />
         </div>
       </aside>
