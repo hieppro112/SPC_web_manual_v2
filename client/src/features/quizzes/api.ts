@@ -118,6 +118,7 @@ export type QuizJob = {
 export const quizJobsApi = {
   create: (body: { docIds: string[]; count: number; language: QuizLang }) => http.post<QuizJob>('/quiz-jobs', body),
   list: () => http.get<{ timeoutHours: number; jobs: QuizJob[] }>('/quiz-jobs'),
+  active: () => http.get<QuizJob[]>('/quiz-jobs/active'),
   unseenCount: () => http.get<{ count: number }>('/quiz-jobs/unseen-count'),
   markSeen: (id: string) => http.post<void>(`/quiz-jobs/${id}/seen`),
   cancel: (id: string) => http.post<void>(`/quiz-jobs/${id}/cancel`),

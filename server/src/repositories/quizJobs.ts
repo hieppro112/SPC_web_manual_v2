@@ -83,6 +83,15 @@ export async function listJobs(requestedById: number | null) {
   return rows.map(toJson);
 }
 
+// Yêu cầu CHƯA XONG của MỌI người (đang chờ / Claude đang tạo) — trang tạo đề dùng để
+// cảnh báo "tài liệu này đang có người nhờ Claude tạo đề rồi", tránh gửi trùng.
+export async function listActiveJobs() {
+  const rows = await query<JobRow>(
+    `${JOB_SELECT} WHERE j.Status IN (N'pending', N'processing') ORDER BY j.CreatedAt DESC, j.Id DESC`,
+  );
+  return rows.map(toJson);
+}
+
 export async function countJobsToday(requestedById: number): Promise<number> {
   const row = await queryOne<{ N: number }>(
     `SELECT COUNT(*) AS N FROM WebManualQuizJobs

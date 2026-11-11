@@ -15,6 +15,12 @@ export function useQuizJobs(enabled: boolean) {
   });
 }
 
+// Yêu cầu chưa xong của MỌI người — trang tạo đề dùng để cảnh báo gửi trùng.
+// Key nằm dưới ['quiz-jobs'] -> gửi / hủy yêu cầu (invalidate ['quiz-jobs']) cũng làm mới cái này.
+export function useActiveQuizJobs() {
+  return useQuery({ queryKey: ['quiz-jobs', 'active'], queryFn: quizJobsApi.active });
+}
+
 // Chấm đỏ trên thanh trên cùng: hỏi mỗi phút.
 export function useUnseenJobCount(enabled: boolean) {
   return useQuery({ queryKey: ['quiz-jobs', 'unseen'], queryFn: quizJobsApi.unseenCount, enabled, refetchInterval: 60_000, retry: false });

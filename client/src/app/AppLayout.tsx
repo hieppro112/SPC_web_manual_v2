@@ -59,10 +59,12 @@ function LayoutShell() {
               </Button>
             </Link>
             {user && (
-              <Link to="/quizzes" title={t('nav.quizzes')} className="relative" data-tour="quizzes">
+              // Biên tập / admin: "Bài kiểm tra" (của tôi + quản lý đề).
+              // Người dùng thường chỉ LÀM bài -> tên nút nói rõ "Bài kiểm tra của tôi".
+              <Link to="/quizzes" title={t(isEditor(user) ? 'nav.quizzes' : 'nav.myQuizzes')} className="relative" data-tour="quizzes">
                 <Button size="sm" variant="ghost">
                   <ClipboardCheck className="h-4 w-4" />
-                  <span className="hidden lg:inline">{t('nav.quizzes')}</span>
+                  <span className="hidden lg:inline">{t(isEditor(user) ? 'nav.quizzes' : 'nav.myQuizzes')}</span>
                 </Button>
                 {/* Chấm đỏ: số đề Claude đã tạo xong mà người này chưa mở */}
                 {unseenJobs > 0 && (
