@@ -7,23 +7,29 @@
 //   local   — AI nội bộ (LM Studio / Ollama) tạo NGAY, có thanh tiến độ
 //   manual  — tự soạn từng câu, không dùng AI
 // Cả 3 đều kết thúc ở QuizEditor: editor đọc lại, sửa, rồi mới lưu.
+//
+// Chọn tài liệu: bài đầu tiên trong ?docs= là CHỦ ĐỀ CHÍNH (cố định), các bài sau là
+// "bài thêm". Trước khi tạo, nếu các bài đang chọn đã từng được ra đề (hoặc đang chờ
+// Claude tạo) -> hộp thoại hỏi lại, tránh tạo trùng.
 
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { ArrowLeft, Bot, PenLine, Search, Send, Sparkles, X, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, Bot, PenLine, Send, Sparkles, type LucideIcon } from 'lucide-react';
 import Button from '../../components/ui/Button.tsx';
-import Input from '../../components/ui/Input.tsx';
 import Select from '../../components/ui/Select.tsx';
-import { cn, errorMessage, newId, removeDiacritics } from '../../lib/utils.ts';
+import { cn, errorMessage, newId } from '../../lib/utils.ts';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.ts';
 import { useAiStatus } from '../ai/queries.ts';
 import { useDocuments } from '../documents/queries.ts';
 import { useCompleteTask } from '../guide/queries.ts';
 import { quizzesApi, type QuizInput, type QuizLang, type SourceDoc } from './api.ts';
-import { useCreateQuizJob } from './queries.ts';
+import { findRelated, quizCountByDoc } from './existing.ts';
+import { ConfirmExistingDialog, ExistingPanel } from './ExistingQuizzes.tsx';
+import { useActiveQuizJobs, useCreateQuizJob, useManagedQuizzes } from './queries.ts';
 import QuizEditor from './QuizEditor.tsx';
+import SourceDocPicker, { MAX_DOCS } from './SourceDocPicker.tsx';
 
 const COUNTS = [5, 10, 15, 20];
 const LANGS: QuizLang[] = ['vi', 'en', 'ja'];
@@ -57,8 +63,12 @@ export default function QuizCreatePage() {
 
   const modes: Mode[] = aiStatus?.enabled ? ['claude', 'local', 'manual'] : ['claude', 'manual'];
   const [mode, setMode] = useState<Mode>(() => (params.get('mode') === 'local' ? 'local' : params.get('mode') === 'manual' ? 'manual' : 'claude'));
-  const [selected, setSelected] = useState<string[]>(() => (params.get('docs') ?? '').split(',').filter(Boolean));
-  const [filter, setFilter] = useState('');
+  // ?docs=5,8,9 -> 5 là chủ đề chính (khóa, vì mở từ bài viết 5), 8 và 9 là bài thêm.
+  const [initialDocs] = useState(() => [...new Set((params.get('docs') ?? '').split(',').filter(Boolean))].slice(0, MAX_DOCS));
+  const mainLocked = initialDocs.length > 0;
+  const [mainId, setMainId] = useState<string | null>(initialDocs[0] ?? null);
+  const [extras, setExtras] = useState<string[]>(initialDocs.slice(1));
+  const selected = mainId ? [mainId, ...extras] : extras;
   const [count, setCount] = useState(10);
   const [language, setLanguage] = useState<QuizLang>(() => (LANGS.includes(i18n.language as QuizLang) ? (i18n.language as QuizLang) : 'vi'));
 
@@ -67,9 +77,29 @@ export default function QuizCreatePage() {
   const [draft, setDraft] = useState<QuizInput | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  const needle = removeDiacritics(filter.trim());
-  const shownDocs = (docs ?? []).filter((d) => !needle || removeDiacritics(d.title).includes(needle));
-  const toggle = (id: string) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : s.length >= 10 ? s : [...s, id]));
+  // Đề đã có (kể cả nháp) + yêu cầu Claude chưa xong -> nhãn "Đã có N đề" và cảnh báo trùng.
+  const managed = useManagedQuizzes(true);
+  const activeJobs = useActiveQuizJobs();
+  // useMemo: chỉ tính lại khi dữ liệu đổi, không tính lại mỗi lần gõ phím ở ô tìm.
+  // 🔸 Flutter: giống cache kết quả trong một biến, chỉ build lại khi input đổi.
+  const quizCounts = useMemo(() => quizCountByDoc(managed.data ?? []), [managed.data]);
+  const selectedKey = selected.join(',');
+  const related = useMemo(
+    () => findRelated(selectedKey ? selectedKey.split(',') : [], managed.data ?? [], activeJobs.data ?? []),
+    [selectedKey, managed.data, activeJobs.data],
+  );
+  const checking = managed.isPending || activeJobs.isPending;
+
+  // Hộp thoại xác nhận: giữ lại HÀNH ĐỘNG đang chờ (gửi Claude / tạo nội bộ / tự soạn),
+  // người dùng bấm "Vẫn tạo" thì mới chạy. Chưa có đề liên quan -> chạy luôn.
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+  const guard = (action: () => void) => {
+    if (related.length) setPendingAction(() => action); // truyền HÀM vào setState phải bọc thêm () => ...
+    else action();
+  };
+
+  const toggleExtra = (id: string) =>
+    setExtras((s) => (s.includes(id) ? s.filter((x) => x !== id) : s.length + 1 >= MAX_DOCS ? s : [...s, id]));
   const selectedDocs: SourceDoc[] = selected.map((id) => {
     const d = docs?.find((x) => x.id === id);
     return { id, title: d?.title ?? `#${id}`, slug: d?.slug ?? '' };
@@ -165,38 +195,26 @@ export default function QuizCreatePage() {
 
       <section className="space-y-5 rounded-2xl border border-border bg-surface p-4">
         {/* Tài liệu nguồn (bắt buộc với AI, không bắt buộc khi tự soạn) */}
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-sm font-medium">
-              {t('quiz.sourceDocs')}{' '}
-              <span className="font-normal text-muted">· {mode === 'manual' ? t('quiz.sourceDocsOptional') : t('quiz.sourceDocsHint')}</span>
-            </span>
-            <div className="relative">
-              <Search className="pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-muted" />
-              <Input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder={t('quiz.searchDocs')} className="h-8 w-56 pl-8 text-sm" />
-            </div>
-          </div>
-          {selected.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {selectedDocs.map((d) => (
-                <span key={d.id} className="inline-flex items-center gap-1 rounded-full bg-accent-soft px-2 py-0.5 text-xs text-accent">
-                  {d.title}
-                  <button type="button" onClick={() => toggle(d.id)} disabled={busy} aria-label={t('common.delete')}>
-                    <X className="h-3 w-3" />
-                  </button>
-                </span>
-              ))}
-            </div>
-          )}
-          <div className="max-h-64 overflow-y-auto rounded-xl border border-border bg-bg">
-            {shownDocs.map((d) => (
-              <label key={d.id} className="flex cursor-pointer items-center gap-2 border-b border-border px-3 py-2 text-sm last:border-b-0 hover:bg-surface-2">
-                <input type="checkbox" checked={selected.includes(d.id)} onChange={() => toggle(d.id)} disabled={busy} />
-                <span className="flex-1">{d.title}</span>
-                {d.category && <span className="text-xs text-muted">{d.category.name}</span>}
-              </label>
-            ))}
-          </div>
+        <div className="space-y-3">
+          <p className="text-sm font-medium">
+            {t('quiz.sourceDocs')}{' '}
+            <span className="font-normal text-muted">· {mode === 'manual' ? t('quiz.sourceDocsOptional') : t('quiz.sourceDocsHint')}</span>
+          </p>
+          <SourceDocPicker
+            docs={docs ?? []}
+            mainId={mainId}
+            mainLocked={mainLocked}
+            extras={extras}
+            quizCounts={quizCounts}
+            disabled={busy}
+            onMainChange={(id) => {
+              setMainId(id);
+              if (id) setExtras((s) => s.filter((x) => x !== id)); // bài vừa thành bài chính thì bỏ khỏi "bài thêm"
+            }}
+            onToggleExtra={toggleExtra}
+          />
+          {/* Đổi ngay khi tick thêm / bỏ bài: bài chính + bài thêm đã có đề nào chưa */}
+          <ExistingPanel items={related} selectedCount={selected.length} loading={checking} />
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
@@ -229,7 +247,7 @@ export default function QuizCreatePage() {
         {mode === 'claude' && (
           <>
             <p className="text-xs text-muted">{t('quiz.jobs.claudeHint')}</p>
-            <Button onClick={sendToClaude} disabled={!selected.length} loading={createJob.isPending}>
+            <Button onClick={() => guard(sendToClaude)} disabled={!selected.length || checking} loading={createJob.isPending}>
               <Send className="h-4 w-4" /> {t('quiz.jobs.send')}
             </Button>
           </>
@@ -251,17 +269,29 @@ export default function QuizCreatePage() {
               <p className="text-xs text-muted">{t('quiz.generatingHint')}</p>
             </div>
           ) : (
-            <Button onClick={generateLocal} disabled={!selected.length}>
+            <Button onClick={() => guard(generateLocal)} disabled={!selected.length || checking}>
               <Sparkles className="h-4 w-4" /> {t('quiz.generate')}
             </Button>
           ))}
 
         {mode === 'manual' && (
-          <Button onClick={startManual}>
+          <Button onClick={() => guard(startManual)} disabled={checking && selected.length > 0}>
             <PenLine className="h-4 w-4" /> {t('quiz.startManual')}
           </Button>
         )}
       </section>
+
+      <ConfirmExistingDialog
+        open={pendingAction !== null}
+        items={related}
+        selectedCount={selected.length}
+        onCancel={() => setPendingAction(null)}
+        onConfirm={() => {
+          const action = pendingAction;
+          setPendingAction(null);
+          action?.();
+        }}
+      />
     </div>
   );
 }

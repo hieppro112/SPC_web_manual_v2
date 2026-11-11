@@ -4,7 +4,8 @@
 //   Editor / admin (cookie đăng nhập, gắn requireEditor ở index.ts):
 //   POST /api/quiz-jobs                    { docIds, count?, language? } -> tạo yêu cầu
 //   GET  /api/quiz-jobs                    yêu cầu của mình (admin: của mọi người)
-//   GET  /api/quiz-jobs/unseen-count       số đề Claude đã tạo xong mà mình chưa mở
+//   GET  /api/quiz-jobs/active             yêu cầu chưa xong của MỌI người (cảnh báo tạo trùng)
+//   GET  /api/quiz-jobs/unseen-count      số đề Claude đã tạo xong mà mình chưa mở
 //   POST /api/quiz-jobs/:id/seen           đánh dấu đã mở
 //   POST /api/quiz-jobs/:id/cancel         hủy yêu cầu chưa xong
 //
@@ -32,6 +33,7 @@ import {
   expireOldJobs,
   failJob,
   findJob,
+  listActiveJobs,
   listJobs,
   markSeen,
   type QuizJob,
@@ -82,6 +84,12 @@ quizJobsRouter.get('/', async (_req, res) => {
   await expireOldJobs(config.quiz.jobTimeoutHours);
   const user = currentUser(res);
   res.json({ timeoutHours: config.quiz.jobTimeoutHours, jobs: await listJobs(user.role === 'admin' ? null : user.id) });
+});
+
+// Mọi yêu cầu chưa xong (của mọi editor) -> trang tạo đề báo "đang có yêu cầu cho tài liệu này".
+quizJobsRouter.get('/active', async (_req, res) => {
+  await expireOldJobs(config.quiz.jobTimeoutHours);
+  res.json(await listActiveJobs());
 });
 
 quizJobsRouter.get('/unseen-count', async (_req, res) => {

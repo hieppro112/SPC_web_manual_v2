@@ -136,7 +136,7 @@ export default function QuizListPage() {
   const editor = isEditor(user);
   const mine = useMyQuizzes();
   const managed = useManagedQuizzes(editor);
-  useDocumentTitle(t('quiz.title'));
+  useDocumentTitle(editor ? t('quiz.title') : t('quiz.myQuizzes'));
 
   // ?doc=<id>: mở từ nút "Bài kiểm tra" của một bài viết -> chỉ hiện đề có bài đó làm tài liệu nguồn.
   const [params] = useSearchParams();
