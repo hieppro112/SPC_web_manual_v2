@@ -21,6 +21,22 @@ function required(name: string): string {
   return value;
 }
 
+// ---------- Thư mục dữ liệu ----------
+// DATA_DIR = MỘT thư mục NGOÀI mã nguồn chứa mọi thứ người dùng tạo ra:
+//   <DATA_DIR>/uploads   ảnh, video, file đính kèm, sơ đồ, ảnh thu nhỏ
+//   <DATA_DIR>/exports   file PowerPoint tạo từ bài viết
+//   <DATA_DIR>/ai-data   chỉ mục tìm kiếm + log hỏi đáp của trợ lý AI
+// Lợi ích: thư mục dự án chỉ còn code (nhẹ, copy / deploy / git nhanh); xóa hay
+// deploy lại code không đụng tới dữ liệu; sao lưu chỉ cần chép một thư mục.
+// Vẫn đặt riêng từng cái được (UPLOAD_DIR / EXPORT_DIR / AI_DATA_DIR) — đặt riêng thì THẮNG DATA_DIR.
+// Không đặt gì cả -> như cũ: nằm trong server/ (tiện khi mới học, chạy thử).
+const dataDir = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : '';
+function dataPath(envName: string, sub: string): string {
+  const own = process.env[envName];
+  if (own) return path.resolve(own);
+  return dataDir ? path.join(dataDir, sub) : path.resolve(sub);
+}
+
 // `as const` = đóng băng object: TypeScript hiểu các giá trị này
 // không bao giờ bị gán lại. 🔸 Dart: giống `const` object.
 export const config = {
@@ -46,15 +62,22 @@ export const config = {
     autoMigrate: process.env.DB_AUTO_MIGRATE !== 'false',
   },
 
-  // Thư mục lưu ảnh/video/file upload. Đường dẫn tương đối tính từ thư
-  // mục chạy lệnh (server/).
-  uploadDir: path.resolve(process.env.UPLOAD_DIR ?? 'uploads'),
+  dataDir,
+
+  // Thư mục lưu ảnh/video/file upload (xem "Thư mục dữ liệu" ở trên).
+  uploadDir: dataPath('UPLOAD_DIR', 'uploads'),
   maxUploadMb: Number(process.env.MAX_UPLOAD_MB ?? 500),
+
+  // Chạy ở máy cá nhân (localhost) nhưng dùng CHUNG database với máy chủ: bài viết
+  // trỏ tới ảnh chỉ có trên máy chủ. Đặt địa chỉ máy chủ ở đây, vd http://192.168.122.15:5000
+  // -> file nào máy mình không có thì trình duyệt được chuyển sang lấy ở máy chủ.
+  // Trên chính máy chủ thì ĐỂ TRỐNG.
+  uploadsFallbackUrl: (process.env.UPLOADS_FALLBACK_URL ?? '').replace(/\/+$/, ''),
 
   // File PowerPoint tạo từ bài viết. Cố ý KHÔNG nằm trong uploadDir: thư mục đó
   // được phục vụ công khai qua /uploads, còn file PPT phải đi qua API để kiểm
   // tra quyền xem bài (phân quyền theo bộ phận).
-  exportDir: path.resolve(process.env.EXPORT_DIR ?? 'exports'),
+  exportDir: dataPath('EXPORT_DIR', 'exports'),
 
   // Địa chỉ mà ĐIỆN THOẠI dùng để mở trang upload khi quét QR, vd
   // http://192.168.1.20:5000. Để trống thì client tự đoán theo IP mạng LAN.
@@ -92,7 +115,7 @@ export const config = {
     guestLimitPerHour: Number(process.env.AI_GUEST_LIMIT_PER_HOUR ?? 10), // khách chưa đăng nhập
     syncMinutes: Number(process.env.AI_SYNC_MINUTES ?? 5), // quét lại tài liệu định kỳ
     // Thư mục chứa chỉ mục tìm kiếm (index.json, xóa được, tự tạo lại) + log hỏi đáp.
-    dataDir: path.resolve(process.env.AI_DATA_DIR ?? 'ai-data'),
+    dataDir: dataPath('AI_DATA_DIR', 'ai-data'),
     logDays: Number(process.env.AI_LOG_DAYS ?? 7), // giữ log hỏi đáp bao nhiêu ngày
     // Khóa cho công cụ ngoài đọc tài liệu qua GET /api/ai/documents. Trống = tắt API này.
     exportKey: process.env.AI_EXPORT_KEY ?? '',

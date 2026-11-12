@@ -46,8 +46,9 @@ export function useMarkJobSeen() {
 
 // ---------- Bộ đề ----------
 
-export function useMyQuizzes() {
-  return useQuery({ queryKey: ['quizzes', 'mine'], queryFn: quizzesApi.mine });
+// enabled=false: khách chưa đăng nhập (API trả 401) -> khỏi gọi.
+export function useMyQuizzes(enabled = true) {
+  return useQuery({ queryKey: ['quizzes', 'mine'], queryFn: quizzesApi.mine, enabled });
 }
 
 export function useManagedQuizzes(enabled: boolean) {

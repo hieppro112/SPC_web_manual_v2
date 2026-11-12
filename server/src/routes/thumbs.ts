@@ -43,7 +43,9 @@ thumbsRouter.get('/:file', async (req, res) => {
     return;
   }
   if (!fs.existsSync(source)) {
-    res.status(404).end();
+    // Máy này không có ảnh gốc (chạy localhost, dùng chung DB) -> lấy ảnh nhỏ ở máy chủ.
+    if (config.uploadsFallbackUrl) res.redirect(302, `${config.uploadsFallbackUrl}/uploads/thumbs/${file}`);
+    else res.status(404).end();
     return;
   }
   try {

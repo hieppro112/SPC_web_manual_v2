@@ -45,6 +45,18 @@ import { ensureUploadDirs } from './services/media.ts';
 
 const app = express();
 
+// In ra dữ liệu đang nằm ở đâu lúc khởi động -> nhìn log là biết đã chuyển ra ngoài chưa.
+// Còn nằm trong thư mục code thì nhắc (deploy / xóa nhầm code dễ mất ảnh).
+function logDataDirs() {
+  const codeDir = path.resolve('..') + path.sep; // thư mục dự án (server/ đứng trong đó)
+  const dirs = { uploads: config.uploadDir, exports: config.exportDir, 'ai-data': config.ai.dataDir };
+  for (const [name, dir] of Object.entries(dirs)) {
+    const inside = (dir + path.sep).startsWith(codeDir);
+    console.log(`📁 ${name.padEnd(8)} ${dir}${inside ? '  ⚠️ đang nằm trong thư mục code — nên đặt DATA_DIR' : ''}`);
+  }
+  if (config.uploadsFallbackUrl) console.log(`↪️  File upload không có ở máy này sẽ lấy từ ${config.uploadsFallbackUrl}`);
+}
+
 // Middleware: hàm chạy XEN GIỮA, trước khi request tới route.
 // express.json() đọc body JSON vào req.body. Nâng giới hạn lên 5 MB vì
 // tài liệu quy trình dài có thể có hàng trăm khối.
@@ -108,6 +120,7 @@ app.use('/api', (_req, res) => {
 // ---------- File upload ----------
 
 ensureUploadDirs();
+logDataDirs();
 // File tạm đang upload dở: không cho ai truy cập.
 app.use('/uploads/tmp', (_req, res) => {
   res.status(404).end();
@@ -135,6 +148,17 @@ app.use(
     },
   }),
 );
+// Tới đây = máy này KHÔNG có file đó.
+//   Có UPLOADS_FALLBACK_URL (chạy ở localhost, dùng chung DB với máy chủ)
+//     -> chuyển trình duyệt sang lấy file ở máy chủ (302). Máy chủ vẫn tự kiểm tra như thường.
+//   Không có -> 404 luôn (không rơi xuống "SPA fallback" trả nhầm index.html thay cho ảnh).
+app.use('/uploads', (req, res) => {
+  if (config.uploadsFallbackUrl && (req.method === 'GET' || req.method === 'HEAD')) {
+    res.redirect(302, `${config.uploadsFallbackUrl}/uploads${req.url}`);
+    return;
+  }
+  res.status(404).end();
+});
 
 // ---------- draw.io (khối "Sơ đồ") ----------
 // Trang tĩnh của draw.io, mở trong iframe khi soạn sơ đồ. Chưa cài thì 404
