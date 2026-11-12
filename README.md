@@ -75,10 +75,11 @@ Production chỉ cần **một tiến trình** — server phục vụ luôn giao
 | `PUBLIC_BASE_URL` | `http://192.168.1.20:5000` | Địa chỉ điện thoại / đồng nghiệp mở được (dùng trong mã QR, link chia sẻ). Để trống thì tự đoán theo IP LAN |
 | `ALLOWED_EMAIL_DOMAINS` | `spclt.com.vn` | Đuôi email được tự đăng ký (nhiều đuôi: cách nhau dấu phẩy). Để trống = mọi email |
 | `MAX_UPLOAD_MB` | `500` | Giới hạn mỗi file (video) |
-| `UPLOAD_DIR` | `uploads` | Nơi lưu ảnh/video/file |
+| `DATA_DIR` | `D:\WebManualData` | Thư mục dữ liệu NGOÀI code: tự có `uploads\` (ảnh/video/file), `exports\` (PPT), `ai-data\`. Để trống = nằm trong `server/` như cũ |
+| `UPLOADS_FALLBACK_URL` | `http://192.168.122.15:5000` | **Chỉ đặt ở máy cá nhân** dùng chung DB: ảnh máy mình không có thì lấy từ máy chủ. Máy chủ để trống |
 | `COOKIE_SECURE` | `false` | Chỉ `true` khi chạy HTTPS |
 
-**Sao lưu:** cần sao lưu CẢ HAI — các bảng WebManual trong database `KVH` (lịch backup SQL Server của IT) và thư mục upload (`deploy/backup.ps1`).
+**Sao lưu:** cần sao lưu CẢ HAI — các bảng WebManual trong database `KVH` (lịch backup SQL Server của IT) và thư mục upload (`deploy/backup.ps1 -UploadDir <DATA_DIR>\uploads`).
 
 **Quên mật khẩu admin:** chạy trên máy chủ `npm run reset-password -- <tên đăng nhập> <mật khẩu mới>`.
 
