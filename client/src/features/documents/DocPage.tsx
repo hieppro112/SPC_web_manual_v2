@@ -1,18 +1,21 @@
 // ============================================================
 // DocPage — trang đọc một tài liệu  (/docs/:slug)
 // ============================================================
-//  ┌────────────┬───────────────────────────┬────────────┐
-//  │ Cùng thể   │ breadcrumb, tiêu đề, meta │ Mục lục    │
-//  │ loại       │ nút Sửa/Lịch sử/Chia sẻ/In│ (tự sinh)  │
-//  │            │ nội dung các khối         │            │
-//  └────────────┴───────────────────────────┴────────────┘
-// Màn hình nhỏ: hai cột bên ẩn, mục lục thu vào một mục bấm mở.
+//  ┌────────────┬───────────────────────────┬──────────────┐
+//  │ Thể loại   │ breadcrumb, tiêu đề, meta │ Mục lục      │
+//  │ (như trang │ nút + dải "Bài kiểm tra"  │              │
+//  │  chủ, tô   │ nội dung các khối         │ Trong thể    │
+//  │  sáng thể  │ thẻ "Đọc xong rồi?"       │ loại này     │
+//  │  loại bài) │ Bài trước / sau, cùng loại│              │
+//  └────────────┴───────────────────────────┴──────────────┘
+// Màn hình nhỏ: hai cột bên ẩn, mục lục thu vào một mục bấm mở; chuyển bài bằng
+// phần "Bài trước / sau" + lưới cùng thể loại ở cuối bài.
 
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { ChevronRight, ClipboardCheck, Clock, Eye, FileQuestionMark, Pencil, Printer, Share2, Trash } from 'lucide-react';
+import { ChevronRight, Clock, Eye, FileQuestionMark, History, Pencil, Printer, Share2, Trash } from 'lucide-react';
 import Badge from '../../components/ui/Badge.tsx';
 import Button from '../../components/ui/Button.tsx';
 import EmptyState from '../../components/ui/EmptyState.tsx';
@@ -20,18 +23,18 @@ import Spinner from '../../components/ui/Spinner.tsx';
 import { computeBlockMeta } from '../../blocks/meta.ts';
 import { withDefaults } from '../../blocks/registry.ts';
 import { ApiError } from '../../lib/http.ts';
-import { cn, errorMessage, formatDateTime } from '../../lib/utils.ts';
+import { errorMessage, formatDateTime } from '../../lib/utils.ts';
 import { useDocumentTitle } from '../../lib/useDocumentTitle.ts';
 import { isEditor } from '../../lib/types.ts';
 import { useCurrentUser } from '../auth/queries.ts';
 import CategoryIcon from '../categories/CategoryIcon.tsx';
+import CategoryNav from '../categories/CategoryNav.tsx';
 import { useCategories } from '../categories/queries.ts';
 import { categoryPath } from '../categories/tree.ts';
 import LikeButton from '../engagement/LikeButton.tsx';
 import { useRecordView } from '../engagement/queries.ts';
 import { useCompleteTask } from '../guide/queries.ts';
 import { READING_END_ID } from '../reading/api.ts';
-import QuizEntryButton from '../reading/QuizEntryButton.tsx';
 import { useReadingStatus } from '../reading/queries.ts';
 import ReadingTracker from '../reading/ReadingTracker.tsx';
 import { LANGS, type Lang } from '../translations/api.ts';
@@ -39,6 +42,9 @@ import { useDocTranslation } from '../translations/queries.ts';
 import TranslationBar from '../translations/TranslationBar.tsx';
 import DeckDownloadButton from './DeckDownloadButton.tsx';
 import DocContent from './DocContent.tsx';
+import { DocNeighborsEnd, SameCategoryList } from './DocNeighbors.tsx';
+import DocQuizPanel from './DocQuizPanel.tsx';
+import ReadingProgress from './ReadingProgress.tsx';
 import ShareDialog from './ShareDialog.tsx';
 import Toc from './Toc.tsx';
 import { useDeleteDocument, useDocument, useDocuments } from './queries.ts';
@@ -55,7 +61,7 @@ export default function DocPage() {
   const [shareOpen, setShareOpen] = useState(false);
   const [tocOpen, setTocOpen] = useState(false);
 
-  // Tài liệu cùng thể loại cho cột trái.
+  // Tài liệu cùng thể loại: cột phải ("Trong thể loại này") + cuối bài (bài trước / sau).
   const { data: siblings } = useDocuments({ category: doc?.category?.id }, !!doc?.category);
 
   // Đường dẫn thể loại đầy đủ cho breadcrumb: Trang chủ › IT › AI
@@ -160,150 +166,177 @@ export default function DocPage() {
     });
   };
 
+  // Số phút đọc ước tính: server tính sẵn trong danh sách bài -> lấy từ danh sách cùng thể loại.
+  const readMinutes = siblings?.find((s) => s.id === doc.id)?.readMinutes;
+  const lead = !showTranslation && doc.desc?.trim() ? doc.desc : '';
+
   return (
     <div className="mx-auto max-w-page px-4 py-6 lg:grid lg:grid-cols-[220px_minmax(0,1fr)_240px] lg:gap-10 lg:px-8 lg:py-8">
-      {/* Cột trái: tài liệu cùng thể loại */}
+      {/* Vạch tiến độ đọc ngay dưới thanh trên cùng */}
+      <ReadingProgress targetId="doc-article" />
+
+      {/* Cột trái: thanh thể loại như trang chủ, tô sáng thể loại của bài đang đọc.
+          Thanh cuộn riêng + không cuộn lan sang trang. */}
       <aside className="no-print hidden lg:block">
-        {/* Thanh cuộn riêng + không cuộn lan sang trang (giống cột thể loại ở trang chủ). */}
-        <div className="sticky top-20 max-h-[calc(100dvh-6rem)] space-y-1 overflow-y-auto overscroll-contain pr-1">
-          <h2 className="px-2 pb-1 text-xs font-semibold tracking-wide text-muted uppercase">{t('doc.sameCategory')}</h2>
-          {siblings?.map((s) => (
-            <Link
-              key={s.id}
-              to={`/docs/${s.slug}`}
-              className={cn(
-                'block rounded-lg px-2 py-1.5 text-sm',
-                s.id === doc.id ? 'bg-accent-soft font-medium text-accent' : 'text-muted hover:bg-surface-2 hover:text-fg',
-              )}
-            >
-              {s.translated?.title ?? s.title}
-            </Link>
-          ))}
+        <div className="sticky top-20 max-h-[calc(100dvh-6rem)] overflow-y-auto overscroll-contain pr-1">
+          <CategoryNav activeId={doc.category?.id ?? null} />
         </div>
       </aside>
 
-      <article className="min-w-0">
-        <nav className="no-print mb-3 flex items-center gap-1 text-sm text-muted">
-          <Link to="/" className="hover:text-fg">
-            {t('nav.home')}
-          </Link>
-          {categoryTrail.map((c) => (
-            <span key={c.id} className="flex items-center gap-1">
-              <ChevronRight className="h-3.5 w-3.5" />
-              <Link to={`/?category=${c.id}`} className="hover:text-fg">
-                {c.name}
-              </Link>
-            </span>
-          ))}
-        </nav>
-
-        <header className="mb-6 border-b border-border pb-5">
-          <h1 className="text-3xl leading-tight font-bold">{shownTitle}</h1>
-          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted">
-            {doc.category && (
-              <Badge tone="accent">
-                <CategoryIcon name={doc.category.iconName} className="h-3 w-3" /> {doc.category.name}
-              </Badge>
-            )}
-            {doc.status === 'draft' && <Badge tone="warning">{t('status.draft')}</Badge>}
-            <span>
-              {t('doc.updatedBy', { date: formatDateTime(doc.updatedAt, i18n.language), name: doc.updatedBy?.displayName ?? '—' })}
-            </span>
-            {editor && <span>· {t('doc.version', { n: doc.version })}</span>}
-            {doc.stats && (
-              <span className="flex items-center gap-1" title={t('engagement.viewsHint')}>
-                · <Eye className="h-4 w-4" /> {doc.stats.views}
+      <article id="doc-article" className="min-w-0">
+        {/* Cột đọc rộng tối đa ~50rem (≈ 75–80 chữ / dòng): dòng quá dài thì mắt
+            khó tìm lại đầu dòng kế tiếp -> đọc nhanh mỏi. */}
+        <div className="mx-auto max-w-[50rem]">
+          <nav className="no-print mb-4 flex flex-wrap items-center gap-1 text-sm text-muted">
+            <Link to="/" className="hover:text-fg">
+              {t('nav.home')}
+            </Link>
+            {categoryTrail.map((c) => (
+              <span key={c.id} className="flex items-center gap-1">
+                <ChevronRight className="h-3.5 w-3.5" />
+                <Link to={`/?category=${c.id}`} className="hover:text-fg">
+                  {c.name}
+                </Link>
               </span>
-            )}
-          </div>
+            ))}
+          </nav>
 
-          <div className="no-print mt-4 flex flex-wrap gap-2">
-            {doc.stats && <LikeButton docId={doc.id} slug={doc.slug} liked={doc.stats.likedByMe} likes={doc.stats.likes} loggedIn={!!user} />}
-            {editor && (
-              <>
-                <Link to={`/docs/${doc.slug}/edit`}>
-                  <Button size="sm">
-                    <Pencil className="h-4 w-4" /> {t('common.edit')}
-                  </Button>
-                </Link>
-                <Link to={`/docs/${doc.slug}/history`} data-tour="doc-history">
-                  <Button size="sm" variant="secondary">
-                    <Clock className="h-4 w-4" /> {t('doc.history')}
-                  </Button>
-                </Link>
-              </>
-            )}
-            <Button
-              size="sm"
-              variant="secondary"
-              data-tour="share"
-              onClick={() => {
-                setShareOpen(true);
-                complete('share');
-              }}
-            >
-              <Share2 className="h-4 w-4" /> {t('common.share')}
-            </Button>
-            <Button size="sm" variant="secondary" onClick={() => window.print()}>
-              <Printer className="h-4 w-4" /> {t('common.print')}
-            </Button>
-            {/* Tải bài dạng slide PowerPoint (bản gốc + bản đã dịch). */}
-            <DeckDownloadButton docId={doc.id} />
-            {/* Bài kiểm tra / ôn tập CỦA BÀI NÀY (khóa tới khi đọc đủ thời gian). */}
-            <QuizEntryButton docId={doc.id} loggedIn={!!user} locked={quizLocked} />
-            {/* Tạo bài kiểm tra từ chính tài liệu này (Claude / AI nội bộ / tự soạn; chỉ bài đã xuất bản). */}
-            {editor && doc.status === 'published' && (
-              <Link to={`/quizzes/new?docs=${doc.id}`}>
-                <Button size="sm" variant="secondary">
-                  <ClipboardCheck className="h-4 w-4" /> {t('quiz.createFromDoc')}
-                </Button>
-              </Link>
-            )}
-            {editor && (
-              <Button size="sm" variant="ghost" onClick={handleDelete} loading={deleteDoc.isPending} className="text-danger">
-                <Trash className="h-4 w-4" /> {t('common.delete')}
-              </Button>
-            )}
-          </div>
-        </header>
-
-        {doc.status === 'draft' && (
-          <p className="no-print mb-6 rounded-xl border border-warning/40 bg-warning-soft px-4 py-3 text-sm">{t('doc.draftBanner')}</p>
-        )}
-
-        {/* Chọn ngôn ngữ đọc + trạng thái bản dịch (ẩn nếu server chưa bật dịch). */}
-        {tr?.available && <TranslationBar view={tr} docId={doc.id} slug={doc.slug} editor={editor} onChangeLang={changeLang} />}
-
-        {/* Mục lục trên màn hình nhỏ */}
-        {toc.length > 0 && (
-          <details
-            open={tocOpen}
-            onToggle={(e) => setTocOpen(e.currentTarget.open)}
-            className="no-print mb-6 rounded-xl border border-border p-3 lg:hidden"
-          >
-            <summary className="cursor-pointer text-sm font-medium">{t('doc.toc')}</summary>
-            <div className="mt-3">
-              <Toc entries={toc} onNavigate={() => setTocOpen(false)} />
+          <header className="mb-8 border-b border-border pb-6">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              {doc.category && (
+                <Badge tone="accent">
+                  <CategoryIcon name={doc.category.iconName} className="h-3 w-3" /> {doc.category.name}
+                </Badge>
+              )}
+              {doc.status === 'draft' && <Badge tone="warning">{t('status.draft')}</Badge>}
             </div>
-          </details>
-        )}
+            <h1 className="text-3xl leading-tight font-bold tracking-tight text-balance md:text-4xl">{shownTitle}</h1>
+            {lead && <p className="mt-3 text-lg leading-relaxed text-muted">{lead}</p>}
 
-        <DocContent blocks={shownBlocks} meta={meta} />
-        {/* Mốc "cuối bài": đồng hồ đọc chỉ tính xong khi người đọc cuộn tới đây. */}
-        <div id={READING_END_ID} aria-hidden className="h-px" />
+            {/* Một dòng thông tin gọn, ngăn bằng dấu chấm giữa */}
+            <div className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted">
+              <span>{t('doc.updatedBy', { date: formatDateTime(doc.updatedAt, i18n.language), name: doc.updatedBy?.displayName ?? '—' })}</span>
+              {!!readMinutes && (
+                <span className="flex items-center gap-1">
+                  · <Clock className="h-4 w-4" /> {t('doc.readMinutes', { count: readMinutes })}
+                </span>
+              )}
+              {doc.stats && (
+                <span className="flex items-center gap-1" title={t('engagement.viewsHint')}>
+                  · <Eye className="h-4 w-4" /> {doc.stats.views}
+                </span>
+              )}
+              {editor && <span>· {t('doc.version', { n: doc.version })}</span>}
+            </div>
+
+            {/* Nút thao tác: nhóm "đọc" bên trái, nhóm "soạn" (biên tập) bên phải */}
+            <div className="no-print mt-5 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap gap-2">
+                {doc.stats && <LikeButton docId={doc.id} slug={doc.slug} liked={doc.stats.likedByMe} likes={doc.stats.likes} loggedIn={!!user} />}
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  data-tour="share"
+                  onClick={() => {
+                    setShareOpen(true);
+                    complete('share');
+                  }}
+                >
+                  <Share2 className="h-4 w-4" /> {t('common.share')}
+                </Button>
+                <Button size="sm" variant="secondary" onClick={() => window.print()} title={t('common.print')}>
+                  <Printer className="h-4 w-4" /> <span className="hidden sm:inline">{t('common.print')}</span>
+                </Button>
+                {/* Tải bài dạng slide PowerPoint (bản gốc + bản đã dịch). */}
+                <DeckDownloadButton docId={doc.id} />
+              </div>
+              {editor && (
+                <div className="flex flex-wrap gap-2">
+                  <Link to={`/docs/${doc.slug}/edit`}>
+                    <Button size="sm" variant="secondary">
+                      <Pencil className="h-4 w-4" /> {t('common.edit')}
+                    </Button>
+                  </Link>
+                  <Link to={`/docs/${doc.slug}/history`} data-tour="doc-history">
+                    <Button size="sm" variant="ghost">
+                      <History className="h-4 w-4" /> {t('doc.history')}
+                    </Button>
+                  </Link>
+                  <Button size="sm" variant="ghost" onClick={handleDelete} loading={deleteDoc.isPending} className="text-danger" title={t('common.delete')}>
+                    <Trash className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Bài kiểm tra: dải màu riêng, nổi hơn các nút thường */}
+            <DocQuizPanel
+              placement="top"
+              docId={doc.id}
+              published={doc.status === 'published'}
+              loggedIn={!!user}
+              editor={editor}
+              locked={quizLocked}
+            />
+          </header>
+
+          {doc.status === 'draft' && (
+            <p className="no-print mb-6 rounded-xl border border-warning/40 bg-warning-soft px-4 py-3 text-sm">{t('doc.draftBanner')}</p>
+          )}
+
+          {/* Chọn ngôn ngữ đọc + trạng thái bản dịch (ẩn nếu server chưa bật dịch). */}
+          {tr?.available && <TranslationBar view={tr} docId={doc.id} slug={doc.slug} editor={editor} onChangeLang={changeLang} />}
+
+          {/* Mục lục trên màn hình nhỏ */}
+          {toc.length > 0 && (
+            <details
+              open={tocOpen}
+              onToggle={(e) => setTocOpen(e.currentTarget.open)}
+              className="no-print mb-6 rounded-xl border border-border p-3 lg:hidden"
+            >
+              <summary className="cursor-pointer text-sm font-medium">{t('doc.toc')}</summary>
+              <div className="mt-3">
+                <Toc entries={toc} onNavigate={() => setTocOpen(false)} />
+              </div>
+            </details>
+          )}
+
+          {/* doc-reading: chữ to hơn, giãn dòng thoáng hơn (xem index.css) */}
+          <div className="doc-reading">
+            <DocContent blocks={shownBlocks} meta={meta} />
+          </div>
+          {/* Mốc "cuối bài": đồng hồ đọc chỉ tính xong khi người đọc cuộn tới đây. */}
+          <div id={READING_END_ID} aria-hidden className="h-px" />
+
+          {/* Đọc xong -> mời làm bài kiểm tra, rồi gợi ý bài tiếp theo */}
+          <DocQuizPanel
+            placement="end"
+            docId={doc.id}
+            published={doc.status === 'published'}
+            loggedIn={!!user}
+            editor={editor}
+            locked={quizLocked}
+          />
+          {doc.category && siblings && (
+            <DocNeighborsEnd siblings={siblings} currentId={doc.id} categoryId={doc.category.id} categoryName={doc.category.name} />
+          )}
+        </div>
       </article>
 
       {/* key theo phiên bản: bài vừa được sửa -> đồng hồ làm lại từ đầu. */}
       {reading?.tracked && <ReadingTracker key={`${doc.id}:${reading.version}`} docId={doc.id} status={reading} />}
 
-      {/* Cột phải: mục lục */}
+      {/* Cột phải: mục lục + bài trong cùng thể loại (bấm là sang bài, khỏi quay về trang chủ) */}
       <aside className="no-print hidden lg:block">
-        {toc.length > 0 && (
-          <div className="sticky top-20 max-h-[calc(100dvh-6rem)] overflow-y-auto overscroll-contain pr-1">
-            <h2 className="mb-2 text-xs font-semibold tracking-wide text-muted uppercase">{t('doc.toc')}</h2>
-            <Toc entries={toc} />
-          </div>
-        )}
+        <div className="sticky top-20 max-h-[calc(100dvh-6rem)] space-y-8 overflow-y-auto overscroll-contain pr-1">
+          {toc.length > 0 && (
+            <div>
+              <h2 className="mb-2 text-xs font-semibold tracking-wide text-muted uppercase">{t('doc.toc')}</h2>
+              <Toc entries={toc} />
+            </div>
+          )}
+          {doc.category && siblings && <SameCategoryList siblings={siblings} currentId={doc.id} categoryId={doc.category.id} />}
+        </div>
       </aside>
 
       <ShareDialog open={shareOpen} onClose={() => setShareOpen(false)} slug={doc.slug} title={doc.title} />

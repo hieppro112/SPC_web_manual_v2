@@ -27,12 +27,14 @@ const itemClass = (active: boolean) =>
     active ? 'bg-accent-soft font-medium text-accent' : 'text-fg hover:bg-surface-2',
   );
 
-export default function CategoryNav() {
+// activeId: trang KHÔNG có ?category= trên URL (vd trang đọc bài) tự chỉ định
+// thể loại cần tô sáng — ở trang đọc là thể loại của bài đang đọc.
+export default function CategoryNav({ activeId }: { activeId?: string | null } = {}) {
   const { t } = useTranslation();
   const user = useCurrentUser();
   const { tree, data: categories } = useCategoryTree();
   const [params] = useSearchParams();
-  const current = params.get('category');
+  const current = activeId !== undefined ? activeId : params.get('category');
   // Lưu nhánh nào đang THU GỌN (mặc định rỗng = mở hết, thấy ngay cả cây).
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
   const total = tree.reduce((sum, node) => sum + node.totalCount, 0);

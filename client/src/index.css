@@ -161,6 +161,30 @@
   --tw-prose-td-borders: var(--app-border);
 }
 
+/* Trang ĐỌC bài (không áp dụng trong trình soạn / lịch sử): chữ to hơn 1 nấc
+   (17px) và giãn dòng thoáng hơn — bài quy trình dài đọc đỡ mỏi mắt. */
+.doc-reading {
+  font-size: 1.0625rem;
+  line-height: 1.8;
+}
+.doc-reading .doc-prose {
+  font-size: 1.0625rem;
+  line-height: 1.8;
+}
+
+/* Các bước liên tiếp nối với nhau bằng một đường dọc như "timeline":
+   bước đứng ngay sau bước khác thì sát lại; bước CUỐI của chuỗi thì ẩn đường nối
+   (`:has(+ .step-block)` = "có một bước đứng ngay sau mình"). */
+.step-block + .step-block {
+  margin-top: 0;
+}
+.step-block:has(+ .step-block) {
+  margin-bottom: 0; /* không chừa khe -> đường nối liền mạch sang bước sau */
+}
+.step-block:not(:has(+ .step-block)) .step-line {
+  display: none;
+}
+
 /* ---------- IN / XUẤT PDF ----------
    Bấm "In / PDF" gọi window.print(); trình duyệt dùng các luật dưới đây.
    Chọn máy in "Lưu thành PDF" để ra file PDF. */

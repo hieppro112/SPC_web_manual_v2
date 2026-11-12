@@ -21,8 +21,9 @@ export default function HeadingView({ props, meta }: BlockViewProps<'heading'>) 
       id={meta.anchor}
       className={
         props.level === 3
-          ? 'group mt-8 mb-2 flex items-center gap-2 text-lg font-semibold'
-          : 'group mt-10 mb-3 flex items-center gap-2 border-b border-border pb-2 text-2xl font-bold'
+          ? 'group mt-8 mb-2 flex items-center gap-2 text-xl font-semibold'
+          : // Mục lớn: vạch màu bên trái -> lướt qua là thấy bài chia thành mấy phần.
+            'group mt-12 mb-4 flex items-center gap-2 border-l-4 border-accent pl-3 text-2xl leading-snug font-bold'
       }
     >
       {props.text}
