@@ -184,9 +184,9 @@ export default function DocPage() {
       </aside>
 
       <article id="doc-article" className="min-w-0">
-        {/* Cột đọc rộng tối đa ~50rem (≈ 75–80 chữ / dòng): dòng quá dài thì mắt
-            khó tìm lại đầu dòng kế tiếp -> đọc nhanh mỏi. */}
-        <div className="mx-auto max-w-[50rem]">
+        {/* Nội dung trải hết bề rộng cột giữa (giữa 2 cột thể loại / mục lục):
+            bảng nhiều cột, ảnh chụp màn hình, slide được hiện to, không chừa lề trống. */}
+        <div>
           <nav className="no-print mb-4 flex flex-wrap items-center gap-1 text-sm text-muted">
             <Link to="/" className="hover:text-fg">
               {t('nav.home')}
