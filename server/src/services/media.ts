@@ -30,10 +30,23 @@ const SUBDIRS: Record<MediaKind, string> = { image: 'images', video: 'videos', f
 const DIAGRAM_DIR = 'diagrams';
 const MAX_DIAGRAM_BYTES = 4 * 1024 * 1024;
 
-// Tạo sẵn các thư mục lúc khởi động (recursive: có rồi thì thôi, không lỗi).
+// Tạo sẵn các thư mục lúc khởi động (recursive: có rồi thì thôi, không lỗi)
+// rồi GHI THỬ một file. Thư mục upload có thể là thư mục share trên máy khác
+// (\\192.168.122.15\...): share chưa mở / tài khoản chạy app không có quyền ghi
+// -> dừng NGAY với thông báo dễ hiểu, thay vì chạy được rồi tới lúc upload mới lỗi.
 export function ensureUploadDirs(): void {
-  for (const sub of ['tmp', DIAGRAM_DIR, ...Object.values(SUBDIRS)]) {
-    fs.mkdirSync(path.join(config.uploadDir, sub), { recursive: true });
+  try {
+    for (const sub of ['tmp', DIAGRAM_DIR, ...Object.values(SUBDIRS)]) {
+      fs.mkdirSync(path.join(config.uploadDir, sub), { recursive: true });
+    }
+    const probe = path.join(config.uploadDir, 'tmp', `.write-test-${process.pid}`);
+    fs.writeFileSync(probe, 'ok');
+    fs.rmSync(probe, { force: true });
+  } catch (err) {
+    console.error(`❌ Không đọc / ghi được thư mục upload: ${config.uploadDir}`);
+    console.error('   Kiểm tra: đường dẫn đúng chưa, thư mục share có mở không, tài khoản chạy app có quyền GHI không.');
+    console.error(`   Chi tiết: ${err instanceof Error ? err.message : err}`);
+    process.exit(1);
   }
 }
 

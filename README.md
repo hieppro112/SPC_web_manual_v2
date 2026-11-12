@@ -75,7 +75,8 @@ Production chỉ cần **một tiến trình** — server phục vụ luôn giao
 | `PUBLIC_BASE_URL` | `http://192.168.1.20:5000` | Địa chỉ điện thoại / đồng nghiệp mở được (dùng trong mã QR, link chia sẻ). Để trống thì tự đoán theo IP LAN |
 | `ALLOWED_EMAIL_DOMAINS` | `spclt.com.vn` | Đuôi email được tự đăng ký (nhiều đuôi: cách nhau dấu phẩy). Để trống = mọi email |
 | `MAX_UPLOAD_MB` | `500` | Giới hạn mỗi file (video) |
-| `DATA_DIR` | `D:\WebManualData` | Thư mục dữ liệu NGOÀI code: tự có `uploads\` (ảnh/video/file), `exports\` (PPT), `ai-data\`. Để trống = nằm trong `server/` như cũ |
+| `DATA_DIR` | `\\192.168.122.15\Source\src_web\manual_web_v2` | Thư mục dữ liệu NGOÀI code (có thể là thư mục share): tự có `uploads\` (ảnh/video/file), `exports\` (PPT), `ai-data\`. DB chỉ lưu đường dẫn `/uploads/...`. Để trống = nằm trong `server/` như cũ |
+| `AI_DATA_DIR` | `D:\WebManualData\ai-data` | Chỉ mục AI riêng mỗi máy — nên đặt khi `DATA_DIR` là thư mục share dùng chung |
 | `UPLOADS_FALLBACK_URL` | `http://192.168.122.15:5000` | **Chỉ đặt ở máy cá nhân** dùng chung DB: ảnh máy mình không có thì lấy từ máy chủ. Máy chủ để trống |
 | `COOKIE_SECURE` | `false` | Chỉ `true` khi chạy HTTPS |
 
